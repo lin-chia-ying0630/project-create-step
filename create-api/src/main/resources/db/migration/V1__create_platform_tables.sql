@@ -7,7 +7,7 @@ CREATE TABLE pending_business_lock (
   UNIQUE KEY uk_pending_case (case_id)
 );
 
-CREATE TABLE business_audit_event (
+CREATE TABLE platform_audit_event (
   audit_event_id VARCHAR(36) NOT NULL,
   module_code VARCHAR(50) NOT NULL,
   operation_type VARCHAR(30) NOT NULL,
