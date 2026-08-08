@@ -210,4 +210,18 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 
 第一條業務規格已建立為「新契約批次核保」：`create-api` 的 Flyway 建立 `new_contract` 要保、核保、照會、規則結果、稽核與 outbox，並以 `main.policy_contract` 作正式保單寫入邊界；`create-batch` 執行基本檢核，有問題建立照會，全部通過才承保。完整規格見 `docs/analysis/new-contract/underwriting/00-requirements.md`。
 
-目前已完成資料契約、臺灣基本流程控制與純 Java 基本檢核器；尚未完成批次資料讀寫、保單號碼配置、商品規則介接、API 畫面與真實 MySQL 整合測試，因此仍不可宣稱業務功能可上線。
+目前已完成本機開發用的客戶建立、保單登打、首期保費配對、核保批次排程與紀錄查詢，以及未生效保單承保撤回 API／畫面。客戶身分證、聯絡方式與地址採 AES-GCM 加密，身分證另存不可逆雜湊供查重；姓名只有 `customer.customer_master` 是可維護來源，送件資料只保存 `customer_id` 與不可變快照參考。
+
+本機啟動前複製 `.env.example` 為 `.env`，將 `PII_ENCRYPTION_KEY` 換成至少 24 字元的隨機密鑰；`.env` 已排除版本控制。測試入口為 `http://localhost:5173`，API 為 `http://localhost:8082`，MySQL 為 `127.0.0.1:3308`。
+
+本機畫面包含：
+
+| 功能 | API | 說明 |
+|---|---|---|
+| 客戶資料建立 | `POST /api/v1/customers` | 單一交易寫入客戶、證件、聯絡、地址、姓名歷程、KYC、同意及稽核。 |
+| 保單登打 | `POST /api/v1/new-contract/applications` | 建立要保案件與首期應繳。 |
+| 繳費配對 | `GET .../initial-premium`、`POST .../remittance-slips/match` | 比對應繳與實繳金額。 |
+| 批次核保 | `POST .../underwriting-batch/requests`、`GET .../executions` | 排入每日 21:00 批次並查詢執行紀錄。 |
+| 承保撤回 | `GET .../preview`、`POST .../policy-reversals` | 僅允許未生效案件，使用版本及確認 token 防止誤刪。 |
+
+上述仍是開發基線，不包含正式商品費率、外部身分驗證、AML／PEP 名單服務、IAM 權限、HSM/KMS 密鑰管理與完整批次物化，因此不可直接上線。

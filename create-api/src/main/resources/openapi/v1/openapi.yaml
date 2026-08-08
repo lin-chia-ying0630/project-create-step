@@ -1,9 +1,55 @@
 openapi: 3.1.0
 info:
   title: 保險系統 API
-  version: 0.0.1
-  description: 技術骨架契約；第一條保險業務流程核准後才新增 paths。
-paths: {}
+  version: 0.1.0
+  description: 新契約、客戶、首期保費、核保批次與承保撤回 API。
+paths:
+  /api/v1/customers:
+    post:
+      summary: 建立自然人客戶
+      responses:
+        '200': {description: 客戶建立成功}
+        '400': {description: 輸入或身分證檢核失敗}
+        '409': {description: 身分識別資料重複}
+  /api/v1/new-contract/applications:
+    post:
+      summary: 建立新契約要保案件及首期應繳
+      responses:
+        '200': {description: 要保案件建立成功}
+  /api/v1/new-contract/applications/{applicationNo}/initial-premium:
+    get:
+      summary: 查詢首期應繳
+      parameters:
+        - {name: applicationNo, in: path, required: true, schema: {type: string, maxLength: 32}}
+      responses:
+        '200': {description: 查詢成功}
+  /api/v1/new-contract/remittance-slips/match:
+    post:
+      summary: 建立送金單並配對首期保費
+      responses:
+        '200': {description: 配對完成}
+  /api/v1/new-contract/underwriting-batch/requests:
+    post:
+      summary: 排入晚上九點核保批次
+      responses:
+        '200': {description: 排程成功}
+  /api/v1/new-contract/underwriting-batch/executions:
+    get:
+      summary: 查詢最近核保批次執行紀錄
+      responses:
+        '200': {description: 查詢成功}
+  /api/v1/new-contract/policy-reversals/{policyNo}/preview:
+    get:
+      summary: 查詢承保撤回影響與確認 token
+      parameters:
+        - {name: policyNo, in: path, required: true, schema: {type: string, maxLength: 32}}
+      responses:
+        '200': {description: 查詢成功}
+  /api/v1/new-contract/policy-reversals:
+    post:
+      summary: 刪除未生效正式保單、回復未承保並寫入稽核快照
+      responses:
+        '200': {description: 撤回成功}
 components:
   schemas:
     ResponseBodyDto:
