@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tw.com.insurance.api.newcontract.codedefinition.persistence.CodeDefinitionMapper">
+  <select id="findActiveOptions" resultType="tw.com.insurance.api.newcontract.codedefinition.dto.CodeDefinitionDto">
+    SELECT code_value AS code,
+           code_description_zh_tw AS description
+      FROM new_contract.code_definition
+     WHERE code_group = #{codeGroup}
+       AND code_field = #{codeField}
+       AND active_flag = 'Y'
+       AND effective_from &lt;= CURRENT_DATE
+       AND (effective_to IS NULL OR effective_to &gt;= CURRENT_DATE)
+     ORDER BY display_order, code_value
+  </select>
+
+  <select id="existsActiveCode" resultType="boolean">
+    SELECT EXISTS (
+      SELECT 1
+        FROM new_contract.code_definition
+       WHERE code_group = #{codeGroup}
+         AND code_field = #{codeField}
+         AND code_value = #{code}
+         AND active_flag = 'Y'
+         AND effective_from &lt;= CURRENT_DATE
+         AND (effective_to IS NULL OR effective_to &gt;= CURRENT_DATE)
+    )
+  </select>
+</mapper>

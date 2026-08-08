@@ -14,6 +14,9 @@
 4. 保險專案開案或領域功能設計時，遵循 `skills/start-insurance-project/SKILL.md`。
 5. 舊系統分析依序使用 `legacy-code-explainer → business-rule-extractor → spec-generator → impact-analysis → test-case-generator`，但一次只載入目前階段所需能力。
 6. 新保險需求使用 `insurance-requirement-modeler`；外部檔案或訊息使用 `insurance-interface-mapper`；批次筆數、金額及重跑問題使用 `insurance-reconciliation-analyzer`。
+7. 新增、重構或檢查 Java/MyBatis 功能時，先讀 `skills/enforce-mybatis-three-layer/SKILL.md`。
+8. 所有程式建立、修改與 review 都使用 `skills/enforce-code-writing-standards/SKILL.md`；不得產生多個 method／statement 擠在同一行的程式。採用設計模式前先說明實際變化點與測試邊界，不得產生只有一個實作且沒有替換需求的空殼 Strategy、Factory 或 Adapter。
+9. 新增抽象、核保規則、外部介接、狀態轉換或複雜條件重構時，使用 `skills/design-pattern-guide/SKILL.md`；先輸出問題與變化點，再選模式。
 
 ## 分析文件
 
@@ -31,14 +34,21 @@
 - 先建立資料庫 → Entity → Request/Response DTO → API/OpenAPI → 前端型別 → UI metadata 的唯一契約。
 - Entity、Create Request、Update Request 與 Query Response 分開；不得直接以 Entity 作為 API contract。
 - 一次完成一條可驗證的垂直功能，包含資料、後端、API、前端、測試與文件。
-- 固定封閉狀態使用具正式代碼與繁中說明的 enum；動態代碼由後端或資料庫提供。
+- 固定封閉的代碼、狀態與繁中說明使用所屬 `domain` enum，enum 必須提供 `code`、`description` 及嚴格 `fromCode`；禁止在 Controller、Service、SQL 或 Vue 重複 switch／mapping。只有可由營運維護的動態代碼才由資料庫 code table 提供。
+- 固定錯誤代碼與繁中訊息集中於領域 `ErrorCode` enum；throw 處只傳 enum，不直接寫代碼／固定訊息。
+- 每個 Java、Vue、TypeScript function 都要有目的註解；public／protected Java method 使用 Javadoc，private 與前端 function 至少說明規則、狀態變化或副作用。禁止只重述方法名稱的空洞註解。
 - 金額使用精確十進位型別；日期、時間、時區、生效日與終止日須明確定義。
 - schema 只透過向前演進的 versioned migration 修改，不重寫已套用 migration。
 - MyBatis mapper、SQL、result mapping 與 Entity 欄位必須逐一對應；動態 SQL 使用參數綁定，不拼接使用者輸入。
 - **後端三層架構**：Controller 只負責接收請求與回傳 `ResponseBodyDto<T>`，不含業務邏輯；Service 負責業務規則、交易邊界與例外拋出；DAO（MyBatis Mapper）負責資料存取，不得在 Controller 或 Service 直接撰寫 SQL 字串。三層間只能透過 DTO/Entity 傳遞資料，不得跨層直接存取。
-- **SQL 不直接控制**：所有 SQL 必須定義在 MyBatis XML Mapper 或 `@Select`/`@Insert`/`@Update`/`@Delete` 標注中；Service 與 Controller 不得含任何 SQL 片段、JDBC 直接呼叫或字串拼接查詢。動態條件一律使用 MyBatis `<if>`、`<where>`、`<foreach>` 標籤與 `#{}` 參數綁定。
-- **工具類獨立管理**：只有無狀態、無領域決策的純技術共用邏輯才抽取至 `util/`；保費、資格、狀態等規則留在 domain／service。工具類不得注入 Spring Bean 或呼叫資料庫。
-- **前端元件共用**：具有相同職責的 UI 片段（分頁列、排序標頭、表單欄位、狀態標籤、確認 Modal、錯誤提示、個資遮罩顯示）必須抽取為 `src/components/shared/` 下的共用元件；業務頁面只透過 props / slots 使用，不重複實作相同互動邏輯。新增功能前先確認 `shared/` 是否已有可複用的元件。
+- **固定目錄**：以業務功能為第一層，使用 `<feature>/controller`、`dto`、`domain`（選用）、`service`、`service/impl`、`persistence`。不得把 Controller、Service、Mapper 混放在 `<feature>/` 根目錄，也不得把業務功能塞入 `common/`。
+- **固定依賴**：`Controller → Service interface ← ServiceImpl → Mapper → MySQL`。Controller 只能注入 Service interface；`service/` 只放 interface，Spring concrete class 放 `service/impl/`；Mapper 不得依賴 Service 或 `ResponseBodyDto`。
+- **MyBatis XML SQL**：本專案所有 SQL 只放 `src/main/resources/mapper/<feature>/*Mapper.xml`。任何 Java class 都不得包含 `SELECT`、`INSERT`、`UPDATE`、`DELETE` SQL、JDBC 或 SQL annotation；Java Mapper 只留 interface method、`@Mapper` 與必要 `@Param`。XML `namespace` 對應完整 interface 類名，statement `id` 對應 method；資料值只用 `#{}`，禁止 `${}` 接收使用者輸入。
+- **工具類獨立管理**：只有無狀態、無領域決策的純技術邏輯才放入 `util/`；單一功能使用者放 `<feature>/util/`，真正跨功能者才放 `common/util/`。工具類不得注入 Spring Bean、呼叫資料庫或決定保險業務內容。
+- **前端元件共用**：具有相同職責的 UI 片段（分頁列、排序標頭、表單欄位、狀態標籤、確認 Modal、錯誤提示、個資遮罩顯示）必須抽取為 `create-web/src/shared/components/` 下的共用元件；業務頁面只透過 props / slots 使用，不重複實作相同互動邏輯。新增功能前先確認 `shared/` 是否已有可複用的元件。
+- **前端視覺共用**：表格、按鈕、表單、分頁、狀態訊息、色彩與間距等跨頁風格統一放 `create-web/src/shared/styles/style.scss`；feature View 不得再建立相同用途的第二套樣式。
+- **裝置無關響應式**：所有裝置使用同一份 route、component、DOM、API 與功能，只依 viewport 自動重排；禁止 user-agent／裝置型號分支、手機專用頁或因寬度隱藏必要功能。至少支援 320px 且不得產生整頁水平捲動，主要按鈕高度至少 44px。
+- **瀏覽器渲染入口**：保留 `index.html` 的 `lang="zh-Hant-TW"`、UTF-8、`width=device-width`、`initial-scale=1`、`viewport-fit=cover` 與 theme color；共用 layout 使用 `dvh` 與 safe-area 適應可用區域。
 - Vue 元件負責呈現與互動，store 管理客戶端狀態，後端 service 管理保險業務規則與資料正確性。
 - Docker image、Compose service、container port、host port、health check 與 README 必須一致。
 - 所有業務應用 API 回覆都使用 `ResponseBodyDto<T>`，包括成功、驗證錯誤、權限錯誤、刪除與未分類例外；前端只在 HTTP client 解開 `data`。Health、OpenAPI、串流與外部協定端點只允許明確列出的例外。
@@ -84,7 +94,7 @@
   - 每個請求必須有 `requestId`（MDC 注入）
 
 - **前端狀態管理**（Vue 3 / Pinia / API client）：`06-frontend-state.md`
-  - API 呼叫統一透過 `src/api/` typed 函式，禁止在 component 直接用 axios
+  - API 呼叫統一透過 `src/features/<feature>/api/` typed 函式；跨功能 HTTP client 放 `src/shared/api/`，禁止 component 直接使用 fetch／axios
   - Store 統一管理 loading / error / data；代碼定義 lazy 快取，登出清除
   - 授權以後端回傳的 `functionCode` 清單控制，不寫死前端判斷邏輯
 

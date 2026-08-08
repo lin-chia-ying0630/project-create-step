@@ -1,0 +1,4 @@
+interface:
+  display_name: "程式撰寫標準治理"
+  short_description: "統一 Java、MyBatis、Vue 與 TypeScript 可讀性規範"
+  default_prompt: "使用 $enforce-code-writing-standards 檢查並改善本次程式變更的撰寫品質。"

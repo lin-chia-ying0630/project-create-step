@@ -4,13 +4,31 @@ info:
   version: 0.1.0
   description: 新契約、客戶、首期保費、核保批次與承保撤回 API。
 paths:
+  /api/postal-codes/{postalCode}:
+    get:
+      summary: 依 3 或 6 碼郵遞區號查詢 POS 代碼定義中的縣市與行政區
+      parameters:
+        - {name: postalCode, in: path, required: true, schema: {type: string, pattern: '^[0-9]{3}([0-9]{3})?$'}}
+      responses:
+        '200': {description: 郵遞區號查詢成功}
+        '400': {description: 郵遞區號格式錯誤}
+        '404': {description: 查無郵遞區號前三碼}
   /api/v1/customers:
     post:
-      summary: 建立自然人客戶
+      summary: 建立自然人或公司行號客戶
       responses:
         '200': {description: 客戶建立成功}
         '400': {description: 輸入或身分證檢核失敗}
         '409': {description: 身分識別資料重複}
+  /api/v1/new-contract/code-definitions/{codeGroup}/{codeField}:
+    get:
+      summary: 查詢新契約領域自己的動態代碼與繁體中文說明
+      parameters:
+        - {name: codeGroup, in: path, required: true, schema: {type: string, pattern: '^[a-z0-9-]{1,64}$'}}
+        - {name: codeField, in: path, required: true, schema: {type: string, pattern: '^[a-z0-9_]{1,64}$'}}
+      responses:
+        '200': {description: 代碼對照查詢成功}
+        '400': {description: 群組或欄位格式錯誤}
   /api/v1/new-contract/applications:
     post:
       summary: 建立新契約要保案件及首期應繳
@@ -18,19 +36,41 @@ paths:
         '200': {description: 要保案件建立成功}
   /api/v1/new-contract/applications/{applicationNo}/initial-premium:
     get:
-      summary: 查詢首期應繳
+      summary: 依要保書號碼或預編保單號碼查詢首期應繳
       parameters:
         - {name: applicationNo, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
         '200': {description: 查詢成功}
+  /api/v1/new-contract/applications/{applicationNo}/policy-number:
+    post:
+      summary: 為已送件要保案件編發預編保單號碼
+      parameters:
+        - {name: applicationNo, in: path, required: true, schema: {type: string, maxLength: 32}}
+      responses:
+        '200': {description: 保單號碼編發成功}
+        '404': {description: 查無要保案件}
+  /api/v1/new-contract/applications/query/{query}:
+    get:
+      summary: 依要保人 ID、被保險人 ID、要保書號碼或預編保單號碼查詢保單資料
+      parameters:
+        - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
+      responses:
+        '200': {description: 保單資料查詢成功}
+        '404': {description: 查無資料}
+  /api/v1/new-contract/initial-premium-payments/reconcile:
+    post:
+      summary: 登錄首期保險費收款並執行銷帳
+      responses:
+        '200': {description: 收款與銷帳完成}
   /api/v1/new-contract/remittance-slips/match:
     post:
-      summary: 建立送金單並配對首期保費
+      deprecated: true
+      summary: 舊版首期保費配對路徑
       responses:
-        '200': {description: 配對完成}
+        '200': {description: 收款與銷帳完成}
   /api/v1/new-contract/underwriting-batch/requests:
     post:
-      summary: 排入晚上九點核保批次
+      summary: 依要保書號碼或預編保單號碼排入晚上九點核保批次
       responses:
         '200': {description: 排程成功}
   /api/v1/new-contract/underwriting-batch/executions:
@@ -38,6 +78,22 @@ paths:
       summary: 查詢最近核保批次執行紀錄
       responses:
         '200': {description: 查詢成功}
+  /api/v1/new-contract/underwriting-inquiries/{query}:
+    get:
+      summary: 依照會單號、要保書號碼或預編保單號碼查詢核保照會結果
+      description: 回傳照會、要保書、必填保單號碼、遮蔽後要保人與被保險人資料、投保資料、核保結果與未通過檢核項目。
+      parameters:
+        - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
+      responses:
+        '200': {description: 核保照會單查詢成功}
+        '404': {description: 查無核保照會單}
+  /api/v1/new-contract/underwriting-inquiries/{query}/pdf:
+    get:
+      summary: 產生核保照會單 PDF
+      parameters:
+        - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
+      responses:
+        '200': {description: 回傳 Base64 編碼 PDF 文件}
   /api/v1/new-contract/policy-reversals/{policyNo}/preview:
     get:
       summary: 查詢承保撤回影響與確認 token

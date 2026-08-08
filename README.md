@@ -6,6 +6,8 @@
 
 規格參考既有 `pos-project` 的分層、`ResponseBodyDto<T>`、OpenAPI、繁中 metadata、MyBatis/Flyway、Docker health check 及前端驗證習慣；建立新專案時重新確認相容的 patch 版本與供應鏈安全性。
 
+後端採 package-by-feature 三層架構，SQL 統一放在 `create-api/src/main/resources/mapper/<feature>/*Mapper.xml`；Java Mapper 只保留 method contract。固定代碼、繁中說明與固定錯誤訊息集中於領域 enum，不得在各層重複硬編碼。
+
 ## 規範分工
 
 | 文件 | 責任 |
@@ -13,6 +15,9 @@
 | `AGENTS.md` | 全專案權威規範：語言、證據、技術契約、分析／實作邊界及 Skill 設計。 |
 | `.github/copilot-instructions.md` | GitHub Copilot 每次工作必須立即遵守的精簡指令。 |
 | `skills/start-insurance-project/SKILL.md` | 保險開案及能力路由，不重複各專項 Skill 的流程。 |
+| `skills/enforce-mybatis-three-layer/SKILL.md` | MyBatis 功能分層、依賴方向、SQL 與交易邊界的強制規則及檢查。 |
+| `skills/enforce-code-writing-standards/SKILL.md` | Java、MyBatis XML、Vue、TypeScript、SCSS、設計模式、測試及文件撰寫標準與掃描。 |
+| `skills/design-pattern-guide/SKILL.md` | 依真實變化點選擇、套用與 review Java、Spring、MyBatis、Batch、Vue 及保險領域設計模式。 |
 | `skills/<name>/SKILL.md` | 單一可重複執行的工作能力與輸出格式。 |
 | `skills/start-insurance-project/references/` | 保險領域、技術棧、既有專案慣例與分析產物規格。 |
 
@@ -37,6 +42,20 @@
     │       ├── insurance-domain.md
     │       ├── java-mybatis-vue-stack.md
     │       └── project-conventions.md
+    ├── enforce-mybatis-three-layer/
+    │   ├── SKILL.md
+    │   ├── agents/openai.yaml
+    │   ├── references/package-layout.md
+    │   └── scripts/check_layers.py
+    ├── enforce-code-writing-standards/
+    │   ├── SKILL.md
+    │   ├── agents/openai.yaml
+    │   ├── references/writing-standards.md
+    │   └── scripts/check_writing_standards.py
+    ├── design-pattern-guide/
+    │   ├── SKILL.md
+    │   ├── agents/openai.yaml
+    │   └── references/pattern-catalog.md
     ├── insurance-requirement-modeler/
     ├── insurance-interface-mapper/
     ├── insurance-reconciliation-analyzer/
@@ -54,6 +73,29 @@
 ```
 
 每個 Skill 目錄至少包含 `SKILL.md` 與 `agents/openai.yaml`。
+
+前端程式依 feature 放置：
+
+```text
+create-web/src/
+├── features/<feature>/
+│   ├── api/
+│   ├── types/
+│   └── views/
+└── shared/
+    ├── api/
+    └── types/
+```
+
+只有跨兩個以上 feature 且責任一致的程式才能進入 `shared/`。
+
+前端導覽由 `create-web/src/router/index.ts` 集中管理，使用 Vue Router history mode。路由名稱、URL、頁面標題及側邊選單項目共用同一份定義；Nginx 以 `try_files ... /index.html` 支援直接開啟及重新整理深層網址。
+
+全域視覺樣式集中於 `create-web/src/shared/styles/style.scss`，統一維護色彩、斷點、版面、選單、表單、按鈕與狀態訊息；feature-specific 樣式才留在各 View 或 feature 樣式檔，不得重新定義第二份全域設計 token。
+
+前端採裝置無關的 Responsive Web Design：所有裝置使用同一份 route、Vue component、DOM、API 與業務功能，只依 viewport 可用空間自動重排。禁止 user-agent／裝置型號分支或手機專用頁。頁面至少支援 320px viewport，不得產生整頁水平捲動；空間不足時表單改為單欄，導覽、頁籤與寬表格只在自身容器內橫向捲動。交付前以 320×568、390×844 與桌面 viewport 驗證相同功能。
+
+瀏覽器渲染入口由 `create-web/index.html` 統一設定繁中語系、UTF-8、device-width viewport、初始縮放、theme color 與 `viewport-fit=cover`。共用 layout 使用 dynamic viewport height 與 safe-area inset 適應瀏覽器可用區域，同時保留使用者縮放能力。
 
 ## 核心 SA 流程
 
@@ -98,6 +140,8 @@ docs/analysis/<domain>/<feature>/
 |---|---|
 | `java-code-analysis` | 追 Java 執行路徑，定位 Null、ArrayIndex、錯誤分支、transaction 與 exception 根因。 |
 | `sql-analyzer` | 分析 SQL、MyBatis mapping、欄位容量、DECIMAL、index、lock、affected rows 與 Flyway。 |
+| `enforce-mybatis-three-layer` | 建立、重構或檢查 package-by-feature 的 Controller、Service、Mapper 目錄與依賴。 |
+| `design-pattern-guide` | 新增抽象、擴充核保規則、整合外部系統、重構條件分支或 review 架構時，選擇最小可行模式並避免過度設計。 |
 | `java-refactor` | 以 characterization test 保護行為後，小步拆解舊 Java 與複雜 if/else。 |
 | `liberty-debugger` | 診斷 Liberty、WAR、JNDI、Servlet、classloading、TLS 與 datasource。 |
 | `svn-review` | 唯讀比對 SVN revision、branch、mergeinfo、release scope 與跨層風險。 |
@@ -157,6 +201,7 @@ test-case-generator
 - 所有業務應用 API 成功、錯誤、刪除及未分類例外都使用 `ResponseBodyDto<T>`；health、OpenAPI、串流與外部協定只有明確 allowlist 才可例外。
 - Database、Entity、Create/Update Request、Query Response、OpenAPI、frontend type 與 UI metadata 維持唯一契約。
 - 固定封閉狀態使用正式代碼 enum；資料庫動態代碼維持 `String` 並由後端回傳繁中說明。
+- 固定 enum 同時保存 `code` 與繁中 `description`，並提供嚴格 `fromCode`；前端、SQL 與各層不得再維護第二份對照。
 - 保全／契約變更的 `p` 顯示為「受理中」；其他保險領域不得未確認就沿用。
 - 動態詳細畫面使用後端繁中 metadata，採一格一欄的 label + value 顯示。
 - 金額使用 MySQL `DECIMAL`／Java `BigDecimal`；前端不使用浮點數重算正式金額。
@@ -210,7 +255,7 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 
 第一條業務規格已建立為「新契約批次核保」：`create-api` 的 Flyway 建立 `new_contract` 要保、核保、照會、規則結果、稽核與 outbox，並以 `main.policy_contract` 作正式保單寫入邊界；`create-batch` 執行基本檢核，有問題建立照會，全部通過才承保。完整規格見 `docs/analysis/new-contract/underwriting/00-requirements.md`。
 
-目前已完成本機開發用的客戶建立、保單登打、首期保費配對、核保批次排程與紀錄查詢，以及未生效保單承保撤回 API／畫面。客戶身分證、聯絡方式與地址採 AES-GCM 加密，身分證另存不可逆雜湊供查重；姓名只有 `customer.customer_master` 是可維護來源，送件資料只保存 `customer_id` 與不可變快照參考。
+目前已完成本機開發用的客戶建立、保單登打、首期保險費收款與銷帳、核保批次排程與紀錄查詢、核保照會單查詢與 PDF，以及未生效保單承保撤回 API／畫面。客戶身分證、聯絡方式與地址採 AES-GCM 加密，身分證另存不可逆雜湊供查重；姓名只有 `customer.customer_master` 是可維護來源，送件資料只保存 `customer_id` 與不可變快照參考。
 
 本機啟動前複製 `.env.example` 為 `.env`，將 `PII_ENCRYPTION_KEY` 換成至少 24 字元的隨機密鑰；`.env` 已排除版本控制。測試入口為 `http://localhost:5173`，API 為 `http://localhost:8082`，MySQL 為 `127.0.0.1:3308`。
 
@@ -220,7 +265,8 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 |---|---|---|
 | 客戶資料建立 | `POST /api/v1/customers` | 單一交易寫入客戶、證件、聯絡、地址、姓名歷程、KYC、同意及稽核。 |
 | 保單登打 | `POST /api/v1/new-contract/applications` | 建立要保案件與首期應繳。 |
-| 繳費配對 | `GET .../initial-premium`、`POST .../remittance-slips/match` | 比對應繳與實繳金額。 |
+| 首期保險費收款與銷帳 | `GET .../initial-premium`、`POST .../initial-premium-payments/reconcile` | 登錄繳費憑證及實收金額，比對應收與實收後決定是否完成銷帳。舊路徑 `POST .../remittance-slips/match` 暫保留相容。 |
+| 核保照會單 | `GET .../underwriting-inquiries/{query}`、`GET .../{query}/pdf` | 依照會單號或要保書號碼顯示核保未通過項目，並產生繁體中文 PDF。測試資料為 `DEMO-INQ-001`。 |
 | 批次核保 | `POST .../underwriting-batch/requests`、`GET .../executions` | 排入每日 21:00 批次並查詢執行紀錄。 |
 | 承保撤回 | `GET .../preview`、`POST .../policy-reversals` | 僅允許未生效案件，使用版本及確認 token 防止誤刪。 |
 

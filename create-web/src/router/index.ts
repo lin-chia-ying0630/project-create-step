@@ -1,0 +1,80 @@
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+
+export const routeNames = {
+  customer: 'customer-create',
+  applicationEntry: 'application-entry',
+  policyQuery: 'policy-query',
+  premium: 'initial-premium',
+  batch: 'underwriting-batch',
+  inquiry: 'underwriting-inquiry',
+  reversal: 'policy-reversal',
+} as const
+
+const routes: RouteRecordRaw[] = [
+  { path: '/', redirect: { name: routeNames.customer } },
+  {
+    path: '/customers/new',
+    name: routeNames.customer,
+    component: () => import('../features/customer/views/CustomerCreateView.vue'),
+    meta: { title: '客戶資料建立' },
+  },
+  {
+    path: '/new-contract/applications/new',
+    name: routeNames.applicationEntry,
+    component: () => import('../features/new-contract/views/ApplicationEntryView.vue'),
+    meta: { title: '保單登打' },
+  },
+  {
+    path: '/new-contract/applications',
+    name: routeNames.policyQuery,
+    component: () => import('../features/new-contract/views/PolicyQueryView.vue'),
+    meta: { title: '保單資料查詢' },
+  },
+  {
+    path: '/new-contract/premiums',
+    name: routeNames.premium,
+    component: () => import('../features/premium/views/InitialPremiumMatchView.vue'),
+    meta: { title: '首期保費收款' },
+  },
+  {
+    path: '/underwriting/batches',
+    name: routeNames.batch,
+    component: () => import('../features/underwriting/views/UnderwritingBatchView.vue'),
+    meta: { title: '批次核保' },
+  },
+  {
+    path: '/underwriting/inquiries',
+    name: routeNames.inquiry,
+    component: () => import('../features/underwriting/views/UnderwritingInquiryView.vue'),
+    meta: { title: '核保照會單' },
+  },
+  {
+    path: '/policies/reversals',
+    name: routeNames.reversal,
+    component: () => import('../features/policy-reversal/views/PolicyIssuanceReversalView.vue'),
+    meta: { title: '承保撤回' },
+  },
+  { path: '/:pathMatch(.*)*', redirect: { name: routeNames.customer } },
+]
+
+export const navigationItems = [
+  { name: routeNames.customer, label: '客戶資料建立', icon: '♙' },
+  { name: routeNames.applicationEntry, label: '保單登打', icon: '▤' },
+  { name: routeNames.policyQuery, label: '保單資料查詢', icon: '⌕' },
+  { name: routeNames.premium, label: '首期保費收款', icon: '＄' },
+  { name: routeNames.batch, label: '批次核保', icon: '⚙' },
+  { name: routeNames.inquiry, label: '核保照會單', icon: '!' },
+  { name: routeNames.reversal, label: '承保撤回', icon: '↶' },
+] as const
+
+export const router = createRouter({
+  history: createWebHistory(),
+  routes,
+  scrollBehavior: () => ({ top: 0 }),
+})
+
+/** 依目前作業名稱更新瀏覽器標題，方便多分頁辨識。 */
+router.afterEach((to) => {
+  const title = typeof to.meta.title === 'string' ? to.meta.title : '新契約作業'
+  document.title = `${title}｜保單新契約作業`
+})

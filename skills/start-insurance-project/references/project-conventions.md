@@ -15,7 +15,7 @@ project-root/
 │   │       ├── dao/
 │   │       ├── service/
 │   │       ├── service/impl/
-│   │       ├── enums/
+│   │       ├── domain/      # 固定代碼 enum、值物件與領域規則
 │   │       ├── typehandler/
 │   │       ├── config/
 │   │       ├── filter/
@@ -29,11 +29,16 @@ project-root/
 │   └── mvnw
 └── pos-web/                 # Vue 3、TypeScript、Pinia、Vite
     ├── src/
-    │   ├── api/
+    │   ├── api/             # typed client 函式；httpClient.ts 統一 unwrap ResponseBodyDto
     │   ├── components/
+    │   │   ├── shared/      # 分頁、Dialog 殼、動態欄位、狀態標籤等跨業務共用元件
+    │   │   ├── policy/      # 保單相關元件（查詢、摘要、維護）
+    │   │   └── change/      # 保全變更相關元件（案件、地址、保額、聯絡方式）
     │   ├── views/
     │   ├── stores/
     │   ├── router/
+    │   ├── composables/
+    │   ├── utils/           # format、fieldLayout、reviewDetail 等純函式工具
     │   └── domain/
     ├── Dockerfile
     ├── compose.yaml

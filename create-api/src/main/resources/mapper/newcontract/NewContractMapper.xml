@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tw.com.insurance.api.newcontract.persistence.NewContractMapper">
+  <insert id="insertApplication">
+    INSERT INTO new_contract.insurance_application
+            (application_id,application_no,application_revision,application_date,received_at,channel_code,
+             branch_code,insurance_agent_code,product_code,product_version,currency_code,sum_assured_amount,premium_amount,payment_mode_code,
+             requested_effective_date,application_status,submitted_at,source_system,created_by,updated_by)
+            VALUES (#{id},#{applicationNo},1,#{applicationDate},CURRENT_TIMESTAMP(6),#{channelCode},#{branchCode},#{agentCode},#{productCode},
+              #{productVersion},#{currencyCode},#{sumAssured},#{premium},#{paymentMode},#{effectiveDate},
+              'SUBMITTED',CURRENT_TIMESTAMP(6),'CREATE_WEB','local-tester','local-tester')
+  </insert>
+  <select id="findCustomerVersion" resultType="java.lang.Long">
+    SELECT record_version FROM customer.customer_master WHERE customer_id=#{customerId} AND record_status='ACTIVE'
+  </select>
+  <insert id="nextPolicyNumber">
+    INSERT INTO new_contract.policy_number_sequence () VALUES ()
+  </insert>
+  <select id="lastInsertId" resultType="long">
+    SELECT LAST_INSERT_ID()
+  </select>
+  <update id="reservePolicyNumber">
+    UPDATE new_contract.insurance_application
+               SET reserved_policy_no=#{policyNo},policy_no_reserved_at=CURRENT_TIMESTAMP(6),
+                   record_version=record_version+1,updated_by='local-tester',updated_at=CURRENT_TIMESTAMP(6)
+             WHERE application_no=#{applicationNo} AND reserved_policy_no IS NULL
+  </update>
+  <select id="findApplicationsByQuery" resultType="map">
+    SELECT a.application_no,a.reserved_policy_no,a.policy_no_reserved_at,a.application_status,
+                   a.application_date,a.requested_effective_date,a.channel_code,a.branch_code,a.insurance_agent_code,
+                   a.product_code,a.product_version,a.payment_mode_code,a.currency_code,
+                   a.sum_assured_amount,a.premium_amount,
+                   ap.customer_id applicant_customer_id,ac.customer_name applicant_name,
+                   ip.customer_id insured_customer_id,ic.customer_name insured_name
+              FROM new_contract.insurance_application a
+              JOIN new_contract.application_party ap ON ap.application_no=a.application_no AND ap.party_role_code='APPLICANT'
+              JOIN customer.customer_master ac ON ac.customer_id=ap.customer_id
+              JOIN new_contract.application_party ip ON ip.application_no=a.application_no AND ip.party_role_code='INSURED'
+              JOIN customer.customer_master ic ON ic.customer_id=ip.customer_id
+             WHERE a.application_no=#{query} OR a.reserved_policy_no=#{query}
+                OR ap.customer_id=#{query} OR ip.customer_id=#{query}
+             ORDER BY a.application_date DESC,a.created_at DESC
+  </select>
+  <select id="findCoverageDetails" resultType="map">
+    SELECT coverage_item_seq,coverage_item_type,product_code,product_version,currency_code,sum_assured_amount,premium_amount,coverage_term_years,premium_payment_term_years,requested_effective_date FROM new_contract.application_coverage WHERE application_no=#{applicationNo} ORDER BY coverage_item_seq
+  </select>
+  <select id="findBeneficiaryDetails" resultType="map">
+    SELECT beneficiary_type_code,beneficiary_seq,beneficiary_customer_id,beneficiary_designation_code,priority_no,allocation_percentage,relationship_to_insured_code FROM new_contract.application_beneficiary WHERE application_no=#{applicationNo} ORDER BY beneficiary_type_code,beneficiary_seq
+  </select>
+  <select id="findHealthDisclosureDetails" resultType="map">
+    SELECT question_set_code,question_set_version,disclosure_question_code,answer_code_encrypted,supplemental_detail_encrypted,answered_at,confirmed_at FROM new_contract.health_disclosure WHERE application_no=#{applicationNo} ORDER BY disclosure_question_code
+  </select>
+  <select id="findDeclarationDetails" resultType="map">
+    SELECT declaration_type_code,declaration_version,confirmed_by_party_role,confirmation_method,confirmed_at FROM new_contract.application_declaration WHERE application_no=#{applicationNo} ORDER BY declaration_type_code
+  </select>
+  <select id="findSignatureDetails" resultType="map">
+    SELECT signer_party_role,signer_customer_id,signature_method,signed_at,verified_at FROM new_contract.application_signature WHERE application_no=#{applicationNo} ORDER BY signer_party_role
+  </select>
+  <select id="findCustomerContactDetails" resultType="map">
+    SELECT p.party_role_code,c.contact_type_code,c.contact_value_masked,c.is_primary,c.verification_status,c.effective_from,c.effective_to
+            FROM new_contract.application_party p JOIN customer.customer_contact c ON c.customer_id=p.customer_id
+           WHERE p.application_no=#{applicationNo} ORDER BY p.party_role_code,c.contact_type_code,c.is_primary DESC
+  </select>
+  <select id="findCustomerAddressDetails" resultType="map">
+    SELECT p.party_role_code,a.address_type_code,a.postal_code,a.address_masked,a.effective_from,a.effective_to
+            FROM new_contract.application_party p JOIN customer.customer_address a ON a.customer_id=p.customer_id
+           WHERE p.application_no=#{applicationNo} ORDER BY p.party_role_code,a.address_type_code
+  </select>
+  <select id="findPremiumDueDetails" resultType="map">
+    SELECT premium_due_id,currency_code,calculated_premium_amount,calculation_rule_version,due_status,calculated_at FROM new_contract.initial_premium_due WHERE application_no=#{applicationNo} ORDER BY application_revision DESC
+  </select>
+  <insert id="insertParty">
+    INSERT INTO new_contract.application_party
+          (application_party_id,application_no,party_role_code,party_seq,customer_id,relationship_to_insured_code,customer_snapshot_reference)
+          VALUES (#{id},#{applicationNo},#{role},1,#{customerId},#{relationship},#{snapshot})
+  </insert>
+  <insert id="insertCoverage">
+    INSERT INTO new_contract.application_coverage
+          (application_coverage_id,application_no,coverage_item_seq,coverage_item_type,product_code,product_version,
+           insured_customer_id,currency_code,sum_assured_amount,premium_amount,coverage_term_years,premium_payment_term_years,requested_effective_date)
+          VALUES (#{id},#{applicationNo},#{seq},#{type},#{productCode},#{productVersion},#{insuredId},#{currency},
+           #{sumAssured},#{premium},#{coverageYears},#{paymentYears},#{effectiveDate})
+  </insert>
+  <insert id="insertBeneficiary">
+    INSERT INTO new_contract.application_beneficiary
+          (application_beneficiary_id,application_no,beneficiary_type_code,beneficiary_seq,beneficiary_customer_id,
+           beneficiary_designation_code,priority_no,allocation_percentage,relationship_to_insured_code)
+          VALUES (#{id},#{applicationNo},#{type},#{seq},#{customerId},#{designation},#{priority},#{allocation},#{relationship})
+  </insert>
+  <insert id="insertHealthDisclosure">
+    INSERT INTO new_contract.health_disclosure
+          (health_disclosure_id,application_no,insured_customer_id,question_set_code,question_set_version,
+           disclosure_question_code,answer_code_encrypted,supplemental_detail_encrypted,encryption_key_version,answered_at,confirmed_at)
+          VALUES (#{id},#{applicationNo},#{insuredId},'DEMO-LIFE-ENTRY','1.0',#{questionCode},#{answer},#{detail},'PII_KEY_V1',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))
+  </insert>
+  <insert id="insertDeclaration">
+    INSERT INTO new_contract.application_declaration
+          (application_declaration_id,application_no,declaration_type_code,declaration_version,confirmed_by_party_role,confirmation_method,confirmed_at,evidence_reference)
+          VALUES (#{id},#{applicationNo},#{type},'1.0',#{role},'CHECKBOX',CURRENT_TIMESTAMP(6),#{evidence})
+  </insert>
+  <insert id="insertSignature">
+    INSERT INTO new_contract.application_signature
+          (application_signature_id,application_no,signer_party_role,signer_customer_id,signature_method,signature_evidence_reference,signed_at)
+          VALUES (#{id},#{applicationNo},#{role},#{customerId},#{method},#{evidence},CURRENT_TIMESTAMP(6))
+  </insert>
+  <insert id="insertComplianceEvidence">
+    INSERT INTO new_contract.application_compliance_evidence
+          (evidence_id,application_no,application_revision,evidence_type,evidence_status,source_system,source_reference,checked_by,checked_at)
+          VALUES (#{id},#{applicationNo},1,#{type},'VERIFIED','CREATE_WEB',#{reference},'local-tester',CURRENT_TIMESTAMP(6))
+  </insert>
+  <insert id="insertPremiumDue">
+    INSERT INTO new_contract.initial_premium_due
+            (premium_due_id,application_no,application_revision,currency_code,calculated_premium_amount,
+             calculation_rule_version,due_status,calculated_at)
+            VALUES (#{id},#{applicationNo},1,#{currencyCode},#{premium},'ENTRY-V1','PENDING',CURRENT_TIMESTAMP(6))
+  </insert>
+  <select id="findPremiumDue" resultType="map">
+    SELECT application_no, premium_due_id, currency_code, calculated_premium_amount,
+                   calculation_rule_version, due_status
+              FROM new_contract.initial_premium_due
+             WHERE application_no=(
+               SELECT application_no FROM new_contract.insurance_application
+                WHERE application_no=#{applicationNo} OR reserved_policy_no=#{applicationNo} LIMIT 1
+             ) AND due_status='PENDING'
+             ORDER BY application_revision DESC LIMIT 1
+  </select>
+  <insert id="insertRemittance">
+    INSERT INTO new_contract.remittance_slip
+            (remittance_slip_id,remittance_slip_no,application_no,payment_method_code,payment_reference,
+             currency_code,actual_paid_amount,remittance_status,paid_at,received_at,payer_relationship_code,entered_by)
+            VALUES (#{id},#{slipNo},#{applicationNo},#{method},#{reference},#{currency},#{amount},#{status},
+                    #{paidAt},CURRENT_TIMESTAMP(6),#{relationship},'local-tester')
+  </insert>
+  <insert id="insertPremiumMatch">
+    INSERT INTO new_contract.initial_premium_match
+            (premium_match_id,premium_due_id,remittance_slip_id,expected_amount,actual_amount,difference_amount,
+             currency_code,match_status,mismatch_reason_code,matched_at,matched_by)
+            VALUES (#{id},#{dueId},#{slipId},#{expected},#{actual},#{difference},#{currency},#{status},
+                    #{reason},CURRENT_TIMESTAMP(6),'local-tester')
+  </insert>
+  <update id="updateRemittanceStatus">
+    UPDATE new_contract.remittance_slip SET remittance_status=#{status} WHERE remittance_slip_id=#{id}
+  </update>
+  <update id="updateDueStatus">
+    UPDATE new_contract.initial_premium_due SET due_status=#{status} WHERE premium_due_id=#{id}
+  </update>
+  <update id="updateApplicationMatch">
+    UPDATE new_contract.insurance_application
+               SET initial_premium_match_status=#{status},
+                   initial_premium_matched_at=CASE WHEN #{status}='MATCHED' THEN CURRENT_TIMESTAMP(6) ELSE NULL END,
+                   record_version=record_version+1,updated_by='local-tester',updated_at=CURRENT_TIMESTAMP(6)
+             WHERE application_no=#{applicationNo}
+  </update>
+  <select id="countApplication" resultType="int">
+    SELECT COUNT(*) FROM new_contract.insurance_application WHERE application_no=#{applicationNo}
+  </select>
+  <select id="resolveApplicationNo" resultType="string">
+    SELECT application_no FROM new_contract.insurance_application WHERE application_no=#{number} OR reserved_policy_no=#{number} LIMIT 1
+  </select>
+  <select id="findReservedPolicyNo" resultType="string">
+    SELECT reserved_policy_no FROM new_contract.insurance_application WHERE application_no=#{applicationNo}
+  </select>
+  <insert id="insertBatchRequest">
+    INSERT INTO new_contract.underwriting_batch_request
+            (batch_request_id,application_no,requested_business_date,request_status,requested_by,requested_at)
+            VALUES (#{id},#{applicationNo},#{businessDate},'PENDING','local-tester',CURRENT_TIMESTAMP(6))
+  </insert>
+  <select id="findLatestExecutions" resultType="map">
+    SELECT batch_execution_id,business_date,execution_status,started_at,completed_at,total_count,
+                   approved_count,inquiry_count,failed_count
+              FROM new_contract.underwriting_batch_execution ORDER BY started_at DESC LIMIT 20
+  </select>
+  <select id="findPolicyForReversal" resultType="map">
+    SELECT p.policy_no,p.application_no,p.underwriting_case_no,p.policy_status,p.effective_date,
+                   p.record_version policy_version,a.application_status,a.record_version application_version,
+                   u.underwriting_status,u.record_version underwriting_version
+              FROM main.policy_contract p
+              JOIN new_contract.insurance_application a ON a.application_no=p.application_no
+              JOIN new_contract.underwriting_case u ON u.underwriting_case_no=p.underwriting_case_no
+             WHERE p.policy_no=#{policyNo}
+  </select>
+  <select id="countPolicy" resultType="int">
+    SELECT COUNT(*) FROM main.policy_contract WHERE policy_no=#{policyNo}
+  </select>
+  <delete id="deletePolicy">
+    DELETE FROM main.policy_contract WHERE policy_no=#{policyNo} AND record_version=#{version}
+  </delete>
+  <update id="resetApplication">
+    UPDATE new_contract.insurance_application SET application_status='SUBMITTED',validation_result_status=NULL,
+              validation_completed_at=NULL,validation_batch_id=NULL,completed_at=NULL,record_version=record_version+1,
+              updated_by='local-tester',updated_at=CURRENT_TIMESTAMP(6)
+            WHERE application_no=#{applicationNo} AND record_version=#{version}
+  </update>
+  <update id="resetUnderwriting">
+    UPDATE new_contract.underwriting_case SET underwriting_status='PENDING',underwriting_decision_code=NULL,
+              underwriter_id=NULL,decision_reason_code=NULL,underwritten_at=NULL,policy_no=NULL,
+              record_version=record_version+1,updated_at=CURRENT_TIMESTAMP(6)
+            WHERE underwriting_case_no=#{caseNo} AND record_version=#{version}
+  </update>
+  <insert id="insertReversalAudit">
+    INSERT INTO new_contract.policy_issuance_reversal_audit
+            (reversal_audit_id,policy_no,application_no,underwriting_case_no,reason_code,reason_description,
+             operator_id,request_id,before_content,after_content,before_content_hash,after_content_hash,occurred_at)
+            VALUES (#{auditId},#{policyNo},#{applicationNo},#{caseNo},#{reasonCode},#{reasonDescription},
+              'local-tester',#{requestId},CAST(#{beforeJson} AS JSON),CAST(#{afterJson} AS JSON),
+              #{beforeHash},#{afterHash},CURRENT_TIMESTAMP(6))
+  </insert>
+</mapper>

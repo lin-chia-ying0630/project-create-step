@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tw.com.insurance.api.customer.persistence.CustomerMapper">
+  <insert id="insertCustomer">
+    INSERT INTO customer.customer_master
+          (customer_id,customer_type_code,customer_name,gender_code,birth_date,nationality_code,
+           residency_country_code,record_status,created_by,updated_by)
+          VALUES (#{id},#{customerType},#{name},#{gender},#{birthDate},#{nationality},#{residency},
+                  'ACTIVE','local-tester','local-tester')
+  </insert>
+  <insert id="insertOrganizationProfile">
+    INSERT INTO customer.organization_profile
+          (customer_id,establishment_date,responsible_person_name,industry_code,organization_type_code)
+          VALUES (#{customerId},#{establishmentDate},#{responsiblePersonName},#{industryCode},#{organizationTypeCode})
+  </insert>
+  <insert id="insertIdentity">
+    INSERT INTO customer.customer_identity_document
+          (identity_document_id,customer_id,identity_type_code,identity_no_hash,identity_no_ciphertext,
+           identity_no_last4,issuing_country_code,verification_status,verified_at,is_primary)
+          VALUES (#{id},#{customerId},#{type},#{hash},#{ciphertext},#{last4},#{country},'FORMAT_VERIFIED',CURRENT_TIMESTAMP(6),TRUE)
+  </insert>
+  <insert id="insertContact">
+    INSERT INTO customer.customer_contact
+          (contact_id,customer_id,contact_type_code,contact_value_ciphertext,contact_value_hash,
+           contact_value_masked,is_primary,verification_status,effective_from)
+          VALUES (#{id},#{customerId},#{type},#{ciphertext},#{hash},#{masked},TRUE,'UNVERIFIED',CURRENT_DATE)
+  </insert>
+  <insert id="insertAddress">
+    INSERT INTO customer.customer_address
+          (address_id,customer_id,address_type_code,postal_code,address_ciphertext,address_masked,effective_from)
+          VALUES (#{id},#{customerId},'CONTACT',#{postalCode},#{ciphertext},#{masked},CURRENT_DATE)
+  </insert>
+  <insert id="insertNameHistory">
+    INSERT INTO customer.customer_name_history
+          (name_history_id,customer_id,customer_name,effective_from,change_reason_code)
+          VALUES (#{id},#{customerId},#{name},CURRENT_DATE,'INITIAL_CREATE')
+  </insert>
+  <insert id="insertKyc">
+    INSERT INTO customer.customer_kyc_profile
+          (kyc_profile_id,customer_id,occupation_code,source_of_funds_code,insurance_purpose_code,risk_level_code)
+          VALUES (#{id},#{customerId},#{occupation},#{funds},#{purpose},'PENDING')
+  </insert>
+  <insert id="insertConsent">
+    INSERT INTO customer.customer_consent
+          (consent_id,customer_id,consent_type_code,consent_version,consent_status,consented_at)
+          VALUES (#{id},#{customerId},'PERSONAL_DATA_PROCESSING',#{version},'GRANTED',CURRENT_TIMESTAMP(6))
+  </insert>
+  <insert id="insertAudit">
+    INSERT INTO customer.customer_audit_event
+          (audit_event_id,customer_id,operation_type,operator_id,request_id,changed_fields,occurred_at)
+          VALUES (#{id},#{customerId},'CREATE','local-tester',#{requestId},JSON_ARRAY('CUSTOMER_CORE','IDENTITY','CONTACT','ADDRESS','KYC','CONSENT'),CURRENT_TIMESTAMP(6))
+  </insert>
+</mapper>

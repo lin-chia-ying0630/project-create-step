@@ -28,6 +28,7 @@ description: Start or redesign an insurance software project with Traditional Ch
 | `insurance-requirement-modeler` | 將新需求建模成流程、案件、決策、資料與驗收條件。 |
 | `insurance-interface-mapper` | 分析固定長度檔、批次、XML、JSON、MQ、API 與金融訊息 mapping。 |
 | `insurance-reconciliation-analyzer` | 設計批次筆數、金額、重複、漏單、補送與重跑對帳。 |
+| `enforce-mybatis-three-layer` | 建立、重構或檢查 Spring Boot + MyBatis 的功能分層、依賴方向、SQL 與交易邊界。 |
 
 核心 SA 流程與按需專項能力不得合併成重複的組合 skill。每一階段先完成並檢查產物，才把已確認證據交給下一階段。
 
@@ -92,6 +93,8 @@ Entity 不得直接成為 API request 或 response。OpenAPI 作為可生成的 
 
 - 先建立可啟動、可測試的最小骨架及 health check。
 - 後端使用 Java + MyBatis，前端使用 Vue 3 + TypeScript，本機環境使用 Docker；除非使用者明確變更，不替換這些核心技術。
+- 建立或修改後端功能時使用 `enforce-mybatis-three-layer`，採 package-by-feature 並固定 `Controller → Service interface ← ServiceImpl → Mapper` 依賴。
+- Java Mapper 只保留 method contract 與 `@Mapper`；所有 SQL 必須放在 MyBatis Mapper XML，禁止使用 SQL annotation。
 - 完成第一條垂直流程後再擴張其他模組。
 - 依 repository 的版本與 lockfile 執行 format、lint、compile、test 與 build。
 - 使用真實資料庫行為驗證 constraint、DECIMAL、日期、enum mapping、lock 與 affected rows。

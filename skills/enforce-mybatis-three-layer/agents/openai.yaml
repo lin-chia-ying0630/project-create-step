@@ -1,0 +1,4 @@
+interface:
+  display_name: "MyBatis 三層架構治理"
+  short_description: "建立與檢查 Spring Boot MyBatis 分層結構"
+  default_prompt: "使用 $enforce-mybatis-three-layer 建立並驗證這項功能的 MyBatis 三層架構。"

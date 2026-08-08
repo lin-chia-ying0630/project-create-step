@@ -5,6 +5,8 @@ description: Analyze SQL, schemas, MyBatis mappings, data types, field lengths, 
 
 # SQL 與資料契約分析
 
+本專案的 SQL 只允許存在於 `src/main/resources/mapper/<feature>/*Mapper.xml`。分析或提出修正時不得產生 Java MyBatis SQL annotation；Java Mapper 只保留 interface method、`@Mapper` 與必要的 `@Param`。
+
 ## 工作流程
 
 1. 取得 database engine／version、完整 SQL、參數型別、schema、error 與 transaction context。

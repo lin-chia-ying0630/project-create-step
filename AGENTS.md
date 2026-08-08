@@ -14,6 +14,8 @@
 3. 變更應形成可驗證的完整切片，包含必要的文件、設定、實作與檢查。
 4. 保留使用者既有變更，不修改與任務無關的檔案。
 5. 完成前執行與風險相稱的驗證，並清楚回報已驗證與未驗證項目。
+6. 建立、修改或 review 程式時讀取 `skills/enforce-code-writing-standards/SKILL.md`，套用 Java、MyBatis XML、Vue、TypeScript、SCSS、設計模式、測試與文件撰寫規則；使用設計模式前必須指出實際變化點，不得為模式而抽象。
+7. 新增抽象、擴充核保規則、整合外部系統、設計狀態轉換或重構複雜條件時，使用 `skills/design-pattern-guide/SKILL.md` 完成模式選用與 review。
 
 ## 分析與實作邊界
 
@@ -95,6 +97,20 @@
 | `06-frontend-state.md` | 任何 Vue 3 / Pinia store / API client 實作 |
 | `07-testing-strategy.md` | 任何測試撰寫或 CI 設定 |
 
+## MyBatis 三層架構與目錄
+
+- 新增、重構或檢查後端功能時，必須讀取 `skills/enforce-mybatis-three-layer/SKILL.md`。
+- 採用 package-by-feature；每個業務功能固定放在 `<feature>/controller`、`dto`、`domain`（需要時）、`service`、`service/impl`、`persistence`。
+- 依賴方向固定為 `Controller → Service interface ← ServiceImpl → Mapper → MySQL`。Controller 不得注入 Mapper；Mapper 不得依賴 Service 或 HTTP DTO。
+- `service/` 只放 interface，具體 Spring `@Service` class 只放 `service/impl/`；多表寫入的 `@Transactional` 放在 implementation 的公開業務方法。
+- 本專案 SQL 一律放在 `src/main/resources/mapper/<feature>/*Mapper.xml`；Java Mapper 只保留 interface method、`@Mapper` 與必要的 `@Param`。任何 Java class 都不得出現 `SELECT`、`INSERT`、`UPDATE`、`DELETE` SQL、JDBC、動態查詢字串或 SQL annotation。
+- Mapper XML 的 `namespace` 必須等於 Mapper interface 完整類名，statement `id` 必須等於 method 名；動態條件使用 MyBatis XML 標籤，資料值一律用 `#{}` 綁定，禁止以 `${}` 接收使用者輸入。
+- 功能 Java class 不得直接放在 `<feature>/` 根目錄；`common/` 只接受真正跨功能的技術契約，不得成為無法分類檔案的暫存區。
+- 固定且封閉的 `code + 繁中說明` 必須定義在所屬 `domain` enum，enum 同時提供 `code`、`description` 與嚴格的 `fromCode`；Controller、Service、SQL、Vue 不得各寫一份 switch 或對照表。可由營運維護的動態代碼才使用資料庫 code table，並由 API 回傳繁中說明。
+- 固定錯誤代碼與繁中錯誤訊息必須集中在所屬領域的 `ErrorCode` enum；`BusinessException` 只接受 enum，不得在 throw 處直接填代碼與固定訊息字串。
+- 每個 function 必須有能解釋目的的註解。Java public／protected method 使用 Javadoc 說明業務目的、參數、回傳、例外及交易副作用；private method 至少說明規則或轉換目的。Vue／TypeScript function 說明使用者動作、狀態變化及 API 副作用。禁止只把方法名稱翻成中文的無資訊註解；單純 accessor 可由類別或欄位註解涵蓋。
+- 完成前執行 `python3 skills/enforce-mybatis-three-layer/scripts/check_layers.py create-api/src/main/java/tw/com/insurance/api` 與 `create-api/mvnw test`。
+
 ### 核心強制規則（不得違反）
 
 - 例外分層：業務規則 422、資源衝突 409、驗證失敗 400、不存在 404、系統錯誤 500；錯誤碼格式 `{模組}-{四位數字}`（如 `CHG-3001`）。
@@ -103,9 +119,14 @@
 - API 版本：路徑格式 `/api/v{N}/`；舊版本棄用期最短 3 個月；棄用時加 `Deprecation` Header。
 - 分頁：`page`（從 1 起）、`pageSize`（上限 100）；回傳 `PageResult<T>`（含 `totalItems`、`totalPages`）；排序欄位必須白名單驗證，禁止直接拼 ORDER BY。
 - 稽核：寫入、覆核狀態變更與敏感資料查詢必須寫入模組所定義的 append-only 稽核事件；保存期限須由適用地區、資料分類及法遵核准來源決定。Log 禁止輸出身分證號、銀行帳號、健康告知原始值。
-- 前端：API 呼叫統一透過 `src/api/` typed 函式；Store 操作統一管理 loading / error / data 三狀態；代碼定義 lazy 快取、登出必須清除。
+- 前端：API 呼叫統一透過 `src/features/<feature>/api/` typed 函式；跨功能 HTTP client 才放 `src/shared/api/`。Store 操作統一管理 loading / error / data 三狀態；代碼定義 lazy 快取、登出必須清除。
 - 測試：保費計算 Service 覆蓋率 ≥ 90%；業務驗證 Service ≥ 85%；一般 Service ≥ 70%；Mapper 測試使用 Testcontainers MySQL，不使用 H2；測試資料禁止使用正式個資。
 - 三層架構：Controller 只接收 Request DTO 與回傳 `ResponseBodyDto<Response DTO>`；Service 負責業務規則與交易；DAO 負責 Entity／持久化模型。Entity 不得成為 API contract，也不得跨過 Controller 邊界。
-- SQL 不直接控制：所有 SQL 必須定義在 MyBatis XML Mapper 或標注中；Service 與 Controller 不得含任何 SQL 片段或 JDBC 直接呼叫；動態條件一律用 MyBatis 標籤與 `#{}` 參數綁定。
-- 工具類獨立管理：只有無狀態、無領域決策的純技術共用邏輯才放入 `util/`；保費、資格、狀態等規則留在 domain／service。工具類不得注入 Bean 或呼叫資料庫。
-- 前端元件共用：分頁列、排序標頭、表單欄位、狀態標籤、確認 Modal 等相同職責的 UI 片段統一放 `src/components/shared/`；業務頁面只透過 props/slots 使用，新增功能前先確認是否已有可複用元件。
+- SQL 不直接控制：所有 SQL 只能定義在 `src/main/resources/mapper/<feature>/*Mapper.xml`；Java Mapper 禁止 `@Select`、`@Insert`、`@Update`、`@Delete`。Service、Controller、util 不得含 SQL 或 JDBC；動態條件使用 MyBatis XML 標籤與 `#{}`，禁止使用者輸入 `${}`。
+- 工具類獨立管理：只有無狀態、無領域決策的純技術邏輯才放入 `util/`；單一功能使用者放 `<feature>/util/`，確實跨功能者才放 `common/util/`。工具類不得注入 Bean、呼叫資料庫或決定核保、保費、資格、狀態等業務內容。
+- 前端元件共用：分頁列、排序標頭、表單欄位、狀態標籤、確認 Modal 等相同職責的 UI 片段統一放 `create-web/src/shared/components/`；業務頁面只透過 props/slots 使用，新增功能前先確認是否已有可複用元件。
+- 前端視覺共用：表格、按鈕、表單、分頁、狀態訊息、色彩與間距等跨頁視覺契約統一放 `create-web/src/shared/styles/style.scss`；feature 不得重複定義相同用途的樣式。
+- 前端響應式設計：所有裝置使用同一份 route、Vue component、DOM、資料契約、API 與業務功能，只依可用 viewport 自動重排；禁止依 user-agent、裝置品牌或型號切換另一套頁面或邏輯。
+- 響應式範圍：所有頁面至少支援 320px viewport，不得造成整頁水平捲動；空間不足時多欄表單自動成為單欄，導覽與分頁可在自身容器橫向捲動，寬表格只在表格容器內捲動，主要操作按鈕高度至少 44px。
+- 響應式驗收：前端變更完成前，至少以 320×568、390×844 及桌面 viewport 驗證相同內容、欄位、狀態與操作均存在且可用，不得因 viewport 不同隱藏必要功能。
+- 瀏覽器渲染入口：`create-web/index.html` 必須包含 UTF-8、`lang="zh-Hant-TW"`、`width=device-width`、`initial-scale=1` 與 `viewport-fit=cover`；共用 layout 使用 `dvh` 與 `env(safe-area-inset-*)` 適應瀏覽器可用區域。

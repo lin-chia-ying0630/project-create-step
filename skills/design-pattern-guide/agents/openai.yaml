@@ -1,0 +1,4 @@
+interface:
+  display_name: "設計模式選用與檢視"
+  short_description: "依真實變化點選擇模式並避免過度設計"
+  default_prompt: "使用 $design-pattern-guide 檢視這項變更的設計模式、責任邊界與測試方式。"
