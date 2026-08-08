@@ -1,0 +1,4 @@
+interface:
+  display_name: "保險介接欄位映射"
+  short_description: "分析保險批次、檔案、訊息與 API 的欄位轉換及相容契約"
+  default_prompt: "使用 $insurance-interface-mapper 建立這個保險介接的欄位映射與驗證契約。"

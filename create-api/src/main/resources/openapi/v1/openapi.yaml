@@ -1,0 +1,17 @@
+openapi: 3.1.0
+info:
+  title: 保險系統 API
+  version: 0.0.1
+  description: 技術骨架契約；第一條保險業務流程核准後才新增 paths。
+paths: {}
+components:
+  schemas:
+    ResponseBodyDto:
+      type: object
+      required: [success, message, errorCode, errorMessage, data]
+      properties:
+        success: {type: boolean}
+        message: {type: [string, "null"]}
+        errorCode: {type: [string, "null"]}
+        errorMessage: {type: [string, "null"]}
+        data: {}

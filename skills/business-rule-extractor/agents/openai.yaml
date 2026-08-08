@@ -1,0 +1,4 @@
+interface:
+  display_name: "保險業務規則萃取"
+  short_description: "從程式與資料操作中萃取可驗證且可追溯的保險業務規則"
+  default_prompt: "使用 $business-rule-extractor 從這份程式萃取保險業務規則。"

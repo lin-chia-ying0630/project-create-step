@@ -1,0 +1,15 @@
+spring:
+  application.name: create-api
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/new_contract?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USER:insurance}
+    password: ${DB_PASSWORD:insurance-local-only}
+  flyway:
+    enabled: true
+    user: ${DB_MIGRATION_USER:${DB_USER:insurance}}
+    password: ${DB_MIGRATION_PASSWORD:${DB_PASSWORD:insurance-local-only}}
+mybatis:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration.map-underscore-to-camel-case: true
+management.endpoints.web.exposure.include: health,info
+server.port: ${SERVER_PORT:8080}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "保險需求與流程建模"
+  short_description: "使用流程、案件與決策框架建立可追溯的保險業務需求規格"
+  default_prompt: "使用 $insurance-requirement-modeler 將這項保險需求整理成可追溯的流程、案件與決策模型。"

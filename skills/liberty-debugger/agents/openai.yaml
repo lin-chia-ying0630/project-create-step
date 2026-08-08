@@ -1,0 +1,4 @@
+interface:
+  display_name: "Liberty 問題診斷"
+  short_description: "診斷 Liberty 啟動、部署、WAR、JNDI 與 Servlet 問題"
+  default_prompt: "使用 $liberty-debugger 診斷這次 Liberty 部署失敗。"

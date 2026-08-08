@@ -1,0 +1,4 @@
+interface:
+  display_name: "規劃專案建立流程"
+  short_description: "將需求整理成具備契約、階段與驗證標準的完整專案建立方案"
+  default_prompt: "使用 $plan-project-creation 分析需求，產出可逐步執行並可驗證的專案建立方案。"

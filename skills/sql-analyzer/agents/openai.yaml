@@ -1,0 +1,4 @@
+interface:
+  display_name: "SQL 與資料契約分析"
+  short_description: "分析 SQL、型別容量、寫入問題與 Migration 風險"
+  default_prompt: "使用 $sql-analyzer 診斷這個 SQL 與資料契約問題。"

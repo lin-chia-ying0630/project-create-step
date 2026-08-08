@@ -1,0 +1,4 @@
+interface:
+  display_name: "啟動保險系統專案"
+  short_description: "以繁體中文建立具備跨層契約與驗證流程的保險系統專案"
+  default_prompt: "使用 $start-insurance-project 規劃並啟動一個保險系統專案。"

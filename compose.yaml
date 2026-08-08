@@ -1,0 +1,49 @@
+services:
+  mysql:
+    image: mysql:8.4.7
+    environment:
+      MYSQL_DATABASE: new_contract
+      MYSQL_USER: insurance
+      MYSQL_PASSWORD: insurance-local-only
+      MYSQL_ROOT_PASSWORD: root-local-only
+    ports: ["3307:3306"]
+    volumes:
+      - insurance-mysql:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot-local-only"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  api:
+    build: ./create-api
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/new_contract?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USER: insurance
+      DB_PASSWORD: insurance-local-only
+      DB_MIGRATION_USER: root
+      DB_MIGRATION_PASSWORD: root-local-only
+    ports: ["8080:8080"]
+    depends_on:
+      mysql: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+  web:
+    build: ./create-web
+    ports: ["5173:80"]
+    depends_on:
+      api: {condition: service_healthy}
+  batch:
+    build: ./create-batch
+    profiles: ["batch"]
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/new_contract?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USER: insurance
+      DB_PASSWORD: insurance-local-only
+    depends_on:
+      mysql: {condition: service_healthy}
+volumes:
+  insurance-mysql:

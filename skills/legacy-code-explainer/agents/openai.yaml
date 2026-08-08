@@ -1,0 +1,4 @@
+interface:
+  display_name: "舊系統程式解讀"
+  short_description: "解讀舊 Java、COBOL 與 AS400 程式並整理規格"
+  default_prompt: "使用 $legacy-code-explainer 將這支舊程式解讀成可維護的繁中規格。"

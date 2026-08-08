@@ -1,0 +1,4 @@
+interface:
+  display_name: "保險批次對帳分析"
+  short_description: "設計保單、收費與理賠批次的筆數金額對帳、補送及重跑控制"
+  default_prompt: "使用 $insurance-reconciliation-analyzer 分析這個保險批次的對帳、重送與差異處理。"

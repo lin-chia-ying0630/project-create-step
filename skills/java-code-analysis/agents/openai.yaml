@@ -1,0 +1,4 @@
+interface:
+  display_name: "Java 程式分析"
+  short_description: "追蹤 Java 執行流程並定位常見例外、資料錯誤與程式缺陷"
+  default_prompt: "使用 $java-code-analysis 追蹤這段 Java 流程並找出根因。"

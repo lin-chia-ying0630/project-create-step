@@ -1,0 +1,15 @@
+spring:
+  application.name: create-batch
+  main.web-application-type: none
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/new_contract?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USER:insurance}
+    password: ${DB_PASSWORD:insurance-local-only}
+  batch:
+    jdbc.initialize-schema: never
+    job.enabled: false
+  flyway.enabled: false
+mybatis.configuration.map-underscore-to-camel-case: true
+underwriting.batch:
+  cron: "0 0 21 * * *"
+  zone: Asia/Taipei

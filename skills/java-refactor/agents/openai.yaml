@@ -1,0 +1,4 @@
+interface:
+  display_name: "Java 安全重構"
+  short_description: "在維持可觀察行為下拆解舊 Java 並降低程式複雜度"
+  default_prompt: "使用 $java-refactor 在不改變既有行為下重構這段 Java。"
