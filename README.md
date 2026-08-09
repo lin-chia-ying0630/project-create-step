@@ -91,6 +91,8 @@ create-web/src/
 
 前端導覽由 `create-web/src/router/index.ts` 集中管理，使用 Vue Router history mode。路由名稱、URL、頁面標題及側邊選單項目共用同一份定義；Nginx 以 `try_files ... /index.html` 支援直接開啟及重新整理深層網址。
 
+新契約系統提供 `/code-definitions` 的唯讀「Code Table 對照」頁面，依代碼群組與欄位查詢資料庫目前生效的動態代碼及繁體中文說明；畫面不另行維護代碼對照。
+
 全域視覺樣式集中於 `create-web/src/shared/styles/style.scss`，統一維護色彩、斷點、版面、選單、表單、按鈕與狀態訊息；feature-specific 樣式才留在各 View 或 feature 樣式檔，不得重新定義第二份全域設計 token。
 
 前端採裝置無關的 Responsive Web Design：所有裝置使用同一份 route、Vue component、DOM、API 與業務功能，只依 viewport 可用空間自動重排。禁止 user-agent／裝置型號分支或手機專用頁。頁面至少支援 320px viewport，不得產生整頁水平捲動；空間不足時表單改為單欄，導覽、頁籤與寬表格只在自身容器內橫向捲動。交付前以 320×568、390×844 與桌面 viewport 驗證相同功能。

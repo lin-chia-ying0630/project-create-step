@@ -9,6 +9,7 @@ export const routeNames = {
   inquiry: 'underwriting-inquiry',
   reversal: 'policy-reversal',
   review: 'review-work-queue',
+  codeDefinition: 'code-definition-lookup',
 } as const
 
 const routes: RouteRecordRaw[] = [
@@ -18,6 +19,12 @@ const routes: RouteRecordRaw[] = [
     name: routeNames.review,
     component: () => import('../features/review/views/ReviewWorkQueueView.vue'),
     meta: { title: '新契約覆核工作台' },
+  },
+  {
+    path: '/code-definitions',
+    name: routeNames.codeDefinition,
+    component: () => import('../features/code-definition/views/CodeDefinitionLookupView.vue'),
+    meta: { title: 'Code Table 代碼對照' },
   },
   {
     path: '/customers/new',
@@ -66,6 +73,7 @@ const routes: RouteRecordRaw[] = [
 
 export const navigationItems = [
   { name: routeNames.review, label: '覆核工作台', icon: '✓' },
+  { name: routeNames.codeDefinition, label: 'Code Table 對照', icon: '≡' },
   { name: routeNames.customer, label: '客戶資料建立', icon: '♙' },
   { name: routeNames.applicationEntry, label: '保單登打', icon: '▤' },
   { name: routeNames.policyQuery, label: '保單資料查詢', icon: '⌕' },
