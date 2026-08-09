@@ -271,7 +271,7 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 |---|---|---|
 | 客戶資料建立 | `POST /api/v1/customers` | 單一交易寫入客戶、證件、聯絡、地址、姓名歷程、KYC、同意及稽核。 |
 | 保單登打 | `POST /api/v1/new-contract/applications` | 建立要保案件與首期應繳。 |
-| 首期保險費收款與銷帳 | `GET .../initial-premium`、`POST .../initial-premium-payments/reconcile` | 登錄繳費憑證及實收金額，比對應收與實收後決定是否完成銷帳。舊路徑 `POST .../remittance-slips/match` 暫保留相容。 |
+| 首期保險費收款與銷帳 | `GET .../initial-premium`、`POST .../remittance-slips` | 查詢應收後由「新增送金單」登錄繳費憑證及實收金額並送覆核；核准後才建立送金單、比對應收與實收並決定是否完成銷帳。舊路徑 `POST .../initial-premium-payments/reconcile` 與 `POST .../remittance-slips/match` 暫保留相容。 |
 | 核保照會單 | `GET .../underwriting-inquiries/{query}`、`GET .../{query}/pdf` | 依照會單號或要保書號碼顯示核保未通過項目，並產生繁體中文 PDF。測試資料為 `DEMO-INQ-001`。 |
 | 批次核保 | `POST .../underwriting-batch/requests`、`GET .../executions` | 排入每日 21:00 批次並查詢執行紀錄。 |
 | 承保撤回 | `GET .../preview`、`POST .../policy-reversals` | 僅允許未生效案件，使用版本及確認 token 防止誤刪。 |
@@ -285,6 +285,10 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 ## 新契約 Maker-Checker 覆核
 
 所有會修改正式資料的操作先建立 `business_review_case`，核准前不呼叫原業務 Service。覆核工作台 `/reviews` 統一處理客戶建立、保單登打、承保撤回、新契約批次核保及首期保費資料；保單號碼編發也視為保單登打類別的資料異動。
+
+新契約批次核保畫面以「保單號碼＋執行日」送覆核；核准後寫入 `underwriting_batch_request.requested_business_date`。排程器每日 21:00（Asia/Taipei）啟動，只原子領取 `request_status = 'PENDING'` 且 `requested_business_date = 當日臺北日期` 的案件。案件必須為已送件、已有要保人與被保險人、基本金額及日期有效、已編發預編保單號碼，且首期保險費已銷帳；全部通過記錄承保，任一條件未通過則轉照會。過去的執行日不得新增，以免留下不會再被排程領取的資料。
+
+資料庫 migration 以英文 table／column 識別字維持跨系統契約，並以繁中 `COMMENT` 定義業務名稱。本次首期保費、送金單、銷帳、核保排程與批次執行表的表名及全部欄位，已由 V21 補齊繁中 metadata；已發布 migration 不回改 checksum。
 
 | 邊界 | 責任 |
 |---|---|

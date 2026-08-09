@@ -64,16 +64,18 @@ public class NewContractController {
 	ResponseBodyDto<PremiumDuePreview> getPremiumDue(@PathVariable @NotBlank String applicationNo) {
 		return ResponseBodyDto.success("查詢成功", service.getPremiumDue(applicationNo));
 	}
-	@PostMapping({"/initial-premium-payments/reconcile", "/remittance-slips/match"})
+	/** 新增送金單並送交覆核；核准後才寫入送金單及執行首期保費銷帳。 */
+	@PostMapping({"/remittance-slips", "/initial-premium-payments/reconcile", "/remittance-slips/match"})
 	ResponseBodyDto<ReviewSubmissionResult> match(@Valid @RequestBody RemittanceSlipRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		return ResponseBodyDto.success("首期保費資料已送覆核", reviewService.submit(ReviewOperationType.INITIAL_PREMIUM_MATCH,
+		return ResponseBodyDto.success("新增送金單已送覆核", reviewService.submit(ReviewOperationType.INITIAL_PREMIUM_MATCH,
 				request.applicationNo(), request, jwt.getSubject()));
 	}
+	/** 指定執行日送覆核；核准後才將保單寫入該日的批次核保排程。 */
 	@PostMapping("/underwriting-batch/requests")
 	ResponseBodyDto<ReviewSubmissionResult> enqueue(@Valid @RequestBody UnderwritingBatchRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		String businessKey = request.applicationNo() + ":" + request.requestedBusinessDate();
+		String businessKey = request.applicationNo() + ":" + request.executionDate();
 		return ResponseBodyDto.success("新契約批次核保已送覆核", reviewService
 				.submit(ReviewOperationType.UNDERWRITING_BATCH_ENQUEUE, businessKey, request, jwt.getSubject()));
 	}

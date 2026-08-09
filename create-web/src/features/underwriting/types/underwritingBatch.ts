@@ -1,7 +1,7 @@
 /** 核保批次 feature 的 transport contract。 */
 export interface UnderwritingBatchRequest {
   applicationNo: string
-  requestedBusinessDate: string
+  executionDate: string
 }
 
 export interface UnderwritingBatchRequestResult {

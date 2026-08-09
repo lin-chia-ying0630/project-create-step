@@ -23,6 +23,7 @@ public final class NewContractDtos {
 			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal calculatedPremiumAmount,
 			String calculationRuleVersion, String dueStatus, String dueStatusDescription) {
 	}
+	/** 新增送金單的可寫入欄位；核准前僅保存於加密覆核 payload。 */
 	public record RemittanceSlipRequest(@NotBlank @Size(max = 32) String applicationNo,
 			@JsonAlias("remittanceSlipNo") @NotBlank @Size(max = 50) String paymentReceiptNo,
 			@JsonAlias("paymentMethodCode") @NotBlank @Size(max = 20) String paymentChannelCode,
@@ -37,9 +38,11 @@ public final class NewContractDtos {
 			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal actualAmount,
 			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal differenceAmount, boolean mayUnderwrite) {
 	}
+	/** 指定單一保單與批次執行日；舊欄位 requestedBusinessDate 僅保留輸入相容。 */
 	public record UnderwritingBatchRequest(@NotBlank @Size(max = 32) String applicationNo,
-			@NotNull LocalDate requestedBusinessDate) {
+			@JsonAlias("requestedBusinessDate") @NotNull LocalDate executionDate) {
 	}
+	/** 覆核核准後建立的核保排程結果與預定啟動時間。 */
 	public record UnderwritingBatchRequestResult(String batchRequestId, String applicationNo, String requestStatus,
 			LocalDateTime scheduledAt) {
 	}

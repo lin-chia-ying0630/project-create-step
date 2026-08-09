@@ -323,8 +323,15 @@ public class NewContractServiceImpl implements NewContractService {
 				dueStatusDescription(text(row, "due_status")));
 	}
 
+	/** 覆核核准後建立送金單與銷帳結果；多表寫入在同一交易內同成同敗。 */
 	@Transactional
 	public PremiumMatchResult matchPremium(RemittanceSlipRequest request) {
+		// 繳費管道與繳款人身分是營運可維護代碼，正式寫入前必須再次以資料庫代碼定義驗證。
+		if (!codeDefinitionService.isActiveCode("initial-premium", "payment_channel_code",
+				request.paymentChannelCode()))
+			throw new BusinessException(NewContractErrorCode.INVALID_PAYMENT_CHANNEL);
+		if (!codeDefinitionService.isActiveCode("initial-premium", "payer_role_code", request.payerRoleCode()))
+			throw new BusinessException(NewContractErrorCode.INVALID_PAYER_ROLE);
 		PremiumDuePreview due = getPremiumDue(request.applicationNo());
 		BigDecimal difference = request.receivedAmount().subtract(due.calculatedPremiumAmount());
 		String status;
@@ -375,8 +382,12 @@ public class NewContractServiceImpl implements NewContractService {
 		};
 	}
 
+	/** 核准後將保單排入指定執行日；過期日期與重複排程均拒絕寫入。 */
 	@Transactional
 	public UnderwritingBatchRequestResult enqueue(UnderwritingBatchRequest request) {
+		// 執行日以排程器相同的 Asia/Taipei 日界線判斷；已過日期不得補排，避免產生永遠不會被領取的案件。
+		if (request.executionDate().isBefore(LocalDate.now(java.time.ZoneId.of("Asia/Taipei"))))
+			throw new BusinessException(NewContractErrorCode.INVALID_BATCH_EXECUTION_DATE);
 		String applicationNo = mapper.resolveApplicationNo(request.applicationNo());
 		if (applicationNo == null)
 			throw new BusinessException(NewContractErrorCode.APPLICATION_NOT_FOUND);
@@ -384,12 +395,12 @@ public class NewContractServiceImpl implements NewContractService {
 			reservePolicyNumber(applicationNo);
 		String id = UUID.randomUUID().toString();
 		try {
-			mapper.insertBatchRequest(id, applicationNo, request.requestedBusinessDate());
+			mapper.insertBatchRequest(id, applicationNo, request.executionDate());
 		} catch (DuplicateKeyException exception) {
 			throw new BusinessException(NewContractErrorCode.DUPLICATE_BATCH_REQUEST);
 		}
 		return new UnderwritingBatchRequestResult(id, applicationNo, "PENDING",
-				LocalDateTime.of(request.requestedBusinessDate(), LocalTime.of(21, 0)));
+				LocalDateTime.of(request.executionDate(), LocalTime.of(21, 0)));
 	}
 
 	public List<UnderwritingBatchExecutionSummary> latestExecutions() {

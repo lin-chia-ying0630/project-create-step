@@ -20,7 +20,9 @@ public interface NewContractService {
 	PolicyNumberReservationResult reservePolicyNumber(String applicationNo);
 	List<ApplicationQueryResult> queryApplication(String query);
 	PremiumDuePreview getPremiumDue(String applicationNo);
+	/** 覆核核准後建立送金單，比對應收與實收並以同一交易保存銷帳結果。 */
 	PremiumMatchResult matchPremium(RemittanceSlipRequest request);
+	/** 將指定保單與執行日建立為待執行核保排程，不在 API request 內直接執行核保。 */
 	UnderwritingBatchRequestResult enqueue(UnderwritingBatchRequest request);
 	List<UnderwritingBatchExecutionSummary> latestExecutions();
 	PolicyReversalPreview previewReversal(String policyNo);

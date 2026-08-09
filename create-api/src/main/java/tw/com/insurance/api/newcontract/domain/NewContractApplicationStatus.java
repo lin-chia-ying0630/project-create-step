@@ -4,11 +4,13 @@ import java.util.Arrays;
 
 /** 新契約要保案件的固定狀態與繁中顯示唯一來源。 */
 public enum NewContractApplicationStatus {
-	SUBMITTED("SUBMITTED", "已送件，待核保", "APPLICATION_RECEIVED", "要保案件受理", "NOT_UNDERWRITTEN", "未承保"), VALIDATED(
-			"VALIDATED", "檢核通過", "PRE_UNDERWRITING_CHECK", "核保前檢核", "NOT_UNDERWRITTEN",
-			"未承保"), UNDERWRITING("UNDERWRITING", "核保中", "UNDERWRITING", "核保審查", "NOT_UNDERWRITTEN", "未承保"), INQUIRY(
+	SUBMITTED("SUBMITTED", "已送件，待核保", "APPLICATION_RECEIVED", "要保案件受理", "NOT_UNDERWRITTEN", "未承保"),
+	VALIDATED("VALIDATED", "檢核通過", "PRE_UNDERWRITING_CHECK", "核保前檢核", "NOT_UNDERWRITTEN",
+			"未承保"),
+	UNDERWRITING("UNDERWRITING", "核保中", "UNDERWRITING", "核保審查", "NOT_UNDERWRITTEN", "未承保"), INQUIRY(
 					"INQUIRY", "照會中", "UNDERWRITING", "核保審查", "NOT_UNDERWRITTEN",
-					"未承保"), UNDERWRITTEN("UNDERWRITTEN", "已承保", "POLICY_ISSUANCE", "承保完成", "UNDERWRITTEN", "已承保");
+					"未承保"),
+	UNDERWRITTEN("UNDERWRITTEN", "已承保", "POLICY_ISSUANCE", "承保完成", "UNDERWRITTEN", "已承保");
 
 	private final String code;
 	private final String description;

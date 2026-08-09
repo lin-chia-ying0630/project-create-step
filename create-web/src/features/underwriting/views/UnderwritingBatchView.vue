@@ -4,7 +4,7 @@ import { underwritingBatchApi } from '../api/underwritingBatchApi'
 import type { UnderwritingBatchExecutionSummary } from '../types/underwritingBatch'
 
 const applicationNo = ref('')
-const businessDate = ref(
+const executionDate = ref(
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date()),
 )
 const loading = ref(false)
@@ -12,16 +12,17 @@ const message = ref<string | null>(null)
 const error = ref<string | null>(null)
 const executions = ref<UnderwritingBatchExecutionSummary[]>([])
 
+/** 將輸入的保單與指定執行日送交覆核，不在畫面直接觸發批次。 */
 async function enqueue() {
   loading.value = true
   error.value = null
   message.value = null
   try {
     const result = await underwritingBatchApi.enqueue(
-      { applicationNo: applicationNo.value.trim(), requestedBusinessDate: businessDate.value },
+      { applicationNo: applicationNo.value.trim(), executionDate: executionDate.value },
       crypto.randomUUID(),
     )
-    message.value = `批次核保已送覆核，覆核編號：${result.reviewId}`
+    message.value = `保單已依 ${executionDate.value} 執行日送交排程覆核，覆核編號：${result.reviewId}`
     applicationNo.value = ''
   } catch (e) {
     error.value = e instanceof Error ? e.message : '排入批次失敗'
@@ -30,6 +31,7 @@ async function enqueue() {
   }
 }
 
+/** 重新取得最近批次執行彙總，不改變任何排程或保單狀態。 */
 async function refresh() {
   try {
     executions.value = await underwritingBatchApi.latestExecutions()
@@ -45,7 +47,7 @@ onMounted(refresh)
   <main class="page">
     <h1>新契約批次核保</h1>
     <p class="schedule">
-      固定排程：每日晚上 21:00（Asia/Taipei）。畫面只能排入案件，不能修改正式排程。
+      固定排程：每日晚上 21:00（Asia/Taipei）啟動，領取執行日為當日且狀態為待執行的保單。
     </p>
     <section class="card form">
       <label
@@ -54,9 +56,9 @@ onMounted(refresh)
           maxlength="32"
           autocomplete="off"
       /></label>
-      <label>核保營業日<input v-model="businessDate" type="date" /></label>
-      <button :disabled="loading || !applicationNo.trim() || !businessDate" @click="enqueue">
-        排入今晚核保批次
+      <label>執行日<input v-model="executionDate" type="date" /></label>
+      <button :disabled="loading || !applicationNo.trim() || !executionDate" @click="enqueue">
+        依執行日排入核保批次
       </button>
     </section>
     <p v-if="message" class="success">{{ message }}</p>
@@ -69,7 +71,7 @@ onMounted(refresh)
       <table class="data-table">
         <thead>
           <tr>
-            <th>營業日</th>
+            <th>執行日</th>
             <th>狀態</th>
             <th>總件數</th>
             <th>承保</th>

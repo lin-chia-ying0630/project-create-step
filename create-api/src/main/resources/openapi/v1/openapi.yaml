@@ -97,9 +97,17 @@ paths:
         '404': {description: 查無資料}
   /api/v1/new-contract/initial-premium-payments/reconcile:
     post:
-      summary: 送出首期保費資料覆核案件
+      deprecated: true
+      summary: 舊版首期保費收款與銷帳路徑
       responses:
         '200': {description: 首期保費資料已送覆核}
+  /api/v1/new-contract/remittance-slips:
+    post:
+      summary: 新增送金單並送交覆核，核准後建立送金單及執行銷帳
+      responses:
+        '200': {description: 新增送金單已送覆核}
+        '400': {description: 送金單欄位或動態代碼無效}
+        '409': {description: 同案件已有待審送金單}
   /api/v1/new-contract/remittance-slips/match:
     post:
       deprecated: true
@@ -108,9 +116,11 @@ paths:
         '200': {description: 收款與銷帳完成}
   /api/v1/new-contract/underwriting-batch/requests:
     post:
-      summary: 送出晚上九點核保批次覆核案件
+      summary: 將指定保單與執行日送出核保排程覆核案件
+      description: 覆核核准後建立 PENDING 排程；每日 21:00（Asia/Taipei）只領取執行日等於當日的待執行案件。executionDate 不得早於臺北當日。
       responses:
         '200': {description: 批次核保已送覆核}
+        '400': {description: 執行日早於臺北當日或欄位驗證失敗}
   /api/v1/new-contract/underwriting-batch/executions:
     get:
       summary: 查詢最近核保批次執行紀錄
