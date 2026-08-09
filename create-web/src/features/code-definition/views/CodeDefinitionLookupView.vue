@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
 import QueryConditionForm from '../../../shared/components/QueryConditionForm.vue'
+import PageNavigator from '../../../shared/components/PageNavigator.vue'
 import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
 import type {
   CodeDefinitionOption,
@@ -13,12 +14,19 @@ const selectedTableKey = ref('customer-kyc::occupation_code')
 const items = ref<CodeDefinitionOption[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const pageIndex = ref(0)
+const pageSize = ref(10)
 
 const selectedTable = computed(() =>
   tableOptions.value.find(
     (table) => `${table.codeGroup}::${table.codeField}` === selectedTableKey.value,
   ),
 )
+const totalPages = computed(() => Math.max(1, Math.ceil(items.value.length / pageSize.value)))
+const pagedItems = computed(() => {
+  const start = pageIndex.value * pageSize.value
+  return items.value.slice(start, start + pageSize.value)
+})
 
 /** 依下拉選取的群組與欄位載入資料庫中目前生效的 Code Definitions。 */
 async function search() {
@@ -28,12 +36,19 @@ async function search() {
   error.value = null
   try {
     items.value = await codeDefinitionApi.findActiveOptions(table.codeGroup, table.codeField)
+    pageIndex.value = 0
   } catch (e) {
     items.value = []
     error.value = e instanceof Error ? e.message : 'Code Definitions 載入失敗'
   } finally {
     loading.value = false
   }
+}
+
+/** 變更共用每頁筆數後回到第一頁。 */
+function changePageSize(value: number) {
+  pageSize.value = value
+  pageIndex.value = 0
 }
 
 /** 初次進入時先載入可查詢代碼表，再預設顯示正式職業代碼。 */
@@ -112,7 +127,7 @@ onMounted(initialize)
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in items" :key="item.code">
+              <tr v-for="item in pagedItems" :key="item.code">
                 <td class="code-value">{{ item.code }}</td>
                 <td>{{ item.description }}</td>
                 <td>{{ item.descriptionEn || '—' }}</td>
@@ -130,6 +145,14 @@ onMounted(initialize)
             </tbody>
           </table>
         </div>
+        <PageNavigator
+          v-if="items.length"
+          v-model="pageIndex"
+          :total="totalPages"
+          :page-size="pageSize"
+          prefix="代碼對照清單"
+          @update:page-size="changePageSize"
+        />
       </template>
     </QueryListPanels>
 

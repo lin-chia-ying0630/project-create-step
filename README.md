@@ -303,6 +303,8 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 
 查詢 Panel 內統一使用 `QueryConditionForm.vue` 控制「查詢條件」標題、說明、欄位列寬度與間距；只有一個文字查詢條件時使用其封裝元件 `SingleQueryForm.vue`。單一選填條件不顯示序號或必填符號，留白時查詢完整清單。
 
+所有查詢清單預設每頁 10 筆，使用共用 `PageNavigator.vue` 提供 10、20、50、100 筆選項；只有 API 本身回傳完整靜態代碼集合的代碼定義頁可在前端切頁，後端已分頁的清單不得再次切片。
+
 資料建立與資料查詢使用不同 route 與側邊選單入口；例如 `/customers/new` 只顯示客戶建立表單，`/customers` 只顯示客戶查詢清單。
 
 保單登打與覆核工作台的多區段導航統一使用 `SectionTabNavigator.vue`，採「頁次＋功能名稱」卡片頁籤；窄畫面由頁籤導航本身水平捲動。
