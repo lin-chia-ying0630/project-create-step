@@ -74,14 +74,14 @@ paths:
         '200': {description: 保單登打已送覆核}
   /api/v1/new-contract/applications/{applicationNo}/initial-premium:
     get:
-      summary: 依要保書號碼或預編保單號碼查詢首期應繳
+      summary: 依要保書號碼或正式保單號碼查詢首期應繳
       parameters:
         - {name: applicationNo, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
         '200': {description: 查詢成功}
   /api/v1/new-contract/applications/{applicationNo}/policy-number:
     post:
-      summary: 為已送件要保案件編發預編保單號碼
+      summary: 查詢案件建立時配置的固定保單號碼
       parameters:
         - {name: applicationNo, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
@@ -89,7 +89,7 @@ paths:
         '404': {description: 查無要保案件}
   /api/v1/new-contract/applications/query/{query}:
     get:
-      summary: 依要保人 ID、被保險人 ID、要保書號碼或預編保單號碼查詢保單資料
+      summary: 依要保人 ID、被保險人 ID、要保書號碼或正式保單號碼查詢保單資料
       parameters:
         - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
@@ -128,7 +128,7 @@ paths:
         '200': {description: 查詢成功}
   /api/v1/new-contract/underwriting-inquiries/{query}:
     get:
-      summary: 依照會單號、要保書號碼或預編保單號碼查詢核保照會結果
+      summary: 依照會單號、要保書號碼或正式保單號碼查詢核保照會結果
       description: 回傳照會、要保書、必填保單號碼、遮蔽後要保人與被保險人資料、投保資料、核保結果與未通過檢核項目。
       parameters:
         - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}

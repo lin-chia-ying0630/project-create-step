@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="tw.com.insurance.api.inquiry.persistence.UnderwritingInquiryMapper">
   <select id="findInquiry" resultType="map">
-    SELECT i.inquiry_no,c.application_no,COALESCE(c.policy_no,a.reserved_policy_no) policy_no,
+	SELECT i.inquiry_no,c.application_no,COALESCE(c.policy_no,a.policy_no) policy_no,
                  i.underwriting_case_no,i.application_revision,
                  c.underwriting_status,c.underwriting_decision_code,c.decision_reason_code,
                  i.inquiry_status,i.issued_at,i.resolved_at,a.application_status,a.product_code,a.application_date,
@@ -16,7 +16,7 @@
             JOIN customer.customer_master ac ON ac.customer_id=ap.customer_id
             JOIN new_contract.application_party ip ON ip.application_no=a.application_no AND ip.party_role_code='INSURED'
             JOIN customer.customer_master ic ON ic.customer_id=ip.customer_id
-           WHERE i.inquiry_no=#{query} OR c.application_no=#{query} OR a.reserved_policy_no=#{query}
+		   WHERE i.inquiry_no=#{query} OR c.application_no=#{query} OR a.policy_no=#{query}
            ORDER BY i.issued_at DESC LIMIT 1
   </select>
   <select id="findItems" resultType="map">

@@ -100,7 +100,7 @@ public class NewContractServiceImpl implements NewContractService {
 			mapper.insertApplication(applicationId, request.applicationNo(), request.applicationDate(),
 					request.channelCode(), request.branchCode(), request.insuranceAgentCode(), base.productCode(),
 					base.productVersion(), request.currencyCode(), sumAssured, premium, request.paymentModeCode(),
-					request.requestedEffectiveDate());
+					request.requestedEffectiveDate(), NewContractApplicationStatus.APPLICATION_ACCEPTED.code());
 			mapper.insertParty(UUID.randomUUID().toString(), request.applicationNo(), "APPLICANT",
 					request.applicantCustomerId(), request.applicantRelationshipToInsuredCode(),
 					snapshot(request.applicantCustomerId(), applicantVersion));
@@ -146,7 +146,9 @@ public class NewContractServiceImpl implements NewContractService {
 		} catch (DuplicateKeyException exception) {
 			throw new BusinessException(NewContractErrorCode.DUPLICATE_APPLICATION);
 		}
-		return new CreateApplicationResult(applicationId, request.applicationNo(), "SUBMITTED", dueId, premium,
+		reservePolicyNumber(request.applicationNo());
+		return new CreateApplicationResult(applicationId, request.applicationNo(),
+				NewContractApplicationStatus.APPLICATION_ACCEPTED.code(), dueId, premium,
 				request.currencyCode());
 	}
 
@@ -155,21 +157,21 @@ public class NewContractServiceImpl implements NewContractService {
 		Map<String, Object> current = mapper.findApplicationsByQuery(applicationNo).stream().findFirst().orElse(null);
 		if (current == null)
 			throw new BusinessException(NewContractErrorCode.APPLICATION_NOT_FOUND);
-		String existing = text(current, "reserved_policy_no");
+		String existing = text(current, "policy_no");
 		if (existing != null && !existing.isBlank())
-			return new PolicyNumberReservationResult(applicationNo, existing, "RESERVED",
-					localDateTime(current.get("policy_no_reserved_at")));
+			return new PolicyNumberReservationResult(applicationNo, existing, "ASSIGNED",
+					localDateTime(current.get("policy_no_assigned_at")));
 		mapper.nextPolicyNumber();
 		String policyNo = "N" + LocalDate.now().format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE)
 				+ String.format("%010d", mapper.lastInsertId());
 		if (mapper.reservePolicyNumber(applicationNo, policyNo) != 1) {
 			current = mapper.findApplicationsByQuery(applicationNo).stream().findFirst().orElse(null);
-			return new PolicyNumberReservationResult(applicationNo, text(current, "reserved_policy_no"), "RESERVED",
-					localDateTime(current.get("policy_no_reserved_at")));
+			return new PolicyNumberReservationResult(applicationNo, text(current, "policy_no"), "ASSIGNED",
+					localDateTime(current.get("policy_no_assigned_at")));
 		}
 		current = mapper.findApplicationsByQuery(applicationNo).stream().findFirst().orElseThrow();
-		return new PolicyNumberReservationResult(applicationNo, policyNo, "RESERVED",
-				localDateTime(current.get("policy_no_reserved_at")));
+		return new PolicyNumberReservationResult(applicationNo, policyNo, "ASSIGNED",
+				localDateTime(current.get("policy_no_assigned_at")));
 	}
 
 	public List<ApplicationQueryResult> queryApplication(String query) {
@@ -181,7 +183,7 @@ public class NewContractServiceImpl implements NewContractService {
 
 	private ApplicationQueryResult toApplicationQueryResult(Map<String, Object> row) {
 		String status = text(row, "application_status");
-		String policyNo = text(row, "reserved_policy_no");
+		String policyNo = text(row, "policy_no");
 		var applicationStatus = NewContractApplicationStatus.fromCode(status);
 		String applicationNo = text(row, "application_no");
 		List<CoverageDetail> coverages = mapper.findCoverageDetails(applicationNo).stream()
@@ -230,7 +232,7 @@ public class NewContractServiceImpl implements NewContractService {
 						text(x, "due_status"), localDateTime(x.get("calculated_at"))))
 				.toList();
 		return new ApplicationQueryResult(text(row, "application_no"), policyNo,
-				policyNo == null ? "NOT_RESERVED" : "RESERVED", status, applicationStatus.description(),
+				policyNo == null ? "NOT_ASSIGNED" : "ASSIGNED", status, applicationStatus.description(),
 				localDate(row.get("application_date")), applicationStatus.stageCode(),
 				applicationStatus.stageDescription(), applicationStatus.contractStatusCode(),
 				applicationStatus.contractStatusDescription(), localDate(row.get("requested_effective_date")),
@@ -360,7 +362,8 @@ public class NewContractServiceImpl implements NewContractService {
 		}
 		if (status.equals("MATCHED"))
 			mapper.updateDueStatus(due.premiumDueId(), "MATCHED");
-		mapper.updateApplicationMatch(request.applicationNo(), status);
+		mapper.updateApplicationMatch(request.applicationNo(), status,
+				NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.code());
 		return new PremiumMatchResult(matchId, status, matchStatusDescription(status), due.calculatedPremiumAmount(),
 				request.receivedAmount(), difference, status.equals("MATCHED"));
 	}
@@ -391,15 +394,17 @@ public class NewContractServiceImpl implements NewContractService {
 		String applicationNo = mapper.resolveApplicationNo(request.applicationNo());
 		if (applicationNo == null)
 			throw new BusinessException(NewContractErrorCode.APPLICATION_NOT_FOUND);
-		if (mapper.findReservedPolicyNo(applicationNo) == null)
-			reservePolicyNumber(applicationNo);
+		if (!NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.code()
+				.equals(text(mapper.findApplicationsByQuery(applicationNo).stream().findFirst().orElseThrow(),
+						"application_status")))
+			throw new BusinessException(NewContractErrorCode.APPLICATION_NOT_READY_FOR_BATCH);
 		String id = UUID.randomUUID().toString();
 		try {
 			mapper.insertBatchRequest(id, applicationNo, request.executionDate());
 		} catch (DuplicateKeyException exception) {
 			throw new BusinessException(NewContractErrorCode.DUPLICATE_BATCH_REQUEST);
 		}
-		return new UnderwritingBatchRequestResult(id, applicationNo, "PENDING",
+		return new UnderwritingBatchRequestResult(id, applicationNo, "W",
 				LocalDateTime.of(request.executionDate(), LocalTime.of(21, 0)));
 	}
 
@@ -448,14 +453,19 @@ public class NewContractServiceImpl implements NewContractService {
 		String before = "{\"policyNo\":\"" + preview.policyNo() + "\",\"policyStatus\":\"" + preview.policyStatus()
 				+ "\",\"applicationStatus\":\"" + preview.applicationStatus() + "\",\"underwritingStatus\":\""
 				+ preview.underwritingStatus() + "\"}";
-		String after = "{\"policyDeleted\":true,\"applicationStatus\":\"SUBMITTED\",\"underwritingStatus\":\"PENDING\"}";
+		String pendingUnderwritingCode = NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.code();
+		String after = "{\"policyDeleted\":true,\"applicationStatus\":\"" + pendingUnderwritingCode
+				+ "\",\"underwritingStatus\":\"" + pendingUnderwritingCode + "\"}";
 		if (mapper.deletePolicy(request.policyNo(), request.expectedPolicyVersion()) != 1
-				|| mapper.resetApplication(preview.applicationNo(), request.expectedApplicationVersion()) != 1
-				|| mapper.resetUnderwriting(preview.underwritingCaseNo(), request.expectedUnderwritingVersion()) != 1)
+				|| mapper.resetApplication(preview.applicationNo(), request.expectedApplicationVersion(),
+						pendingUnderwritingCode) != 1
+				|| mapper.resetUnderwriting(preview.underwritingCaseNo(), request.expectedUnderwritingVersion(),
+						pendingUnderwritingCode) != 1)
 			throw new BusinessException(NewContractErrorCode.CONCURRENT_MODIFICATION);
 		mapper.insertReversalAudit(auditId, request.policyNo(), preview.applicationNo(), preview.underwritingCaseNo(),
 				request.reasonCode(), request.reasonDescription(), requestId, before, after, hash(before), hash(after));
-		return new PolicyReversalResult(auditId, request.policyNo(), preview.applicationNo(), "SUBMITTED", "PENDING");
+		return new PolicyReversalResult(auditId, request.policyNo(), preview.applicationNo(), pendingUnderwritingCode,
+				pendingUnderwritingCode);
 	}
 
 	private static String text(Map<String, Object> row, String key) {

@@ -62,7 +62,7 @@ async function downloadPdf() {
     <article class="panel">
       <div class="panel-title">
         <h3>照會案件查詢</h3>
-        <small>照會單號、要保書號碼或預編保單號碼擇一輸入</small>
+		<small>照會單號、要保書號碼或正式保單號碼擇一輸入</small>
       </div>
       <div class="search-row">
         <label

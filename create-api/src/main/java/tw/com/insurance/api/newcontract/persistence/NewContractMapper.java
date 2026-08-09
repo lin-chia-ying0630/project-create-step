@@ -16,7 +16,7 @@ public interface NewContractMapper {
 			@Param("productCode") String productCode, @Param("productVersion") String productVersion,
 			@Param("currencyCode") String currencyCode, @Param("sumAssured") BigDecimal sumAssured,
 			@Param("premium") BigDecimal premium, @Param("paymentMode") String paymentMode,
-			@Param("effectiveDate") LocalDate effectiveDate);
+			@Param("effectiveDate") LocalDate effectiveDate, @Param("applicationStatus") String applicationStatus);
 	Long findCustomerVersion(String customerId);
 	int nextPolicyNumber();
 	long lastInsertId();
@@ -71,7 +71,8 @@ public interface NewContractMapper {
 
 	int updateRemittanceStatus(@Param("id") String id, @Param("status") String status);
 	int updateDueStatus(@Param("id") String id, @Param("status") String status);
-	int updateApplicationMatch(@Param("applicationNo") String applicationNo, @Param("status") String status);
+	int updateApplicationMatch(@Param("applicationNo") String applicationNo, @Param("status") String status,
+			@Param("readyStatus") String readyStatus);
 
 	int countApplication(String applicationNo);
 	String resolveApplicationNo(String number);
@@ -83,8 +84,10 @@ public interface NewContractMapper {
 	Map<String, Object> findPolicyForReversal(String policyNo);
 	int countPolicy(String policyNo);
 	int deletePolicy(@Param("policyNo") String policyNo, @Param("version") long version);
-	int resetApplication(@Param("applicationNo") String applicationNo, @Param("version") long version);
-	int resetUnderwriting(@Param("caseNo") String caseNo, @Param("version") long version);
+	int resetApplication(@Param("applicationNo") String applicationNo, @Param("version") long version,
+			@Param("applicationStatus") String applicationStatus);
+	int resetUnderwriting(@Param("caseNo") String caseNo, @Param("version") long version,
+			@Param("underwritingStatus") String underwritingStatus);
 	int insertReversalAudit(@Param("auditId") String auditId, @Param("policyNo") String policyNo,
 			@Param("applicationNo") String applicationNo, @Param("caseNo") String caseNo,
 			@Param("reasonCode") String reasonCode, @Param("reasonDescription") String reasonDescription,

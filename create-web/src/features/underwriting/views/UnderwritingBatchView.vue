@@ -51,7 +51,7 @@ onMounted(refresh)
     </p>
     <section class="card form">
       <label
-        >要保書號碼／預編保單號碼（二擇一）<input
+		>要保書號碼／正式保單號碼（二擇一）<input
           v-model="applicationNo"
           maxlength="32"
           autocomplete="off"

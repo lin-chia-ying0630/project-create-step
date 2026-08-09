@@ -24,7 +24,7 @@ class DefaultUnderwritingBatchServiceTests {
 		verify(mapper).claimPendingRequests(anyString(), org.mockito.ArgumentMatchers.eq(executionDate));
 		verify(mapper).completeExecution(anyString(), org.mockito.ArgumentMatchers.eq(0),
 				org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq(0),
-				org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq("COMPLETED"));
+				org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq("S"));
 	}
 
 	@Test
@@ -42,18 +42,20 @@ class DefaultUnderwritingBatchServiceTests {
 		candidate.put("premium_amount", new BigDecimal("12000.0000"));
 		candidate.put("application_date", LocalDate.of(2026, 8, 9));
 		candidate.put("requested_effective_date", LocalDate.of(2026, 8, 10));
-		candidate.put("application_status", "SUBMITTED");
+		candidate.put("application_status", "PW");
 		candidate.put("initial_premium_match_status", "MATCHED");
-		candidate.put("reserved_policy_no", "TEST-POLICY-001");
+		candidate.put("policy_no", "TEST-POLICY-001");
 		when(mapper.findClaimedCandidates(anyString())).thenReturn(List.of(candidate));
 
 		new DefaultUnderwritingBatchService(mapper).execute(LocalDate.of(2026, 8, 10), "SCHEDULED");
 
-		verify(mapper).completeRequest("TEST-BATCH-REQUEST-001", "COMPLETED", "APPROVED");
+		verify(mapper).insertPolicyContract(anyString(), org.mockito.ArgumentMatchers.eq("TEST-APPLICATION-001"),
+				anyString(), org.mockito.ArgumentMatchers.eq("TEST-POLICY-001"));
+		verify(mapper).completeRequest("TEST-BATCH-REQUEST-001", "S", "SA");
 		verify(mapper).updateApplicationValidation(org.mockito.ArgumentMatchers.eq("TEST-APPLICATION-001"),
-				org.mockito.ArgumentMatchers.eq("PASS"), anyString());
+				org.mockito.ArgumentMatchers.eq("PASS"), anyString(), org.mockito.ArgumentMatchers.eq("PS"));
 		verify(mapper).completeExecution(anyString(), org.mockito.ArgumentMatchers.eq(1),
 				org.mockito.ArgumentMatchers.eq(1), org.mockito.ArgumentMatchers.eq(0),
-				org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq("COMPLETED"));
+				org.mockito.ArgumentMatchers.eq(0), org.mockito.ArgumentMatchers.eq("S"));
 	}
 }

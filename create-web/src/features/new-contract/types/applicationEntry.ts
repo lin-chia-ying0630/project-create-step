@@ -57,7 +57,7 @@ export interface CreateApplicationResult {
 export interface PolicyNumberReservationResult {
   applicationNo: string
   policyNo: string
-  policyNumberStatus: 'RESERVED'
+	policyNumberStatus: 'ASSIGNED'
   reservedAt: string
 }
 export interface CoverageDetail {
@@ -132,7 +132,7 @@ export interface PremiumDueDetail {
 export interface ApplicationQueryResult {
   applicationNo: string
   policyNo: string | null
-  policyNumberStatus: 'NOT_RESERVED' | 'RESERVED'
+	policyNumberStatus: 'NOT_ASSIGNED' | 'ASSIGNED'
   applicationStatus: string
   applicationStatusDescription: string
   applicationDate: string

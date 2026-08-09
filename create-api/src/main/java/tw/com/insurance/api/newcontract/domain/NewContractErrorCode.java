@@ -16,6 +16,7 @@ public enum NewContractErrorCode implements ErrorCode {
 	INVALID_PAYMENT_CHANNEL("PAY-4001", "繳費管道代碼無效"),
 	INVALID_PAYER_ROLE("PAY-4002", "繳款人身分代碼無效"),
 	INVALID_BATCH_EXECUTION_DATE("BAT-4001", "批次核保執行日不得早於臺北當日"),
+	APPLICATION_NOT_READY_FOR_BATCH("BAT-4221", "要保案件尚未進入 PW 待發單狀態，不可排入批次"),
 	DUPLICATE_APPLICATION("NCT-4091", "要保書號碼已存在"),
 	PAYMENT_ALREADY_MATCHED("PAY-4091", "繳費憑證、收款交易序號或應收紀錄已完成銷帳"),
 	DUPLICATE_BATCH_REQUEST("BAT-4091", "此案件已排入指定營業日批次"),

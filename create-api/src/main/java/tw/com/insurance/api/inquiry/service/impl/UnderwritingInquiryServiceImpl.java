@@ -60,17 +60,20 @@ public class UnderwritingInquiryServiceImpl implements UnderwritingInquiryServic
 	}
 	private static String uwDescription(String code) {
 		return switch (code) {
-			case "INQUIRY" -> "照會中";
-			case "APPROVED" -> "核保通過";
+			case "UW" -> "等待照會回覆";
+			case "US" -> "照會完成";
+			case "NS" -> "核保完成";
 			case "DECLINED" -> "拒保";
 			default -> code;
 		};
 	}
 	private static String inquiryDescription(String code) {
 		return switch (code) {
-			case "OPEN" -> "待回覆";
-			case "RESOLVED" -> "已回覆";
-			case "CLOSED" -> "已結案";
+			case "UP" -> "照會受理";
+			case "UW" -> "等待照會回覆";
+			case "US" -> "照會完成";
+			case "UN" -> "照會取消";
+			case "UD" -> "照會撤回";
 			default -> code;
 		};
 	}

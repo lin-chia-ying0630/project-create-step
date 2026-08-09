@@ -46,7 +46,7 @@ const display = (value: unknown) =>
       <div>
         <p class="eyebrow">POLICY LOOKUP</p>
         <h2>保單資料查詢</h2>
-        <p>可使用要保人 ID、被保險人 ID、要保書號碼或預編保單號碼查詢。</p>
+		<p>可使用要保人 ID、被保險人 ID、要保書號碼或正式保單號碼查詢。</p>
       </div>
     </header>
     <article class="panel">
@@ -76,7 +76,7 @@ const display = (value: unknown) =>
         <div>
           <p class="eyebrow">{{ detail.newContractStageDescription }}</p>
           <h3>{{ detail.applicationStatusDescription }}</h3>
-          <p>要保書 {{ detail.applicationNo }}／預編保單 {{ detail.policyNo || '尚未編發' }}</p>
+		  <p>要保書 {{ detail.applicationNo }}／正式保單號碼 {{ detail.policyNo || '尚未配置' }}</p>
         </div>
         <span class="inquiry-status">{{ detail.contractStatusDescription }}</span>
       </div>
@@ -106,7 +106,7 @@ const display = (value: unknown) =>
             <tr>
               <th scope="row">要保書號碼</th>
               <td>{{ detail.applicationNo }}</td>
-              <th scope="row">預編保單號碼</th>
+			  <th scope="row">正式保單號碼</th>
               <td>{{ display(detail.policyNo) }}</td>
             </tr>
             <tr>

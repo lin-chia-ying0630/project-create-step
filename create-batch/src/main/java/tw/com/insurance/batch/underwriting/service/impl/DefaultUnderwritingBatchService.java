@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tw.com.insurance.batch.underwriting.domain.ApplicationCandidate;
+import tw.com.insurance.batch.underwriting.domain.UnderwritingStage;
 import tw.com.insurance.batch.underwriting.domain.ValidationIssue;
 import tw.com.insurance.batch.underwriting.persistence.UnderwritingBatchMapper;
 import tw.com.insurance.batch.underwriting.service.UnderwritingBatchService;
@@ -49,7 +50,8 @@ public class DefaultUnderwritingBatchService implements UnderwritingBatchService
 			else
 				inquiryCount++;
 		}
-		mapper.completeExecution(executionId, candidates.size(), approvedCount, inquiryCount, 0, "COMPLETED");
+		mapper.completeExecution(executionId, candidates.size(), approvedCount, inquiryCount, 0,
+				inquiryCount == 0 ? "S" : "R");
 		LOG.info("核保批次完成 executionId={}, executionDate={}, totalCount={}", executionId, businessDate,
 				candidates.size());
 	}
@@ -58,23 +60,31 @@ public class DefaultUnderwritingBatchService implements UnderwritingBatchService
 	private boolean processCandidate(Map<String, Object> row, String executionId) {
 		ApplicationCandidate candidate = toCandidate(row);
 		List<ValidationIssue> issues = validator.validate(candidate);
-		if (!"SUBMITTED".equals(text(row, "application_status")))
-			issues = append(issues, new ValidationIssue("APPLICATION_NOT_SUBMITTED", "要保案件不是已送件狀態"));
+		if (!"PW".equals(text(row, "application_status")))
+			issues = append(issues, new ValidationIssue("APPLICATION_NOT_READY_FOR_ISSUANCE", "要保案件不是待發單狀態"));
 		if (!"MATCHED".equals(text(row, "initial_premium_match_status")))
 			issues = append(issues, new ValidationIssue("INITIAL_PREMIUM_NOT_MATCHED", "首期保險費尚未完成銷帳"));
-		if (text(row, "reserved_policy_no") == null)
-			issues = append(issues, new ValidationIssue("POLICY_NUMBER_NOT_RESERVED", "尚未編發預編保單號碼"));
+		if (text(row, "policy_no") == null)
+			issues = append(issues, new ValidationIssue("POLICY_NUMBER_MISSING", "案件未取得固定保單號碼"));
 
 		boolean approved = issues.isEmpty();
 		String caseNo = text(row, "underwriting_case_no");
 		if (caseNo == null)
 			caseNo = "UW-" + UUID.randomUUID().toString().substring(0, 20).toUpperCase();
-		String requestStatus = approved ? "COMPLETED" : "INQUIRY";
-		String resultCode = approved ? "APPROVED" : issues.get(0).ruleCode();
-		mapper.upsertUnderwritingCase(caseNo, candidate.applicationNo(), approved ? "APPROVED" : "INQUIRY",
-				approved ? "STANDARD" : null, approved ? null : resultCode,
-				approved ? text(row, "reserved_policy_no") : null);
-		mapper.updateApplicationValidation(candidate.applicationNo(), approved ? "PASS" : "FAIL", executionId);
+		String requestStatus = approved ? "S" : "R";
+		String resultCode = approved ? "SA" : issues.get(0).ruleCode();
+		String policyNo = text(row, "policy_no");
+		mapper.upsertUnderwritingCase(caseNo, candidate.applicationNo(),
+				approved ? UnderwritingStage.COMPLETED.code() : UnderwritingStage.REFERRED.code(),
+				approved ? "SA" : null, approved ? null : resultCode, approved ? policyNo : null);
+		if (approved) {
+			mapper.insertPolicyContract(UUID.randomUUID().toString(), candidate.applicationNo(), caseNo, policyNo);
+			mapper.insertPolicyParties(policyNo, candidate.applicationNo());
+			mapper.insertPolicyCoverages(policyNo, candidate.applicationNo());
+			mapper.insertPolicyBeneficiaries(policyNo, candidate.applicationNo());
+		}
+		mapper.updateApplicationValidation(candidate.applicationNo(), approved ? "PASS" : "FAIL", executionId,
+				approved ? "PS" : "PR");
 		mapper.completeRequest(text(row, "batch_request_id"), requestStatus, resultCode);
 		mapper.insertAudit(UUID.randomUUID().toString(), executionId, candidate.applicationNo(), caseNo, resultCode);
 		return approved;

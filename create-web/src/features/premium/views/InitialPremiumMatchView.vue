@@ -58,7 +58,7 @@ const differenceLabel = computed(() =>
         ? '短收'
         : '溢收',
 )
-/** 依要保書或預編保單號碼讀取仍為待收狀態的首期保費應收。 */
+/** 依要保書或正式保單號碼讀取仍為待收狀態的首期保費應收。 */
 async function search() {
   loading.value = true
   error.value = null
@@ -109,14 +109,14 @@ async function createRemittanceSlip() {
       <div>
         <p class="eyebrow">INITIAL PREMIUM COLLECTION</p>
         <h2>首期保險費收款與銷帳</h2>
-        <p>依要保書號碼或預編保單號碼查詢應收首期保險費，登錄實際收款資料後執行銷帳。</p>
+		<p>依要保書號碼或正式保單號碼查詢應收首期保險費，登錄實際收款資料後執行銷帳。</p>
       </div>
       <span class="status-chip">新契約收費</span>
     </header>
     <article class="panel">
       <div class="panel-title">
         <h3><b>1</b>查詢待收案件</h3>
-        <small>可輸入要保書號碼或預編保單號碼</small>
+		<small>可輸入要保書號碼或正式保單號碼</small>
       </div>
       <div class="search-row">
         <label
