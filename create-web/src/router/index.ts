@@ -12,7 +12,7 @@ export const routeNames = {
 } as const
 
 const routes: RouteRecordRaw[] = [
-  { path: '/', redirect: { name: routeNames.customer } },
+  { path: '/', redirect: { name: routeNames.review } },
   {
     path: '/reviews',
     name: routeNames.review,
@@ -61,7 +61,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../features/policy-reversal/views/PolicyIssuanceReversalView.vue'),
     meta: { title: '承保撤回' },
   },
-  { path: '/:pathMatch(.*)*', redirect: { name: routeNames.customer } },
+  { path: '/:pathMatch(.*)*', redirect: { name: routeNames.review } },
 ]
 
 export const navigationItems = [
