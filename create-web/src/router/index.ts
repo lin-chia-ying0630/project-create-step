@@ -73,7 +73,7 @@ const routes: RouteRecordRaw[] = [
 
 export const navigationItems = [
   { name: routeNames.review, label: '覆核工作台', icon: '✓' },
-  { name: routeNames.codeDefinition, label: 'Code Table 對照', icon: '≡' },
+  { name: routeNames.codeDefinition, label: '代碼對照查詢', icon: '≡' },
   { name: routeNames.customer, label: '客戶資料建立', icon: '♙' },
   { name: routeNames.applicationEntry, label: '保單登打', icon: '▤' },
   { name: routeNames.policyQuery, label: '保單資料查詢', icon: '⌕' },
