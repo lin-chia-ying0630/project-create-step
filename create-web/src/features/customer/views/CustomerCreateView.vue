@@ -3,7 +3,10 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { customerApi } from '../api/customerApi'
 import { customerCodeDefinitionApi } from '../api/customerCodeDefinitionApi'
 import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
+import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
 import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
+import type { CustomerPage, CustomerSummary } from '../types/customer'
 const form = reactive({
   customerTypeCode: 'PERSON' as 'PERSON' | 'ORGANIZATION',
   identityTypeCode: 'NATIONAL_ID',
@@ -36,6 +39,17 @@ const consent = ref(false),
   postalCodeOptions = ref<CodeDefinitionOption[]>([]),
   message = ref<string | null>(null),
   error = ref<string | null>(null)
+const customerPage = ref<CustomerPage>({
+  items: [],
+  totalItems: 0,
+  page: 1,
+  pageSize: 10,
+  totalPages: 0,
+})
+const sortField = ref('customerId')
+const sortDirection = ref<'asc' | 'desc'>('asc')
+const selectedCustomer = ref<CustomerSummary | null>(null)
+const customerDialog = ref<HTMLDialogElement | null>(null)
 
 const selectedPostalCode = computed(() =>
   postalCodeOptions.value.find((option) => option.code === form.postalCode),
@@ -110,13 +124,53 @@ async function submit() {
     message.value = `客戶建立已送覆核，覆核編號：${result.reviewId}`
     form.identityNo = ''
     form.customerName = ''
+    await loadCustomers(1)
   } catch (e) {
     error.value = e instanceof Error ? e.message : '客戶建立失敗'
   } finally {
     loading.value = false
   }
 }
-onMounted(loadKycCodeDefinitions)
+
+/** 以共用後端分頁規格取得客戶摘要，不載入證件、聯絡方式或地址。 */
+async function loadCustomers(page = customerPage.value.page) {
+  try {
+    customerPage.value = await customerApi.findPage(
+      page,
+      customerPage.value.pageSize,
+      `${sortField.value},${sortDirection.value}`,
+    )
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '客戶清單載入失敗'
+  }
+}
+
+/** 切換前三個資料欄位排序後回到第一頁。 */
+function changeSort(field: string, direction: 'asc' | 'desc') {
+  sortField.value = field
+  sortDirection.value = direction
+  void loadCustomers(1)
+}
+
+/** 變更共用每頁筆數後回到第一頁。 */
+function changePageSize(pageSize: number) {
+  customerPage.value.pageSize = pageSize
+  void loadCustomers(1)
+}
+
+/** 開啟客戶摘要明細；清單不揭露證件、聯絡方式或地址等敏感資料。 */
+function openCustomer(item: CustomerSummary) {
+  selectedCustomer.value = item
+  customerDialog.value?.showModal()
+}
+
+/** 關閉客戶摘要明細視窗。 */
+function closeCustomer() {
+  customerDialog.value?.close()
+  selectedCustomer.value = null
+}
+
+onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
 </script>
 <template>
   <section class="content-page">
@@ -151,6 +205,137 @@ onMounted(loadKycCodeDefinitions)
         <b>公司／行號客戶</b><small>公司、商號或非營利組織</small>
       </button>
     </nav>
+    <article class="panel">
+      <div class="panel-title responsive-split-row">
+        <h3>客戶資料清單</h3>
+        <span>共 {{ customerPage.totalItems }} 筆</span>
+      </div>
+      <div class="data-table-scope">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>操作</th>
+              <SortableTableHeader
+                field="customerId"
+                label="客戶 ID"
+                :active-field="sortField"
+                :direction="sortDirection"
+                @sort="changeSort"
+              />
+              <SortableTableHeader
+                field="customerTypeCode"
+                label="客戶類型"
+                :active-field="sortField"
+                :direction="sortDirection"
+                @sort="changeSort"
+              />
+              <SortableTableHeader
+                field="customerName"
+                label="姓名／名稱"
+                :active-field="sortField"
+                :direction="sortDirection"
+                @sort="changeSort"
+              />
+              <th>國籍</th>
+              <th>狀態</th>
+              <th>新增人員</th>
+              <th>建立時間</th>
+              <th>修改人員</th>
+              <th>修改時間</th>
+              <th>覆核人員</th>
+              <th>覆核時間</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in customerPage.items" :key="item.customerId">
+              <td>
+                <button type="button" class="secondary-button" @click="openCustomer(item)">
+                  查看
+                </button>
+              </td>
+              <td>{{ item.customerId }}</td>
+              <td>{{ item.customerTypeCode }}</td>
+              <td>{{ item.customerName }}</td>
+              <td>{{ item.nationalityCode }}</td>
+              <td>{{ item.recordStatus }}</td>
+              <td>{{ item.createdBy }}</td>
+              <td>{{ item.createdAt }}</td>
+              <td>{{ item.updatedBy }}</td>
+              <td>{{ item.updatedAt }}</td>
+              <td>{{ item.reviewerId || '尚未覆核' }}</td>
+              <td>{{ item.reviewedAt || '尚未覆核' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <PageNavigator
+        v-if="customerPage.totalPages > 0"
+        :model-value="customerPage.page - 1"
+        :total="customerPage.totalPages"
+        :page-size="customerPage.pageSize"
+        prefix="客戶資料清單"
+        @update:model-value="loadCustomers($event + 1)"
+        @update:page-size="changePageSize"
+      />
+    </article>
+    <dialog ref="customerDialog" class="review-dialog" @cancel="closeCustomer">
+      <article v-if="selectedCustomer" class="dialog-content">
+        <header class="dialog-header">
+          <div>
+            <p class="eyebrow">CUSTOMER SUMMARY</p>
+            <h3>客戶資料 {{ selectedCustomer.customerId }}</h3>
+          </div>
+          <button
+            type="button"
+            class="dialog-close"
+            aria-label="關閉客戶明細"
+            @click="closeCustomer"
+          >
+            ×
+          </button>
+        </header>
+        <div class="data-table-scope">
+          <table class="data-table summary-table">
+            <tbody>
+              <tr>
+                <th scope="row">客戶 ID</th>
+                <td>{{ selectedCustomer.customerId }}</td>
+                <th scope="row">客戶類型</th>
+                <td>{{ selectedCustomer.customerTypeCode }}</td>
+              </tr>
+              <tr>
+                <th scope="row">姓名／名稱</th>
+                <td>{{ selectedCustomer.customerName }}</td>
+                <th scope="row">國籍</th>
+                <td>{{ selectedCustomer.nationalityCode }}</td>
+              </tr>
+              <tr>
+                <th scope="row">狀態</th>
+                <td>{{ selectedCustomer.recordStatus }}</td>
+                <th scope="row">新增人員</th>
+                <td>{{ selectedCustomer.createdBy }}</td>
+              </tr>
+              <tr>
+                <th scope="row">建立時間</th>
+                <td>{{ selectedCustomer.createdAt }}</td>
+                <th scope="row">修改人員</th>
+                <td>{{ selectedCustomer.updatedBy }}</td>
+              </tr>
+              <tr>
+                <th scope="row">修改時間</th>
+                <td>{{ selectedCustomer.updatedAt }}</td>
+                <th scope="row">覆核人員</th>
+                <td>{{ selectedCustomer.reviewerId || '尚未覆核' }}</td>
+              </tr>
+              <tr>
+                <th scope="row">覆核時間</th>
+                <td colspan="3">{{ selectedCustomer.reviewedAt || '尚未覆核' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </dialog>
     <form class="panel" @submit.prevent="submit">
       <div class="panel-title">
         <h3>

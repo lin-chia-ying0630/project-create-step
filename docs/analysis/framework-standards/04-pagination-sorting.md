@@ -118,6 +118,8 @@ public class PolicySortFields {
 
 ## 5. 前端整合規則
 
+- 清單固定一筆資料一列，欄位內容預設不換行；欄位總寬超過 viewport 時，由表格容器提供水平捲軸，禁止造成整頁水平捲動或把同筆資料折成多列。
+
 - 分頁組件統一使用專案共用的 `<PaginationBar>` 元件，不各自實作。
 - URL query string 是分頁與排序的唯一來源（`?page=2&pageSize=20&sort=effectiveDate,desc`）；store 可衍生讀取但不得維護第二份可變狀態。
 - 分頁切換時滾動至頁面頂部。

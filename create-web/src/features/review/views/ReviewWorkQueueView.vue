@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
 import { reviewApi } from '../api/reviewApi'
-import type { ReviewDetail, ReviewSummary } from '../types/review'
+import type { ReviewDetail, ReviewPageResult, ReviewSummary } from '../types/review'
 
 const operationFilters = [
   { value: '', label: '全部覆核' },
@@ -13,27 +15,45 @@ const operationFilters = [
   { value: 'INITIAL_PREMIUM_MATCH', label: '首期保費資料' },
 ] as const
 
-const items = ref<ReviewSummary[]>([])
+const reviewPage = ref<ReviewPageResult>({
+  items: [],
+  totalItems: 0,
+  page: 1,
+  pageSize: 10,
+  totalPages: 0,
+})
 const selected = ref<ReviewDetail | null>(null)
 const selectedOperation = ref('')
+const queryInput = ref('')
+const appliedQuery = ref('')
 const comment = ref('')
 const loading = ref(false)
 const message = ref<string | null>(null)
 const error = ref<string | null>(null)
+const sortField = ref('reviewId')
+const sortDirection = ref<'asc' | 'desc'>('asc')
 
 const visibleItems = computed(() =>
   selectedOperation.value
-    ? items.value.filter((item) => item.operationType === selectedOperation.value)
-    : items.value,
+    ? reviewPage.value.items.filter((item) => item.operationType === selectedOperation.value)
+    : reviewPage.value.items,
 )
 
 /** 載入待覆核案件並重設已失效的明細選取。 */
-async function refresh() {
+async function refresh(page = reviewPage.value.page) {
   loading.value = true
   error.value = null
   try {
-    items.value = (await reviewApi.findPending()).items
-    if (selected.value && !items.value.some((item) => item.reviewId === selected.value?.reviewId)) {
+    reviewPage.value = await reviewApi.findPending(
+      page,
+      reviewPage.value.pageSize,
+      `${sortField.value},${sortDirection.value}`,
+      appliedQuery.value,
+    )
+    if (
+      selected.value &&
+      !reviewPage.value.items.some((item) => item.reviewId === selected.value?.reviewId)
+    ) {
       selected.value = null
     }
   } catch (e) {
@@ -41,6 +61,32 @@ async function refresh() {
   } finally {
     loading.value = false
   }
+}
+
+/** 套用完整識別值並由第一頁查詢相關待覆核案件。 */
+function search() {
+  appliedQuery.value = queryInput.value.trim()
+  void refresh(1)
+}
+
+/** 清除查詢條件並回復全部待覆核案件。 */
+function clearSearch() {
+  queryInput.value = ''
+  appliedQuery.value = ''
+  void refresh(1)
+}
+
+/** 變更共用每頁筆數後回到第一頁，避免頁碼落在新範圍之外。 */
+function changePageSize(pageSize: number) {
+  reviewPage.value.pageSize = pageSize
+  void refresh(1)
+}
+
+/** 共用排序表頭切換前三欄後，重新向後端取得排序完成的待覆核清單。 */
+function changeSort(field: string, direction: 'asc' | 'desc') {
+  sortField.value = field
+  sortDirection.value = direction
+  void refresh(1)
 }
 
 /** 取得待覆核 payload，畫面以一格一欄呈現。 */
@@ -109,7 +155,7 @@ onMounted(refresh)
         <h2>新契約覆核工作台</h2>
         <p>所有資料異動須由不同人員核准後才寫入正式資料。</p>
       </div>
-      <span class="status-chip">待覆核 {{ items.length }} 件</span>
+      <span class="status-chip">待覆核 {{ reviewPage.totalItems }} 件</span>
     </header>
 
     <nav class="review-tabs" aria-label="覆核功能分類">
@@ -126,31 +172,70 @@ onMounted(refresh)
 
     <article class="panel">
       <div class="panel-title responsive-split-row">
+        <div>
+          <h3>查詢條件</h3>
+          <small>客戶 ID 會列出其相關待覆核案件</small>
+        </div>
+      </div>
+      <form class="search-row" @submit.prevent="search">
+        <label
+          >客戶 ID／要保書號碼／正式保單號碼
+          <input v-model.trim="queryInput" maxlength="200" placeholder="輸入完整查詢值" />
+        </label>
+        <div class="search-actions">
+          <button v-if="appliedQuery" type="button" class="secondary-button" @click="clearSearch">
+            清除
+          </button>
+          <button type="submit" class="primary-button" :disabled="loading">查詢審核案件</button>
+        </div>
+      </form>
+    </article>
+
+    <article class="panel section-gap">
+      <div class="panel-title responsive-split-row">
         <h3>待覆核案件</h3>
-        <button class="secondary-button" :disabled="loading" @click="refresh">重新整理</button>
+        <button class="secondary-button" :disabled="loading" @click="refresh()">重新整理</button>
       </div>
       <div class="data-table-scope">
         <table class="data-table">
           <thead>
             <tr>
-              <th>覆核編號</th>
-              <th>功能</th>
-              <th>業務鍵</th>
+              <th>操作</th>
+              <SortableTableHeader
+                field="reviewId"
+                label="覆核編號"
+                :active-field="sortField"
+                :direction="sortDirection"
+                @sort="changeSort"
+              />
+              <SortableTableHeader
+                field="operationType"
+                label="功能"
+                :active-field="sortField"
+                :direction="sortDirection"
+                @sort="changeSort"
+              />
+              <SortableTableHeader
+                field="businessKey"
+                label="業務鍵"
+                :active-field="sortField"
+                :direction="sortDirection"
+                @sort="changeSort"
+              />
               <th>送審人</th>
               <th>送審時間</th>
-              <th>操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in visibleItems" :key="item.reviewId">
+              <td>
+                <button class="secondary-button" @click="openDetail(item.reviewId)">覆核</button>
+              </td>
               <td>{{ item.reviewId }}</td>
               <td>{{ item.operationDescription }}</td>
               <td>{{ item.businessKey }}</td>
               <td>{{ item.makerId }}</td>
               <td>{{ item.submittedAt }}</td>
-              <td>
-                <button class="secondary-button" @click="openDetail(item.reviewId)">覆核</button>
-              </td>
             </tr>
             <tr v-if="!visibleItems.length">
               <td colspan="6">目前沒有待覆核案件。</td>
@@ -158,6 +243,15 @@ onMounted(refresh)
           </tbody>
         </table>
       </div>
+      <PageNavigator
+        v-if="reviewPage.totalPages > 0"
+        :model-value="reviewPage.page - 1"
+        :total="reviewPage.totalPages"
+        :page-size="reviewPage.pageSize"
+        prefix="待覆核案件"
+        @update:model-value="refresh($event + 1)"
+        @update:page-size="changePageSize"
+      />
     </article>
 
     <article v-if="selected" class="panel section-gap">
@@ -191,65 +285,3 @@ onMounted(refresh)
     <p v-if="error" class="status-message error">{{ error }}</p>
   </section>
 </template>
-
-<style scoped lang="scss">
-.review-page {
-  max-width: 100%;
-}
-.review-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
-  overflow-x: auto;
-}
-.review-tabs button {
-  flex: 0 0 auto;
-  min-height: 44px;
-  border: 1px solid #cbd5e1;
-  border-radius: 999px;
-  background: #fff;
-  padding: 8px 14px;
-}
-.review-tabs button.active {
-  border-color: #0f766e;
-  background: #e6f4f2;
-  color: #0f766e;
-  font-weight: 700;
-}
-.review-field-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: #dbe4ea;
-}
-.review-field-grid div {
-  min-width: 0;
-  background: #f8fafc;
-  padding: 12px;
-}
-.review-field-grid dt {
-  color: #647281;
-  font-size: 0.82rem;
-}
-.review-field-grid dd {
-  margin: 6px 0 0;
-}
-.review-field-grid pre {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-family: inherit;
-}
-.review-actions {
-  gap: 10px;
-}
-.reject-button {
-  border-color: #991b1b;
-  color: #991b1b;
-}
-@media (max-width: 760px) {
-  .review-field-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

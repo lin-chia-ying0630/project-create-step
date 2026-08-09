@@ -18,6 +18,7 @@ class UnderwritingDecisionOutcomeTests {
 	@Test
 	void nonAcceptedOutcomesStopBeforeIssuance() {
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("DC").contractStatusCode()).isEqualTo("13");
+		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("DC").stageCode()).isEqualTo("RS");
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("PO").contractStatusCode()).isEqualTo("14");
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("CN").contractStatusCode()).isEqualTo("15");
 	}

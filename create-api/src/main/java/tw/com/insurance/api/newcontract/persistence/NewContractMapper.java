@@ -22,6 +22,10 @@ public interface NewContractMapper {
 	long lastInsertId();
 	int reservePolicyNumber(@Param("applicationNo") String applicationNo, @Param("policyNo") String policyNo);
 	List<Map<String, Object>> findApplicationsByQuery(String query);
+	long countApplicationQuery(@Param("query") String query);
+	List<Map<String, Object>> findApplicationQueryPage(@Param("query") String query, @Param("offset") int offset,
+			@Param("pageSize") int pageSize, @Param("sortField") String sortField,
+			@Param("sortDirection") String sortDirection);
 	List<Map<String, Object>> findCoverageDetails(String applicationNo);
 	List<Map<String, Object>> findBeneficiaryDetails(String applicationNo);
 	List<Map<String, Object>> findHealthDisclosureDetails(String applicationNo);
@@ -80,13 +84,17 @@ public interface NewContractMapper {
 	int insertBatchRequest(@Param("id") String id, @Param("applicationNo") String applicationNo,
 			@Param("businessDate") LocalDate businessDate);
 	List<Map<String, Object>> findLatestExecutions();
+	long countUnderwritingReviewCandidates();
+	List<Map<String, Object>> findUnderwritingReviewCandidates(@Param("offset") int offset,
+			@Param("pageSize") int pageSize, @Param("sortField") String sortField,
+			@Param("sortDirection") String sortDirection);
 	Map<String, Object> findUnderwritingReview(String query);
 	int updateUnderwritingDecision(@Param("caseNo") String caseNo, @Param("version") long version,
 			@Param("stageCode") String stageCode, @Param("decisionCode") String decisionCode,
 			@Param("contractStatusCode") String contractStatusCode, @Param("reasonCode") String reasonCode,
 			@Param("underwriterId") String underwriterId);
 	int updateApplicationUnderwritingStage(@Param("applicationNo") String applicationNo,
-			@Param("stageCode") String stageCode);
+			@Param("stageCode") String stageCode, @Param("reviewerId") String reviewerId);
 	int insertUnderwritingDecisionAudit(@Param("auditId") String auditId, @Param("caseNo") String caseNo,
 			@Param("applicationNo") String applicationNo, @Param("decisionCode") String decisionCode,
 			@Param("stageCode") String stageCode, @Param("contractStatusCode") String contractStatusCode,
@@ -94,12 +102,12 @@ public interface NewContractMapper {
 			@Param("operatorId") String operatorId);
 
 	Map<String, Object> findPolicyForReversal(String policyNo);
+	long countReversiblePolicies();
+	List<Map<String, Object>> findReversiblePolicies(@Param("offset") int offset, @Param("pageSize") int pageSize,
+			@Param("sortField") String sortField, @Param("sortDirection") String sortDirection);
 	int countPolicy(String policyNo);
-	int deletePolicy(@Param("policyNo") String policyNo, @Param("version") long version);
-	int resetApplication(@Param("applicationNo") String applicationNo, @Param("version") long version,
-			@Param("applicationStatus") String applicationStatus);
-	int resetUnderwriting(@Param("caseNo") String caseNo, @Param("version") long version,
-			@Param("underwritingStatus") String underwritingStatus);
+	int clearUnderwritingContractStatus(@Param("caseNo") String caseNo, @Param("version") long version,
+			@Param("reviewerId") String reviewerId);
 	int insertReversalAudit(@Param("auditId") String auditId, @Param("policyNo") String policyNo,
 			@Param("applicationNo") String applicationNo, @Param("caseNo") String caseNo,
 			@Param("reasonCode") String reasonCode, @Param("reasonDescription") String reasonDescription,

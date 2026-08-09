@@ -25,4 +25,23 @@
             LEFT JOIN new_contract.underwriting_rule_definition r ON r.rule_code=x.rule_code AND r.enabled=TRUE
            WHERE x.inquiry_no=#{inquiryNo} ORDER BY x.inquiry_item_id
   </select>
+  <select id="countInquiries" resultType="long">
+    SELECT COUNT(*) FROM new_contract.underwriting_inquiry
+  </select>
+  <select id="findInquiryPage" resultType="map">
+    SELECT i.inquiry_no,c.application_no,COALESCE(c.policy_no,a.policy_no) policy_no,
+           i.inquiry_status,i.issued_at,i.created_by,i.created_at,i.updated_by,i.updated_at,
+           i.reviewer_id,i.reviewed_at
+      FROM new_contract.underwriting_inquiry i
+      JOIN new_contract.underwriting_case c ON c.underwriting_case_no=i.underwriting_case_no
+      JOIN new_contract.insurance_application a ON a.application_no=c.application_no
+     ORDER BY
+     <choose>
+       <when test="sortField == 'applicationNo'">c.application_no</when>
+       <when test="sortField == 'policyNo'">COALESCE(c.policy_no,a.policy_no)</when>
+       <otherwise>i.inquiry_no</otherwise>
+     </choose>
+     <choose><when test="sortDirection == 'desc'">DESC</when><otherwise>ASC</otherwise></choose>,i.inquiry_no ASC
+     LIMIT #{pageSize} OFFSET #{offset}
+  </select>
 </mapper>

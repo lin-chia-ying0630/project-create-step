@@ -3,8 +3,20 @@ import type { ReviewDetail, ReviewPageResult } from '../types/review'
 
 export const reviewApi = {
   /** 取得覆核待辦清單。 */
-  findPending(page = 1, pageSize = 20): Promise<ReviewPageResult> {
-    return get(`/api/v1/reviews?status=PENDING&page=${page}&pageSize=${pageSize}`)
+  findPending(
+    page = 1,
+    pageSize = 10,
+    sort = 'reviewId,asc',
+    query = '',
+  ): Promise<ReviewPageResult> {
+    const params = new URLSearchParams({
+      status: 'P',
+      page: String(page),
+      pageSize: String(pageSize),
+      sort,
+    })
+    if (query) params.set('query', query)
+    return get(`/api/v1/reviews?${params.toString()}`)
   },
   /** 取得單筆覆核案件與解密後明細。 */
   findById(reviewId: string): Promise<ReviewDetail> {

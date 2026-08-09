@@ -9,7 +9,7 @@ public enum UnderwritingDecisionOutcome {
 	EXCLUSION_ACCEPTED("EA", "除外承保", "AS", "承保完成", "01", "有效", true),
 	CONDITIONAL_ACCEPTED("CA", "條件承保", "AS", "承保完成", "01", "有效", true),
 	PARTIALLY_ACCEPTED("PA", "部分承保", "AS", "承保完成", "01", "有效", true),
-	DECLINED("DC", "拒絕承保", "NS", "拒保完成", "13", "拒保", false),
+	DECLINED("DC", "拒絕承保", "RS", "拒保完成", "13", "拒保", false),
 	POSTPONED("PO", "延期承保", "DS", "延期完成", "14", "延期", false),
 	CANCELLED("CN", "取消申請", "CS", "取消完成", "15", "取消", false);
 

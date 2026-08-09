@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -35,10 +36,12 @@ public class ReviewController {
 
 	/** 查詢指定狀態的覆核案件。 */
 	@GetMapping
-	public ResponseBodyDto<ReviewPageResult> findPage(@RequestParam(defaultValue = "PENDING") String status,
+	public ResponseBodyDto<ReviewPageResult> findPage(@RequestParam(defaultValue = "P") String status,
 			@RequestParam(defaultValue = "1") @Min(1) int page,
-			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int pageSize) {
-		return ResponseBodyDto.success("覆核待辦查詢成功", service.findPage(status, page, pageSize));
+			@RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
+			@RequestParam(defaultValue = "reviewId,asc") String sort,
+			@RequestParam(defaultValue = "") @Size(max = 200) String query) {
+		return ResponseBodyDto.success("覆核待辦查詢成功", service.findPage(status, page, pageSize, sort, query));
 	}
 
 	/** 取得單筆覆核內容。 */

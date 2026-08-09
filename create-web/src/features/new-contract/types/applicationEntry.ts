@@ -57,7 +57,7 @@ export interface CreateApplicationResult {
 export interface PolicyNumberReservationResult {
   applicationNo: string
   policyNo: string
-	policyNumberStatus: 'ASSIGNED'
+  policyNumberStatus: 'ASSIGNED'
   reservedAt: string
 }
 export interface CoverageDetail {
@@ -132,7 +132,7 @@ export interface PremiumDueDetail {
 export interface ApplicationQueryResult {
   applicationNo: string
   policyNo: string | null
-	policyNumberStatus: 'NOT_ASSIGNED' | 'ASSIGNED'
+  policyNumberStatus: 'NOT_ASSIGNED' | 'ASSIGNED'
   applicationStatus: string
   applicationStatusDescription: string
   applicationDate: string
@@ -162,4 +162,26 @@ export interface ApplicationQueryResult {
   customerContacts: CustomerContactDetail[]
   customerAddresses: CustomerAddressDetail[]
   premiumDues: PremiumDueDetail[]
+}
+export interface ApplicationQuerySummary {
+  applicationNo: string
+  policyNo: string | null
+  productCode: string
+  applicationStatus: string
+  applicationStatusDescription: string
+  applicationDate: string
+  requestedEffectiveDate: string
+  createdBy: string
+  createdAt: string
+  updatedBy: string
+  updatedAt: string
+  reviewerId: string | null
+  reviewedAt: string | null
+}
+export interface ApplicationQueryPage {
+  items: ApplicationQuerySummary[]
+  totalItems: number
+  page: number
+  pageSize: number
+  totalPages: number
 }

@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
@@ -28,6 +29,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tw.com.insurance.api.common.BusinessException;
+import tw.com.insurance.api.common.util.PageSortRequest;
 import tw.com.insurance.api.customer.dto.CustomerDtos.CreateCustomerRequest;
 import tw.com.insurance.api.customer.service.CustomerService;
 import tw.com.insurance.api.newcontract.dto.NewContractDtos.CreateApplicationRequest;
@@ -35,6 +37,7 @@ import tw.com.insurance.api.newcontract.service.NewContractService;
 import tw.com.insurance.api.review.domain.ReviewErrorCode;
 import tw.com.insurance.api.review.domain.ReviewDecisionPolicy;
 import tw.com.insurance.api.review.domain.ReviewOperationType;
+import tw.com.insurance.api.review.domain.ReviewStatus;
 import tw.com.insurance.api.review.persistence.ReviewMapper;
 import tw.com.insurance.api.review.service.ReviewService;
 
@@ -72,20 +75,27 @@ public class ReviewServiceImpl implements ReviewService {
 			throw new BusinessException(ReviewErrorCode.DUPLICATE_PENDING);
 		}
 		return new ReviewSubmissionResult(reviewId, operationType.name(), operationType.description(), businessKey,
-				"PENDING", LocalDateTime.now());
+				ReviewStatus.PENDING.code(), LocalDateTime.now());
 	}
 
 	/** 依覆核狀態分頁查詢待辦，排序固定為最早送審優先。 */
 	@Override
 	@Transactional(readOnly = true)
-	public ReviewPageResult findPage(String status, int page, int pageSize) {
-		int safePage = Math.max(page, 1);
-		int safePageSize = Math.min(Math.max(pageSize, 1), 100);
-		long total = mapper.countByStatus(status);
-		List<ReviewSummary> items = mapper.findPage(status, (safePage - 1) * safePageSize, safePageSize).stream()
+	public ReviewPageResult findPage(String status, int page, int pageSize, String sort, String query) {
+		String statusCode;
+		try {
+			statusCode = ReviewStatus.fromCode(status).code();
+		} catch (IllegalArgumentException exception) {
+			throw new BusinessException(ReviewErrorCode.INVALID_STATUS);
+		}
+		PageSortRequest pageQuery = PageSortRequest.of(page, pageSize, sort,
+				Set.of("reviewId", "operationType", "businessKey"), "reviewId");
+		String exactQuery = query == null || query.isBlank() ? null : query.trim();
+		long total = mapper.countByStatus(statusCode, exactQuery);
+		List<ReviewSummary> items = mapper.findPage(statusCode, pageQuery.offset(), pageQuery.pageSize(),
+				pageQuery.sortField(), pageQuery.sortDirection(), exactQuery).stream()
 				.map(this::toSummary).toList();
-		return new ReviewPageResult(items, total, safePage, safePageSize,
-				(int) Math.ceil((double) total / safePageSize));
+		return new ReviewPageResult(items, total, pageQuery.page(), pageQuery.pageSize(), pageQuery.totalPages(total));
 	}
 
 	/** 取得覆核明細並只在授權後解密 payload。 */
@@ -143,13 +153,15 @@ public class ReviewServiceImpl implements ReviewService {
 		try {
 			Object result = switch (operationType) {
 				case CUSTOMER_CREATE ->
-					customerService.create(objectMapper.readValue(payload, CreateCustomerRequest.class), requestId);
+					customerService.create(objectMapper.readValue(payload, CreateCustomerRequest.class), requestId,
+							reviewerId);
 				case APPLICATION_CREATE -> newContractService
 						.createApplication(objectMapper.readValue(payload, CreateApplicationRequest.class));
 				case POLICY_NUMBER_RESERVE -> newContractService
 						.reservePolicyNumber(objectMapper.readTree(payload).path("applicationNo").asText());
 				case POLICY_REVERSAL ->
-					newContractService.reverse(objectMapper.readValue(payload, PolicyReversalRequest.class), requestId);
+					newContractService.reverse(objectMapper.readValue(payload, PolicyReversalRequest.class), requestId,
+							reviewerId);
 				case UNDERWRITING_BATCH_ENQUEUE ->
 					newContractService.enqueue(objectMapper.readValue(payload, UnderwritingBatchRequest.class));
 				case UNDERWRITING_DECISION -> newContractService.decideUnderwriting(

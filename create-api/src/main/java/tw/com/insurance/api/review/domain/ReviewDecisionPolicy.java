@@ -9,7 +9,7 @@ public final class ReviewDecisionPolicy {
 
 	/** 驗證案件仍可決行，且覆核人不是原送審人。 */
 	public static void validate(String status, String makerId, String reviewerId) {
-		if (!"PENDING".equals(status)) {
+		if (!ReviewStatus.PENDING.code().equals(status)) {
 			throw new BusinessException(ReviewErrorCode.ALREADY_DECIDED);
 		}
 		if (reviewerId.equals(makerId)) {

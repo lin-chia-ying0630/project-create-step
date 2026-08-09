@@ -271,6 +271,11 @@ button:disabled {
     position: relative;
   }
 }
+.search-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
 
 .responsive-split-row {
   display: flex;
@@ -279,10 +284,172 @@ button:disabled {
   gap: 16px;
 }
 
+// 清單共用分頁與每頁筆數選擇，不由 feature 建立另一套控制列。
+.shared-page-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 18px 0;
+}
+.shared-page-actions > span {
+  color: #475569;
+  font-weight: 700;
+}
+.page-size-control {
+  display: flex;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 8px;
+}
+.page-size-control select {
+  width: auto;
+  min-height: 44px;
+}
+
+// 審核／覆核畫面共用頁籤、明細欄位與決行按鈕契約，各 feature 不另建第二套樣式。
+.review-page {
+  max-width: 100%;
+}
+.review-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+}
+.review-tabs button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  padding: 8px 14px;
+}
+.review-tabs button.active {
+  border-color: $primary;
+  background: #e6f4f2;
+  color: $primary;
+  font-weight: 700;
+}
+.review-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: #dbe4ea;
+}
+.review-field-grid div {
+  min-width: 0;
+  background: #f8fafc;
+  padding: 12px;
+}
+.review-field-grid dt {
+  color: #647281;
+  font-size: 0.82rem;
+}
+.review-field-grid dd {
+  margin: 6px 0 0;
+}
+.review-field-grid pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+}
+.review-actions {
+  gap: 10px;
+}
+.reject-button {
+  border-color: #991b1b;
+  color: #991b1b;
+}
+
+// 審查清單、摘要、稽核表與 Modal 共用契約，各審查／覆核 feature 不另建樣式副本。
+.candidate-table-scope,
+.summary-table-scope {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.candidate-table {
+  min-width: 1800px;
+}
+.summary-table {
+  min-width: 720px;
+
+  th[scope='row'] {
+    width: 16%;
+    white-space: nowrap;
+  }
+
+  td {
+    width: 34%;
+  }
+}
+.review-dialog {
+  width: min(1080px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  border: 0;
+  border-radius: 12px;
+  padding: 0;
+  color: inherit;
+  box-shadow: 0 24px 60px rgb(15 23 42 / 25%);
+}
+.review-dialog::backdrop {
+  background: rgb(15 23 42 / 55%);
+}
+.dialog-content {
+  padding: 24px;
+}
+.dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 16px;
+}
+.dialog-close {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 1.8rem;
+  cursor: pointer;
+}
+.decision-section,
+.audit-section {
+  margin-top: 24px;
+}
+.audit-table {
+  min-width: 980px;
+}
+.decision-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  background: #fff7f7;
+  padding: 12px;
+  color: #991b1b;
+}
+.decision-preview.insurable {
+  border-color: #a7f3d0;
+  background: #f0fdf4;
+  color: #065f46;
+}
+
 // 所有資料表格共用同一套視覺契約，feature 只決定欄位與資料內容。
+.data-table-scope {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
 .data-table,
 .data-table-scope table {
   width: 100%;
+  min-width: max-content;
   border-collapse: collapse;
   background: $surface;
 
@@ -292,7 +459,7 @@ button:disabled {
     padding: 10px;
     text-align: left;
     vertical-align: top;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
   }
 
   th {
@@ -358,6 +525,10 @@ button:disabled {
     width: 100%;
     min-height: 44px;
   }
+  .search-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
   .responsive-split-row {
     align-items: stretch;
     flex-direction: column;
@@ -376,10 +547,31 @@ button:disabled {
   }
   .data-table-scope {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: auto;
   }
   .data-table-scope .file-page {
     max-width: 100%;
     overflow-x: auto;
+  }
+  .review-field-grid {
+    grid-template-columns: 1fr;
+  }
+  .shared-page-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .shared-page-actions button {
+    flex: 1;
+  }
+  .shared-page-actions > span {
+    flex: 0 0 auto;
+    text-align: center;
+  }
+  .review-dialog {
+    width: calc(100% - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+  .dialog-content {
+    padding: 16px;
   }
 }

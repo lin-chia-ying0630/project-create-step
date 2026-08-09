@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
 import { policyReversalApi } from '../api/policyReversalApi'
-import type { PolicyReversalPreview } from '../types/policyReversal'
+import type { PolicyReversalPage, PolicyReversalPreview } from '../types/policyReversal'
 
 const policyNo = ref('')
 const reasonCode = ref('WRONG_ISSUANCE')
@@ -11,6 +13,15 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
 const preview = ref<PolicyReversalPreview | null>(null)
+const policyPage = ref<PolicyReversalPage>({
+  items: [],
+  totalItems: 0,
+  page: 1,
+  pageSize: 10,
+  totalPages: 0,
+})
+const sortField = ref('policyNo')
+const sortDirection = ref<'asc' | 'desc'>('asc')
 
 const canExecute = computed(
   () =>
@@ -36,6 +47,42 @@ async function loadPreview() {
   }
 }
 
+/** 初次進入即從後端列出契約狀態 01 的承保撤回候選。 */
+async function loadPolicies(page = policyPage.value.page) {
+  loading.value = true
+  error.value = null
+  try {
+    policyPage.value = await policyReversalApi.list(
+      page,
+      policyPage.value.pageSize,
+      `${sortField.value},${sortDirection.value}`,
+    )
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '承保撤回清單載入失敗'
+  } finally {
+    loading.value = false
+  }
+}
+
+/** 從操作欄選取保單後載入撤回影響預覽。 */
+function openPolicy(selectedPolicyNo: string) {
+  policyNo.value = selectedPolicyNo
+  void loadPreview()
+}
+
+/** 切換前三個資料欄位排序後回到第一頁。 */
+function changeSort(field: string, direction: 'asc' | 'desc') {
+  sortField.value = field
+  sortDirection.value = direction
+  void loadPolicies(1)
+}
+
+/** 變更共用每頁筆數後回到第一頁。 */
+function changePageSize(pageSize: number) {
+  policyPage.value.pageSize = pageSize
+  void loadPolicies(1)
+}
+
 async function executeReversal() {
   if (!preview.value || !canExecute.value) return
   loading.value = true
@@ -56,24 +103,96 @@ async function executeReversal() {
     )
     success.value = `承保撤回已送覆核，覆核編號：${result.reviewId}`
     preview.value = null
+    await loadPolicies(1)
   } catch (e) {
     error.value = e instanceof Error ? e.message : '承保撤回失敗'
   } finally {
     loading.value = false
   }
 }
+onMounted(() => loadPolicies(1))
 </script>
 
 <template>
   <main class="page">
     <h1>承保撤回</h1>
-    <p class="warning">
-      僅限錯誤出單且尚未形成有效權利義務的案件。有效保單或已有下游交易時禁止刪除。
-    </p>
+    <p class="warning">承保撤回只處理契約狀態 01；覆核核准後保留正式保單，契約狀態改為空白。</p>
 
     <section class="card search-row">
       <label>保單號碼<input v-model="policyNo" maxlength="32" autocomplete="off" /></label>
       <button :disabled="!policyNo.trim() || loading" @click="loadPreview">查詢影響</button>
+    </section>
+
+    <section class="card">
+      <div class="panel-title responsive-split-row">
+        <h2>契約狀態 01 保單清單</h2>
+        <span>共 {{ policyPage.totalItems }} 筆</span>
+      </div>
+      <div class="data-table-scope">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>操作</th>
+              <SortableTableHeader
+                field="policyNo"
+                label="正式保單號碼"
+                :active-field="sortField"
+                :direction="sortDirection"
+                @sort="changeSort"
+              />
+              <SortableTableHeader
+                field="applicationNo"
+                label="要保書號碼"
+                :active-field="sortField"
+                :direction="sortDirection"
+                @sort="changeSort"
+              />
+              <SortableTableHeader
+                field="productCode"
+                label="商品代碼"
+                :active-field="sortField"
+                :direction="sortDirection"
+                @sort="changeSort"
+              />
+              <th>契約狀態</th>
+              <th>生效日</th>
+              <th>新增人員</th>
+              <th>建立時間</th>
+              <th>修改人員</th>
+              <th>修改時間</th>
+              <th>覆核人員</th>
+              <th>覆核時間</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in policyPage.items" :key="item.policyNo">
+              <td>
+                <button class="secondary-button" @click="openPolicy(item.policyNo)">撤回</button>
+              </td>
+              <td>{{ item.policyNo }}</td>
+              <td>{{ item.applicationNo }}</td>
+              <td>{{ item.productCode }}</td>
+              <td>{{ item.contractStatusCode }} 有效</td>
+              <td>{{ item.effectiveDate }}</td>
+              <td>{{ item.createdBy }}</td>
+              <td>{{ item.createdAt }}</td>
+              <td>{{ item.updatedBy }}</td>
+              <td>{{ item.updatedAt }}</td>
+              <td>{{ item.reviewerId || '尚未覆核' }}</td>
+              <td>{{ item.reviewedAt || '尚未覆核' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <PageNavigator
+        v-if="policyPage.totalPages > 0"
+        :model-value="policyPage.page - 1"
+        :total="policyPage.totalPages"
+        :page-size="policyPage.pageSize"
+        prefix="承保撤回清單"
+        @update:model-value="loadPolicies($event + 1)"
+        @update:page-size="changePageSize"
+      />
     </section>
 
     <p v-if="error" class="error">{{ error }}</p>
@@ -99,7 +218,7 @@ async function executeReversal() {
       </section>
 
       <section class="card">
-        <h2>預計刪除資料</h2>
+        <h2>預計異動資料</h2>
         <table class="data-table">
           <tbody>
             <tr v-for="(count, table) in preview.deleteCounts" :key="table">
@@ -134,13 +253,11 @@ async function executeReversal() {
           ></textarea>
         </label>
         <label class="confirm"
-          ><input
-            v-model="confirmed"
-            type="checkbox"
-          />我已確認此保單尚未生效且沒有收費、保全、理賠或其他下游資料</label
+          ><input v-model="confirmed" type="checkbox" />我已確認將保留正式保單並把契約狀態 01
+          改為空白</label
         >
         <button class="danger" :disabled="!canExecute" @click="executeReversal">
-          刪除正式保單並退回未承保
+          送出契約狀態撤回覆核
         </button>
       </section>
     </template>

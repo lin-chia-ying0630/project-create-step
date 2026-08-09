@@ -41,6 +41,35 @@
                 OR ap.customer_id=#{query} OR ip.customer_id=#{query}
              ORDER BY a.application_date DESC,a.created_at DESC
   </select>
+  <!-- 保單查詢清單允許空條件列出全部；輸入條件時只做完整識別值比對。 -->
+  <sql id="applicationQueryFilter">
+    <if test="query != null and query != ''">
+      WHERE a.application_no=#{query} OR a.policy_no=#{query}
+         OR EXISTS (
+           SELECT 1 FROM new_contract.application_party p
+            WHERE p.application_no=a.application_no AND p.customer_id=#{query}
+         )
+    </if>
+  </sql>
+  <select id="countApplicationQuery" resultType="long">
+    SELECT COUNT(*) FROM new_contract.insurance_application a
+    <include refid="applicationQueryFilter"/>
+  </select>
+  <select id="findApplicationQueryPage" resultType="map">
+    SELECT a.application_no,a.policy_no,a.product_code,a.application_status,a.application_date,
+           a.requested_effective_date,a.created_by,a.created_at,a.updated_by,a.updated_at,
+           a.reviewer_id,a.reviewed_at
+      FROM new_contract.insurance_application a
+    <include refid="applicationQueryFilter"/>
+     ORDER BY
+     <choose>
+       <when test="sortField == 'policyNo'">a.policy_no</when>
+       <when test="sortField == 'productCode'">a.product_code</when>
+       <otherwise>a.application_no</otherwise>
+     </choose>
+     <choose><when test="sortDirection == 'desc'">DESC</when><otherwise>ASC</otherwise></choose>,a.application_no ASC
+     LIMIT #{pageSize} OFFSET #{offset}
+  </select>
   <select id="findCoverageDetails" resultType="map">
     SELECT coverage_item_seq,coverage_item_type,product_code,product_version,currency_code,sum_assured_amount,premium_amount,coverage_term_years,premium_payment_term_years,requested_effective_date FROM new_contract.application_coverage WHERE application_no=#{applicationNo} ORDER BY coverage_item_seq
   </select>
@@ -171,13 +200,46 @@
                    approved_count,inquiry_count,failed_count
               FROM new_contract.underwriting_batch_execution ORDER BY started_at DESC LIMIT 20
   </select>
+  <!-- 核保審查清單以新契約受理檔為主，僅領取受理檔與核保案件皆為 NS 的案件。 -->
+  <select id="countUnderwritingReviewCandidates" resultType="long">
+    SELECT COUNT(*)
+      FROM new_contract.insurance_application a
+      JOIN new_contract.underwriting_case u ON u.application_no=a.application_no
+     WHERE a.application_status='NS' AND u.underwriting_status='NS'
+  </select>
+  <select id="findUnderwritingReviewCandidates" resultType="map">
+    SELECT a.application_no,a.policy_no,a.product_code,a.application_date,a.requested_effective_date,
+           u.underwriting_case_no,u.underwriting_status,a.created_by,a.created_at,a.updated_by,a.updated_at,
+           br.reviewer_id,br.reviewed_at
+      FROM new_contract.insurance_application a
+      JOIN new_contract.underwriting_case u ON u.application_no=a.application_no
+      LEFT JOIN new_contract.business_review_case br ON br.review_id=(
+        SELECT br2.review_id FROM new_contract.business_review_case br2
+         WHERE br2.business_key=a.application_no AND br2.review_status IN ('A','R')
+         ORDER BY br2.reviewed_at DESC LIMIT 1)
+     WHERE a.application_status='NS' AND u.underwriting_status='NS'
+     ORDER BY
+     <choose>
+       <when test="sortField == 'policyNo'">a.policy_no</when>
+       <when test="sortField == 'productCode'">a.product_code</when>
+       <otherwise>a.application_no</otherwise>
+     </choose>
+     <choose><when test="sortDirection == 'desc'">DESC</when><otherwise>ASC</otherwise></choose>,a.application_no ASC
+     LIMIT #{pageSize} OFFSET #{offset}
+  </select>
   <select id="findUnderwritingReview" resultType="map">
     SELECT a.application_no,a.policy_no,a.product_code,a.application_date,a.requested_effective_date,
            a.currency_code,a.sum_assured_amount,a.premium_amount,u.underwriting_case_no,u.underwriting_status,
-           u.underwriting_decision_code,u.contract_status_code,u.record_version
+           u.underwriting_decision_code,u.contract_status_code,u.record_version,
+           a.created_by,a.created_at,a.updated_by,a.updated_at,br.reviewer_id,br.reviewed_at
       FROM new_contract.insurance_application a
       JOIN new_contract.underwriting_case u ON u.application_no=a.application_no
-     WHERE a.application_no=#{query} OR a.policy_no=#{query}
+      LEFT JOIN new_contract.business_review_case br ON br.review_id=(
+        SELECT br2.review_id FROM new_contract.business_review_case br2
+         WHERE br2.business_key=a.application_no AND br2.review_status IN ('A','R')
+         ORDER BY br2.reviewed_at DESC LIMIT 1)
+     WHERE (a.application_no=#{query} OR a.policy_no=#{query})
+       AND a.application_status='NS' AND u.underwriting_status='NS'
      LIMIT 1
   </select>
   <update id="updateUnderwritingDecision">
@@ -185,13 +247,15 @@
        SET underwriting_status=#{stageCode},underwriting_decision_code=#{decisionCode},
            contract_status_code=#{contractStatusCode},decision_reason_code=#{reasonCode},
            underwriter_id=#{underwriterId},underwritten_at=CURRENT_TIMESTAMP(6),
-           record_version=record_version+1,updated_at=CURRENT_TIMESTAMP(6)
+           record_version=record_version+1,updated_by=#{underwriterId},updated_at=CURRENT_TIMESTAMP(6),
+           reviewer_id=#{underwriterId},reviewed_at=CURRENT_TIMESTAMP(6)
      WHERE underwriting_case_no=#{caseNo} AND record_version=#{version}
   </update>
   <update id="updateApplicationUnderwritingStage">
     UPDATE new_contract.insurance_application
        SET application_status=#{stageCode},record_version=record_version+1,
-           updated_by='underwriting-review',updated_at=CURRENT_TIMESTAMP(6)
+           updated_by=#{reviewerId},updated_at=CURRENT_TIMESTAMP(6),
+           reviewer_id=#{reviewerId},reviewed_at=CURRENT_TIMESTAMP(6)
      WHERE application_no=#{applicationNo}
   </update>
   <insert id="insertUnderwritingDecisionAudit">
@@ -205,29 +269,44 @@
   <select id="findPolicyForReversal" resultType="map">
     SELECT p.policy_no,p.application_no,p.underwriting_case_no,p.policy_status,p.effective_date,
                    p.record_version policy_version,a.application_status,a.record_version application_version,
-                   u.underwriting_status,u.record_version underwriting_version
+                   u.underwriting_status,u.contract_status_code,u.record_version underwriting_version
               FROM main.policy_contract p
               JOIN new_contract.insurance_application a ON a.application_no=p.application_no
               JOIN new_contract.underwriting_case u ON u.underwriting_case_no=p.underwriting_case_no
              WHERE p.policy_no=#{policyNo}
   </select>
+  <select id="countReversiblePolicies" resultType="long">
+    SELECT COUNT(*)
+      FROM main.policy_contract p
+      JOIN new_contract.underwriting_case u ON u.underwriting_case_no=p.underwriting_case_no
+     WHERE u.contract_status_code='01'
+  </select>
+  <!-- 承保撤回候選只列契約狀態 01；排序欄位由 Service 白名單及 XML choose 雙重限制。 -->
+  <select id="findReversiblePolicies" resultType="map">
+    SELECT p.policy_no,p.application_no,p.product_code,u.contract_status_code,p.effective_date,
+           p.created_by,p.created_at,p.updated_by,p.updated_at,p.reviewer_id,p.reviewed_at
+      FROM main.policy_contract p
+      JOIN new_contract.underwriting_case u ON u.underwriting_case_no=p.underwriting_case_no
+      JOIN new_contract.insurance_application a ON a.application_no=p.application_no
+     WHERE u.contract_status_code='01'
+     ORDER BY
+     <choose>
+       <when test="sortField == 'applicationNo'">p.application_no</when>
+       <when test="sortField == 'productCode'">p.product_code</when>
+       <otherwise>p.policy_no</otherwise>
+     </choose>
+     <choose><when test="sortDirection == 'desc'">DESC</when><otherwise>ASC</otherwise></choose>,p.policy_no ASC
+     LIMIT #{pageSize} OFFSET #{offset}
+  </select>
   <select id="countPolicy" resultType="int">
     SELECT COUNT(*) FROM main.policy_contract WHERE policy_no=#{policyNo}
   </select>
-  <delete id="deletePolicy">
-    DELETE FROM main.policy_contract WHERE policy_no=#{policyNo} AND record_version=#{version}
-  </delete>
-  <update id="resetApplication">
-	UPDATE new_contract.insurance_application SET application_status=#{applicationStatus},validation_result_status=NULL,
-              validation_completed_at=NULL,validation_batch_id=NULL,completed_at=NULL,record_version=record_version+1,
-              updated_by='local-tester',updated_at=CURRENT_TIMESTAMP(6)
-            WHERE application_no=#{applicationNo} AND record_version=#{version}
-  </update>
-  <update id="resetUnderwriting">
-	UPDATE new_contract.underwriting_case SET underwriting_status=#{underwritingStatus},underwriting_decision_code=NULL,
-              underwriter_id=NULL,decision_reason_code=NULL,underwritten_at=NULL,policy_no=NULL,
-              record_version=record_version+1,updated_at=CURRENT_TIMESTAMP(6)
-            WHERE underwriting_case_no=#{caseNo} AND record_version=#{version}
+  <update id="clearUnderwritingContractStatus">
+    UPDATE new_contract.underwriting_case
+       SET contract_status_code=NULL,record_version=record_version+1,
+           updated_by=#{reviewerId},updated_at=CURRENT_TIMESTAMP(6),
+           reviewer_id=#{reviewerId},reviewed_at=CURRENT_TIMESTAMP(6)
+     WHERE underwriting_case_no=#{caseNo} AND record_version=#{version} AND contract_status_code='01'
   </update>
   <insert id="insertReversalAudit">
     INSERT INTO new_contract.policy_issuance_reversal_audit

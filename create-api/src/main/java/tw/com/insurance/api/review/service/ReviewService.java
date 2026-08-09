@@ -10,7 +10,7 @@ import tw.com.insurance.api.review.domain.ReviewOperationType;
 public interface ReviewService {
 	ReviewSubmissionResult submit(ReviewOperationType operationType, String businessKey, Object payload,
 			String makerId);
-	ReviewPageResult findPage(String status, int page, int pageSize);
+	ReviewPageResult findPage(String status, int page, int pageSize, String sort, String query);
 	ReviewDetail findById(String reviewId);
 	ReviewDetail approve(String reviewId, ReviewDecisionRequest request, String reviewerId, String requestId);
 	ReviewDetail reject(String reviewId, ReviewDecisionRequest request, String reviewerId, String requestId);

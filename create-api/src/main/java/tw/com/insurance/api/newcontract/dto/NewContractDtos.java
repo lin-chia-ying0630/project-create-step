@@ -60,7 +60,18 @@ public final class NewContractDtos {
 			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal sumAssuredAmount,
 			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal premiumAmount, String currentStageCode,
 			String currentStageDescription, String currentDecisionCode, String currentContractStatusCode,
-			String currentContractStatusDescription, long recordVersion) {
+			String currentContractStatusDescription, String createdBy, LocalDateTime createdAt, String updatedBy,
+			LocalDateTime updatedAt, String reviewerId, LocalDateTime reviewedAt, long recordVersion) {
+	}
+	/** 新契約受理檔中已完成照會、等待人工核保審查的清單資料。 */
+	public record UnderwritingReviewSummary(String applicationNo, String policyNo, String underwritingCaseNo,
+			String productCode, LocalDate applicationDate, LocalDate requestedEffectiveDate, String currentStageCode,
+			String currentStageDescription, String createdBy, LocalDateTime createdAt, String updatedBy,
+			LocalDateTime updatedAt, String reviewerId, LocalDateTime reviewedAt) {
+	}
+	/** 核保審查候選案件的標準分頁結果。 */
+	public record UnderwritingReviewPage(List<UnderwritingReviewSummary> items, long totalItems, int page, int pageSize,
+			int totalPages) {
 	}
 	/** 核保審查畫面使用的固定結果選項，由後端 enum 提供唯一代碼與狀態映射。 */
 	public record UnderwritingOutcomeOption(String decisionCode, String decisionDescription, String stageCode,
@@ -74,6 +85,13 @@ public final class NewContractDtos {
 			String policyStatus, String applicationStatus, String underwritingStatus, LocalDate effectiveDate,
 			long policyVersion, long applicationVersion, long underwritingVersion, Map<String, Integer> deleteCounts,
 			List<String> blockers, String confirmToken) {
+	}
+	public record PolicyReversalSummary(String policyNo, String applicationNo, String productCode,
+			String contractStatusCode, LocalDate effectiveDate, String createdBy, LocalDateTime createdAt,
+			String updatedBy, LocalDateTime updatedAt, String reviewerId, LocalDateTime reviewedAt) {
+	}
+	public record PolicyReversalPage(List<PolicyReversalSummary> items, long totalItems, int page, int pageSize,
+			int totalPages) {
 	}
 	public record PolicyReversalRequest(@NotBlank @Size(max = 32) String policyNo,
 			@NotBlank @Size(max = 32) String reasonCode, @NotBlank @Size(min = 10, max = 500) String reasonDescription,
@@ -156,6 +174,14 @@ public final class NewContractDtos {
 			List<DeclarationDetail> declarations, List<SignatureDetail> signatures,
 			List<CustomerContactDetail> customerContacts, List<CustomerAddressDetail> customerAddresses,
 			List<PremiumDueDetail> premiumDues) {
+	}
+	public record ApplicationQuerySummary(String applicationNo, String policyNo, String productCode,
+			String applicationStatus, String applicationStatusDescription, LocalDate applicationDate,
+			LocalDate requestedEffectiveDate, String createdBy, LocalDateTime createdAt, String updatedBy,
+			LocalDateTime updatedAt, String reviewerId, LocalDateTime reviewedAt) {
+	}
+	public record ApplicationQueryPage(List<ApplicationQuerySummary> items, long totalItems, int page, int pageSize,
+			int totalPages) {
 	}
 	public record PolicyReversalResult(String reversalAuditId, String policyNo, String applicationNo,
 			String applicationStatus, String underwritingStatus) {

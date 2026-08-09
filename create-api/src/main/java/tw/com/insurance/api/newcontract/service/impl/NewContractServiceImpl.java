@@ -1,6 +1,8 @@
 package tw.com.insurance.api.newcontract.service.impl;
 
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQueryResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQueryPage;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQuerySummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.BeneficiaryDetail;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.BeneficiaryInput;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.CoverageDetail;
@@ -14,6 +16,8 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.HealthDisclos
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.HealthDisclosureInput;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyNumberReservationResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalPreview;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalPage;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalSummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PremiumDueDetail;
@@ -27,6 +31,8 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingB
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPreview;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPage;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewSummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingOutcomeOption;
 
 import java.math.BigDecimal;
@@ -41,6 +47,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.Arrays;
 import java.security.SecureRandom;
@@ -52,6 +59,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tw.com.insurance.api.common.BusinessException;
+import tw.com.insurance.api.common.util.PageSortRequest;
 import tw.com.insurance.api.newcontract.domain.NewContractApplicationStatus;
 import tw.com.insurance.api.newcontract.domain.NewContractErrorCode;
 import tw.com.insurance.api.newcontract.domain.UnderwritingDecisionOutcome;
@@ -184,6 +192,30 @@ public class NewContractServiceImpl implements NewContractService {
 		if (rows.isEmpty())
 			throw new BusinessException(NewContractErrorCode.QUERY_NOT_FOUND);
 		return rows.stream().map(this::toApplicationQueryResult).toList();
+	}
+
+	/** 以後端分頁列出保單資料，查詢條件僅接受完整客戶或保單識別值。 */
+	@Override
+	@Transactional(readOnly = true)
+	public ApplicationQueryPage queryApplications(String query, int page, int pageSize, String sort) {
+		PageSortRequest pageQuery = PageSortRequest.of(page, pageSize, sort,
+				Set.of("applicationNo", "policyNo", "productCode"), "applicationNo");
+		String exactQuery = query == null || query.isBlank() ? null : query.trim();
+		long totalItems = mapper.countApplicationQuery(exactQuery);
+		List<ApplicationQuerySummary> items = mapper.findApplicationQueryPage(exactQuery, pageQuery.offset(),
+				pageQuery.pageSize(), pageQuery.sortField(), pageQuery.sortDirection()).stream()
+				.map(row -> {
+					NewContractApplicationStatus status = NewContractApplicationStatus
+							.fromCode(text(row, "application_status"));
+					return new ApplicationQuerySummary(text(row, "application_no"), text(row, "policy_no"),
+							text(row, "product_code"), status.code(), status.description(),
+							localDate(row.get("application_date")), localDate(row.get("requested_effective_date")),
+							text(row, "created_by"), localDateTime(row.get("created_at")), text(row, "updated_by"),
+							localDateTime(row.get("updated_at")), text(row, "reviewer_id"),
+							localDateTime(row.get("reviewed_at")));
+				}).toList();
+		return new ApplicationQueryPage(items, totalItems, pageQuery.page(), pageQuery.pageSize(),
+				pageQuery.totalPages(totalItems));
 	}
 
 	private ApplicationQueryResult toApplicationQueryResult(Map<String, Object> row) {
@@ -423,6 +455,28 @@ public class NewContractServiceImpl implements NewContractService {
 				.toList();
 	}
 
+	/** 以新契約受理檔為清單主體，只提供 NS 照會結束且待審查的案件。 */
+	@Override
+	@Transactional(readOnly = true)
+	public UnderwritingReviewPage findUnderwritingReviewCandidates(int page, int pageSize, String sort) {
+		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
+				Set.of("applicationNo", "policyNo", "productCode"), "applicationNo");
+		long totalItems = mapper.countUnderwritingReviewCandidates();
+		List<UnderwritingReviewSummary> items = mapper
+				.findUnderwritingReviewCandidates(query.offset(), query.pageSize(), query.sortField(), query.sortDirection())
+				.stream()
+				.map(row -> new UnderwritingReviewSummary(text(row, "application_no"), text(row, "policy_no"),
+						text(row, "underwriting_case_no"), text(row, "product_code"),
+						localDate(row.get("application_date")), localDate(row.get("requested_effective_date")),
+						text(row, "underwriting_status"), stageDescription(text(row, "underwriting_status")),
+						text(row, "created_by"), localDateTime(row.get("created_at")), text(row, "updated_by"),
+						localDateTime(row.get("updated_at")), text(row, "reviewer_id"),
+						localDateTime(row.get("reviewed_at"))))
+				.toList();
+		return new UnderwritingReviewPage(items, totalItems, query.page(), query.pageSize(),
+				query.totalPages(totalItems));
+	}
+
 	/** 查詢人工核保審查所需的目前階段、結果、契約狀態與樂觀鎖版本。 */
 	@Override
 	@Transactional(readOnly = true)
@@ -437,7 +491,9 @@ public class NewContractServiceImpl implements NewContractService {
 				localDate(row.get("requested_effective_date")), text(row, "currency_code"),
 				decimal(row, "sum_assured_amount"), decimal(row, "premium_amount"), stageCode,
 				stageDescription(stageCode), text(row, "underwriting_decision_code"), contractStatusCode,
-				contractStatusDescription(contractStatusCode), longNumber(row, "record_version"));
+				contractStatusDescription(contractStatusCode), text(row, "created_by"),
+				localDateTime(row.get("created_at")), text(row, "updated_by"), localDateTime(row.get("updated_at")),
+				text(row, "reviewer_id"), localDateTime(row.get("reviewed_at")), longNumber(row, "record_version"));
 	}
 
 	/** 由固定 enum 回傳所有可承保及不承保結果，避免前端維護第二份對照。 */
@@ -467,7 +523,7 @@ public class NewContractServiceImpl implements NewContractService {
 		if (mapper.updateUnderwritingDecision(caseNo, request.expectedVersion(), outcome.stageCode(),
 				outcome.decisionCode(), outcome.contractStatusCode(), request.reasonCode(), operatorId) != 1)
 			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CONCURRENT_MODIFICATION);
-		mapper.updateApplicationUnderwritingStage(request.applicationNo(), outcome.stageCode());
+		mapper.updateApplicationUnderwritingStage(request.applicationNo(), outcome.stageCode(), operatorId);
 		mapper.insertUnderwritingDecisionAudit(UUID.randomUUID().toString(), caseNo, request.applicationNo(),
 				outcome.decisionCode(), outcome.stageCode(), outcome.contractStatusCode(), request.reasonCode(),
 				request.reasonDescription(), operatorId);
@@ -480,15 +536,12 @@ public class NewContractServiceImpl implements NewContractService {
 		Map<String, Object> row = mapper.findPolicyForReversal(policyNo);
 		if (row == null)
 			throw new BusinessException(NewContractErrorCode.POLICY_NOT_FOUND);
-		List<String> blockers = "PENDING".equals(text(row, "policy_status"))
+		List<String> blockers = "01".equals(text(row, "contract_status_code"))
 				? List.of()
-				: List.of("保單狀態不是 PENDING，可能已生效或已有權利義務，禁止直接刪除");
+				: List.of("契約狀態不是 01 有效，不符合承保撤回條件");
 		Map<String, Integer> counts = new LinkedHashMap<>();
-		counts.put("main.policy_underwriting_condition", 0);
-		counts.put("main.policy_beneficiary", 0);
-		counts.put("main.policy_coverage", 0);
-		counts.put("main.policy_party", 0);
-		counts.put("main.policy_contract", mapper.countPolicy(policyNo));
+		counts.put("保留正式保單主檔", mapper.countPolicy(policyNo));
+		counts.put("契約狀態 01 改為空白", 1);
 		long policyVersion = longNumber(row, "policy_version"), appVersion = longNumber(row, "application_version"),
 				uwVersion = longNumber(row, "underwriting_version");
 		return new PolicyReversalPreview(policyNo, text(row, "application_no"), text(row, "underwriting_case_no"),
@@ -497,8 +550,27 @@ public class NewContractServiceImpl implements NewContractService {
 				hash(policyNo + ":" + policyVersion + ":" + appVersion + ":" + uwVersion));
 	}
 
+	/** 分頁列出契約狀態為 01、可進一步檢查承保撤回條件的保單。 */
+	@Override
+	@Transactional(readOnly = true)
+	public PolicyReversalPage findReversiblePolicies(int page, int pageSize, String sort) {
+		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
+				Set.of("policyNo", "applicationNo", "productCode"), "policyNo");
+		long totalItems = mapper.countReversiblePolicies();
+		List<PolicyReversalSummary> items = mapper.findReversiblePolicies(query.offset(), query.pageSize(),
+				query.sortField(), query.sortDirection()).stream()
+				.map(row -> new PolicyReversalSummary(text(row, "policy_no"), text(row, "application_no"),
+						text(row, "product_code"), text(row, "contract_status_code"),
+						localDate(row.get("effective_date")), text(row, "created_by"),
+						localDateTime(row.get("created_at")), text(row, "updated_by"),
+						localDateTime(row.get("updated_at")), text(row, "reviewer_id"),
+						localDateTime(row.get("reviewed_at"))))
+				.toList();
+		return new PolicyReversalPage(items, totalItems, query.page(), query.pageSize(), query.totalPages(totalItems));
+	}
+
 	@Transactional
-	public PolicyReversalResult reverse(PolicyReversalRequest request, String requestId) {
+	public PolicyReversalResult reverse(PolicyReversalRequest request, String requestId, String reviewerId) {
 		PolicyReversalPreview preview = previewReversal(request.policyNo());
 		if (!preview.blockers().isEmpty())
 			throw new BusinessException(NewContractErrorCode.POLICY_REVERSAL_BLOCKED);
@@ -511,19 +583,14 @@ public class NewContractServiceImpl implements NewContractService {
 		String before = "{\"policyNo\":\"" + preview.policyNo() + "\",\"policyStatus\":\"" + preview.policyStatus()
 				+ "\",\"applicationStatus\":\"" + preview.applicationStatus() + "\",\"underwritingStatus\":\""
 				+ preview.underwritingStatus() + "\"}";
-		String pendingUnderwritingCode = NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.code();
-		String after = "{\"policyDeleted\":true,\"applicationStatus\":\"" + pendingUnderwritingCode
-				+ "\",\"underwritingStatus\":\"" + pendingUnderwritingCode + "\"}";
-		if (mapper.deletePolicy(request.policyNo(), request.expectedPolicyVersion()) != 1
-				|| mapper.resetApplication(preview.applicationNo(), request.expectedApplicationVersion(),
-						pendingUnderwritingCode) != 1
-				|| mapper.resetUnderwriting(preview.underwritingCaseNo(), request.expectedUnderwritingVersion(),
-						pendingUnderwritingCode) != 1)
+		String after = "{\"policyDeleted\":false,\"contractStatusCode\":null}";
+		if (mapper.clearUnderwritingContractStatus(preview.underwritingCaseNo(),
+				request.expectedUnderwritingVersion(), reviewerId) != 1)
 			throw new BusinessException(NewContractErrorCode.CONCURRENT_MODIFICATION);
 		mapper.insertReversalAudit(auditId, request.policyNo(), preview.applicationNo(), preview.underwritingCaseNo(),
 				request.reasonCode(), request.reasonDescription(), requestId, before, after, hash(before), hash(after));
-		return new PolicyReversalResult(auditId, request.policyNo(), preview.applicationNo(), pendingUnderwritingCode,
-				pendingUnderwritingCode);
+		return new PolicyReversalResult(auditId, request.policyNo(), preview.applicationNo(),
+				preview.applicationStatus(), preview.underwritingStatus());
 	}
 
 	private static String text(Map<String, Object> row, String key) {

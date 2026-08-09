@@ -11,8 +11,9 @@ public enum NewContractApplicationStatus {
 	UNDERWRITING_REFERRED("NR", "核保照會／退回", "NR", "核保照會／退回", null, "受理"),
 	INQUIRY_WAITING("UW", "等待照會回覆", "UW", "等待照會回覆", null, "受理"),
 	INQUIRY_COMPLETED("US", "照會完成", "US", "照會完成", null, "受理"),
+	UNDERWRITING_INQUIRY_COMPLETED("NS", "照會結束／待核保審查", "NS", "照會結束／待核保審查", null, "受理"),
 	UNDERWRITING_COMPLETED("AS", "承保完成／結案", "AS", "承保完成／結案", "01", "有效"),
-	UNDERWRITING_DECLINED("NS", "拒保完成", "NS", "拒保完成", "13", "拒保"),
+	UNDERWRITING_DECLINED("RS", "拒保完成", "RS", "拒保完成", "13", "拒保"),
 	UNDERWRITING_POSTPONED("DS", "延期完成", "DS", "延期完成", "14", "延期"),
 	UNDERWRITING_CANCELLED("CS", "取消完成", "CS", "取消完成", "15", "取消"),
 	POLICY_ISSUED("PS", "保單製發完成", "PS", "保單製發完成", "01", "有效");

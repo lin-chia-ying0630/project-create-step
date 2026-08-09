@@ -47,6 +47,8 @@
 - 所有業務應用 API（成功、錯誤、刪除及未分類例外）都使用 `ResponseBodyDto<T>` 統一包裝；health、OpenAPI、檔案串流、外部 webhook 或框架協定端點只有在明確 allowlist 中才可例外。
 - 保全／契約變更案件的受理中狀態維持小寫正式代碼 `p`，顯示為「受理中」；不得套用到未確認代碼契約的核保、理賠或新契約系統。
 - 動態欄位顯示使用後端繁中 metadata；明細畫面採「一格一個欄位」的 label + value 呈現。
+- 所有業務清單與明細畫面固定顯示新增人員／時間、最後修改人員／時間、覆核人員／時間；尚未覆核時顯示「尚未覆核」，不得隱藏欄位或由前端推測。
+- 所有正式業務資料表 DDL 固定包含 `created_by`、`created_at`、`updated_by`、`updated_at`、`reviewer_id`、`reviewed_at`；前四欄不得為 NULL，尚未覆核時後兩欄可為 NULL，覆核核准套用異動時必須與正式資料同交易寫入。
 
 ## 證據與權威來源
 
@@ -124,8 +126,11 @@
 - 三層架構：Controller 只接收 Request DTO 與回傳 `ResponseBodyDto<Response DTO>`；Service 負責業務規則與交易；DAO 負責 Entity／持久化模型。Entity 不得成為 API contract，也不得跨過 Controller 邊界。
 - SQL 不直接控制：所有 SQL 只能定義在 `src/main/resources/mapper/<feature>/*Mapper.xml`；Java Mapper 禁止 `@Select`、`@Insert`、`@Update`、`@Delete`。Service、Controller、util 不得含 SQL 或 JDBC；動態條件使用 MyBatis XML 標籤與 `#{}`，禁止使用者輸入 `${}`。
 - 工具類獨立管理：只有無狀態、無領域決策的純技術邏輯才放入 `util/`；單一功能使用者放 `<feature>/util/`，確實跨功能者才放 `common/util/`。工具類不得注入 Bean、呼叫資料庫或決定核保、保費、資格、狀態等業務內容。
+- 後端共用邏輯：兩個以上功能重複使用的純技術方法、資料轉換、分頁／排序驗證、API 包裝與稽核欄位處理，必須提取至職責明確的 `common/` 契約或共用元件；領域狀態轉換與業務決策仍留在所屬 feature，不得以共用為名混入萬用 Service 或 util。
 - 前端元件共用：分頁列、排序標頭、表單欄位、狀態標籤、確認 Modal 等相同職責的 UI 片段統一放 `create-web/src/shared/components/`；業務頁面只透過 props/slots 使用，新增功能前先確認是否已有可複用元件。
 - 前端視覺共用：表格、按鈕、表單、分頁、狀態訊息、色彩與間距等跨頁視覺契約統一放 `create-web/src/shared/styles/style.scss`；feature 不得重複定義相同用途的樣式。
+- 清單列顯示：所有資料清單固定一筆資料一列，表頭與儲存格預設不得自動換行；可用寬度不足時，只能由表格外層容器提供水平捲軸，不得讓整個頁面水平溢出，也不得為了塞入畫面而把同一筆資料拆成多列。
+- 共用優先檢查：新增或修改前後端功能前，必須先搜尋既有共用元件、方法與樣式；發現兩處以上相同職責的實作時，本次變更即應完成提取並補測試，不得留下複製版本等待後續整理。
 - 前端響應式設計：所有裝置使用同一份 route、Vue component、DOM、資料契約、API 與業務功能，只依可用 viewport 自動重排；禁止依 user-agent、裝置品牌或型號切換另一套頁面或邏輯。
 - 響應式範圍：所有頁面至少支援 320px viewport，不得造成整頁水平捲動；空間不足時多欄表單自動成為單欄，導覽與分頁可在自身容器橫向捲動，寬表格只在表格容器內捲動，主要操作按鈕高度至少 44px。
 - 響應式驗收：前端變更完成前，至少以 320×568、390×844 及桌面 viewport 驗證相同內容、欄位、狀態與操作均存在且可用，不得因 viewport 不同隱藏必要功能。
