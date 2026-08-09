@@ -2,8 +2,41 @@ openapi: 3.1.0
 info:
   title: 保險系統 API
   version: 0.1.0
-  description: 新契約、客戶、首期保費、核保批次與承保撤回 API。
+  description: 新契約、客戶、首期保費、核保批次、承保撤回與 Maker-Checker 覆核 API。
 paths:
+  /api/v1/reviews:
+    get:
+      summary: 分頁查詢覆核案件
+      parameters:
+        - {name: status, in: query, schema: {type: string, enum: [PENDING, APPROVED, REJECTED], default: PENDING}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: pageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200': {description: 覆核案件查詢成功}
+  /api/v1/reviews/{reviewId}:
+    get:
+      summary: 查詢覆核案件與加密 payload 解密後明細
+      parameters:
+        - {name: reviewId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: 覆核明細查詢成功}
+        '404': {description: 查無覆核案件}
+  /api/v1/reviews/{reviewId}/approve:
+    post:
+      summary: 核准覆核案件並於同一交易套用正式異動
+      parameters:
+        - {name: reviewId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: 覆核核准完成}
+        '409': {description: 案件已處理}
+        '422': {description: 建立人不得覆核自己的案件}
+  /api/v1/reviews/{reviewId}/reject:
+    post:
+      summary: 退回覆核案件並釋放待審鎖
+      parameters:
+        - {name: reviewId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: 覆核退回完成}
   /api/postal-codes/{postalCode}:
     get:
       summary: 依 3 或 6 碼郵遞區號查詢 POS 代碼定義中的縣市與行政區
@@ -15,9 +48,9 @@ paths:
         '404': {description: 查無郵遞區號前三碼}
   /api/v1/customers:
     post:
-      summary: 建立自然人或公司行號客戶
+      summary: 送出自然人或公司行號客戶建立覆核案件
       responses:
-        '200': {description: 客戶建立成功}
+        '200': {description: 客戶建立已送覆核}
         '400': {description: 輸入或身分證檢核失敗}
         '409': {description: 身分識別資料重複}
   /api/v1/new-contract/code-definitions/{codeGroup}/{codeField}:
@@ -31,9 +64,9 @@ paths:
         '400': {description: 群組或欄位格式錯誤}
   /api/v1/new-contract/applications:
     post:
-      summary: 建立新契約要保案件及首期應繳
+      summary: 送出保單登打覆核案件
       responses:
-        '200': {description: 要保案件建立成功}
+        '200': {description: 保單登打已送覆核}
   /api/v1/new-contract/applications/{applicationNo}/initial-premium:
     get:
       summary: 依要保書號碼或預編保單號碼查詢首期應繳
@@ -59,9 +92,9 @@ paths:
         '404': {description: 查無資料}
   /api/v1/new-contract/initial-premium-payments/reconcile:
     post:
-      summary: 登錄首期保險費收款並執行銷帳
+      summary: 送出首期保費資料覆核案件
       responses:
-        '200': {description: 收款與銷帳完成}
+        '200': {description: 首期保費資料已送覆核}
   /api/v1/new-contract/remittance-slips/match:
     post:
       deprecated: true
@@ -70,9 +103,9 @@ paths:
         '200': {description: 收款與銷帳完成}
   /api/v1/new-contract/underwriting-batch/requests:
     post:
-      summary: 依要保書號碼或預編保單號碼排入晚上九點核保批次
+      summary: 送出晚上九點核保批次覆核案件
       responses:
-        '200': {description: 排程成功}
+        '200': {description: 批次核保已送覆核}
   /api/v1/new-contract/underwriting-batch/executions:
     get:
       summary: 查詢最近核保批次執行紀錄
@@ -103,9 +136,9 @@ paths:
         '200': {description: 查詢成功}
   /api/v1/new-contract/policy-reversals:
     post:
-      summary: 刪除未生效正式保單、回復未承保並寫入稽核快照
+      summary: 送出承保撤回覆核案件
       responses:
-        '200': {description: 撤回成功}
+        '200': {description: 承保撤回已送覆核}
 components:
   schemas:
     ResponseBodyDto:

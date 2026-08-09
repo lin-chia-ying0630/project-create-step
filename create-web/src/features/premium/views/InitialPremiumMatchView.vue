@@ -72,14 +72,7 @@ async function reconcile() {
       },
       crypto.randomUUID(),
     )
-    message.value = r.mayUnderwrite
-      ? '首期保險費已收款並完成銷帳，可進入核保。'
-      : `銷帳結果：${r.matchStatusDescription}，案件暫不可承保，請進行差額處理或照會。`
-    due.value = {
-      ...due.value,
-      dueStatus: r.mayUnderwrite ? 'MATCHED' : due.value.dueStatus,
-      dueStatusDescription: r.mayUnderwrite ? '已銷帳' : due.value.dueStatusDescription,
-    }
+    message.value = `首期保費資料已送覆核，覆核編號：${r.reviewId}`
   } catch (e) {
     error.value = e instanceof Error ? e.message : '首期保險費收款失敗'
   } finally {

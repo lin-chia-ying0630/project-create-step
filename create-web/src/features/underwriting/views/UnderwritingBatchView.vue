@@ -21,7 +21,7 @@ async function enqueue() {
       { applicationNo: applicationNo.value.trim(), requestedBusinessDate: businessDate.value },
       crypto.randomUUID(),
     )
-    message.value = `${result.applicationNo} 已排入核保批次，預計 ${result.scheduledAt} 執行。`
+    message.value = `批次核保已送覆核，覆核編號：${result.reviewId}`
     applicationNo.value = ''
   } catch (e) {
     error.value = e instanceof Error ? e.message : '排入批次失敗'

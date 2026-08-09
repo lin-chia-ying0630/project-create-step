@@ -2,12 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
 import { applicationEntryApi } from '../api/applicationEntryApi'
-import type {
-  BeneficiaryInput,
-  CoverageInput,
-  CreateApplicationResult,
-  PolicyNumberReservationResult,
-} from '../types/applicationEntry'
+import type { BeneficiaryInput, CoverageInput } from '../types/applicationEntry'
 import '../../../application-entry.css'
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
 const form = reactive({
@@ -61,8 +56,6 @@ const form = reactive({
 const loading = ref(false),
   message = ref<string | null>(null),
   error = ref<string | null>(null),
-  created = ref<CreateApplicationResult | null>(null),
-  reservation = ref<PolicyNumberReservationResult | null>(null),
   activePage = ref(0)
 const applicationPages = ['要保事項', '契約關係人', '投保內容', '受益人', '健康告知', '聲明與簽署']
 const totalPremium = computed(() =>
@@ -100,8 +93,6 @@ async function submit() {
   loading.value = true
   message.value = null
   error.value = null
-  created.value = null
-  reservation.value = null
   try {
     const payload = JSON.parse(JSON.stringify(form))
     payload.beneficiaries = payload.beneficiaries.map((b: BeneficiaryInput) => ({
@@ -118,23 +109,9 @@ async function submit() {
       }),
     )
     const result = await applicationEntryApi.create(payload)
-    created.value = result
-    message.value = `要保書 ${result.applicationNo} 已完整送件，首期應繳 ${result.currencyCode} ${result.calculatedPremiumAmount}`
+    message.value = `保單登打已送覆核，覆核編號：${result.reviewId}`
   } catch (e) {
     error.value = e instanceof Error ? e.message : '建立失敗'
-  } finally {
-    loading.value = false
-  }
-}
-async function reservePolicyNumber() {
-  if (!created.value) return
-  loading.value = true
-  error.value = null
-  try {
-    reservation.value = await applicationEntryApi.reservePolicyNumber(created.value.applicationNo)
-    message.value = `已編發保單號碼 ${reservation.value.policyNo}，可至保單資料查詢使用。`
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '保單號碼編發失敗'
   } finally {
     loading.value = false
   }
@@ -426,31 +403,6 @@ async function reservePolicyNumber() {
       </article>
       <PageNavigator v-model="activePage" :total="applicationPages.length" prefix="第" />
     </form>
-    <article v-if="created" class="panel form-section policy-number-panel">
-      <div class="panel-title">
-        <h3><b>7</b>編發預編保單號碼</h3>
-        <small>完成承保交易前，契約狀態仍為未承保</small>
-      </div>
-      <div v-if="reservation" class="amount-board">
-        <div>
-          <small>要保書號碼</small><strong>{{ reservation.applicationNo }}</strong>
-        </div>
-        <div>
-          <small>預編保單號碼</small><strong>{{ reservation.policyNo }}</strong>
-        </div>
-        <div><small>契約狀態</small><strong>未承保</strong></div>
-      </div>
-      <div v-else class="form-actions">
-        <button
-          type="button"
-          class="primary-button"
-          :disabled="loading"
-          @click="reservePolicyNumber"
-        >
-          {{ loading ? '編發中…' : '編發預編保單號碼' }}
-        </button>
-      </div>
-    </article>
     <p v-if="message" class="status-message success">{{ message }}</p>
     <p v-if="error" class="status-message error">{{ error }}</p>
   </section>

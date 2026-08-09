@@ -8,10 +8,17 @@ export const routeNames = {
   batch: 'underwriting-batch',
   inquiry: 'underwriting-inquiry',
   reversal: 'policy-reversal',
+  review: 'review-work-queue',
 } as const
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: { name: routeNames.customer } },
+  {
+    path: '/reviews',
+    name: routeNames.review,
+    component: () => import('../features/review/views/ReviewWorkQueueView.vue'),
+    meta: { title: '新契約覆核工作台' },
+  },
   {
     path: '/customers/new',
     name: routeNames.customer,
@@ -58,6 +65,7 @@ const routes: RouteRecordRaw[] = [
 ]
 
 export const navigationItems = [
+  { name: routeNames.review, label: '覆核工作台', icon: '✓' },
   { name: routeNames.customer, label: '客戶資料建立', icon: '♙' },
   { name: routeNames.applicationEntry, label: '保單登打', icon: '▤' },
   { name: routeNames.policyQuery, label: '保單資料查詢', icon: '⌕' },
@@ -71,6 +79,18 @@ export const router = createRouter({
   history: createWebHistory(),
   routes,
   scrollBehavior: () => ({ top: 0 }),
+})
+
+/** 所有新契約畫面進入前由後端驗證 HttpOnly SSO JWT；前端不讀取 token。 */
+router.beforeEach(async () => {
+  const response = await fetch('/api/auth/me', {
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  })
+  if (response.ok) return true
+  const portalUrl = `${window.location.protocol}//${window.location.hostname}:5174/`
+  window.location.replace(portalUrl)
+  return false
 })
 
 /** 依目前作業名稱更新瀏覽器標題，方便多分頁辨識。 */

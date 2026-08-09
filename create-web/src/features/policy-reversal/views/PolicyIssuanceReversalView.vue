@@ -54,7 +54,7 @@ async function executeReversal() {
       },
       crypto.randomUUID(),
     )
-    success.value = `承保撤回完成，稽核編號：${result.reversalAuditId}`
+    success.value = `承保撤回已送覆核，覆核編號：${result.reviewId}`
     preview.value = null
   } catch (e) {
     error.value = e instanceof Error ? e.message : '承保撤回失敗'

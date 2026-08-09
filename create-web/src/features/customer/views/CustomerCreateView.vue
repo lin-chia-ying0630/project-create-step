@@ -111,7 +111,7 @@ async function submit() {
         form.customerTypeCode === 'ORGANIZATION' ? form.organizationTypeCode : null,
     }
     const result = await customerApi.create(payload)
-    message.value = `客戶 ${result.customerName} 已建立，客戶編號：${result.customerId}，識別號碼：${result.maskedIdentityNo}`
+    message.value = `客戶建立已送覆核，覆核編號：${result.reviewId}`
     form.identityNo = ''
     form.customerName = ''
   } catch (e) {

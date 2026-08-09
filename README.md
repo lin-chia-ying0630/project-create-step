@@ -271,3 +271,21 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 | 承保撤回 | `GET .../preview`、`POST .../policy-reversals` | 僅允許未生效案件，使用版本及確認 token 防止誤刪。 |
 
 上述仍是開發基線，不包含正式商品費率、外部身分驗證、AML／PEP 名單服務、IAM 權限、HSM/KMS 密鑰管理與完整批次物化，因此不可直接上線。
+
+## SSO 授權邊界
+
+`create-api` 的 `/api/**` 只接受 `SSO_ACCESS_TOKEN` HttpOnly Cookie 中的 RS256 JWT。後端會透過 `SSO_JWK_SET_URI` 驗證簽章，並檢查 `SSO_ISSUER`、有效期限及 `aud=NEW_CONTRACT`；未通過一律回傳 `401`。前端啟動及換頁會呼叫 `/api/auth/me`，未登入就返回同一主機的統一入口 `5174`。本機 Compose 已設定 `host.docker.internal` 讀取入口 JWKS。
+
+## 新契約 Maker-Checker 覆核
+
+所有會修改正式資料的操作先建立 `business_review_case`，核准前不呼叫原業務 Service。覆核工作台 `/reviews` 統一處理客戶建立、保單登打、承保撤回、新契約批次核保及首期保費資料；保單號碼編發也視為保單登打類別的資料異動。
+
+| 邊界 | 責任 |
+|---|---|
+| Controller | 從已驗證 JWT 取得送審人，只呼叫 `ReviewService.submit`。 |
+| `ReviewService` | 加密 payload、建立待審唯一鎖、強制 Maker 與 Checker 不同人，核准時在同一交易套用異動與稽核。 |
+| 原業務 Service | 只負責核准後的客戶、新契約、收費、批次或撤回正式異動。 |
+| Interceptor／Filter | 適合補 requestId、登入身分與 HTTP context，不負責覆核決策。 |
+| AOP | 可集中無敏感內容的 use-case 稽核樣板，不攔截 DTO 全文，也不取代顯式覆核 workflow。 |
+
+待審防重使用 `pending_business_lock(function_code, unique_key)`；核准、退回時與案件狀態一起釋放。含個資或健康告知的 payload 使用 `PII_ENCRYPTION_KEY` 以 AES-GCM 加密，清單 API 不回傳 payload，只有明細 API 會解密供覆核人檢視。
