@@ -97,6 +97,8 @@ create-web/src/
 
 國籍與居住國家採中華郵政國外郵政國名／地區名中英文對照，保存 169 筆二碼代碼；聯絡地址採中華郵政 368 筆前三碼郵遞區號；保單幣別目前依系統實際支援範圍提供 `TWD｜新臺幣` 與 `USD｜美元`。Code Definitions、客戶建立及保單登打畫面的動態代碼欄位皆以資料庫回傳的「代碼｜中文」下拉選單呈現，英文名稱獨立顯示或保存。
 
+客戶類型主檔只保存一碼：`1｜自然人（PERSON）`、`2｜公司（ORGANIZATION）`，英文識別與中文說明由 `new_contract.code_definition` 管理。國家 `TW` 與幣別 `TWD` 等正式標準代碼不縮碼，但輸入畫面必須使用代碼定義下拉選單顯示中文。
+
 全域視覺樣式集中於 `create-web/src/shared/styles/style.scss`，統一維護色彩、斷點、版面、選單、表單、按鈕與狀態訊息；feature-specific 樣式才留在各 View 或 feature 樣式檔，不得重新定義第二份全域設計 token。
 
 前端採裝置無關的 Responsive Web Design：所有裝置使用同一份 route、Vue component、DOM、API 與業務功能，只依 viewport 可用空間自動重排。禁止 user-agent／裝置型號分支或手機專用頁。頁面至少支援 320px viewport，不得產生整頁水平捲動；空間不足時表單改為單欄，導覽、頁籤與寬表格只在自身容器內橫向捲動。交付前以 320×568、390×844 與桌面 viewport 驗證相同功能。

@@ -11,7 +11,7 @@ import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import type { CustomerPage, CustomerSummary } from '../types/customer'
 const props = withDefaults(defineProps<{ mode?: 'create' | 'query' }>(), { mode: 'create' })
 const form = reactive({
-  customerTypeCode: 'PERSON' as 'PERSON' | 'ORGANIZATION',
+  customerTypeCode: '1' as '1' | '2',
   identityTypeCode: 'NATIONAL_ID',
   identityNo: '',
   customerName: '',
@@ -40,6 +40,7 @@ const consent = ref(false),
   insurancePurposeOptions = ref<CodeDefinitionOption[]>([]),
   countryOptions = ref<CodeDefinitionOption[]>([]),
   postalCodeOptions = ref<CodeDefinitionOption[]>([]),
+  customerTypeOptions = ref<CodeDefinitionOption[]>([]),
   message = ref<string | null>(null),
   error = ref<string | null>(null)
 const customerPage = ref<CustomerPage>({
@@ -60,23 +61,31 @@ const selectedPostalCode = computed(() =>
   postalCodeOptions.value.find((option) => option.code === form.postalCode),
 )
 
+/** 由資料庫代碼定義顯示客戶類型，避免前端另建中文對照表。 */
+function customerTypeLabel(code: string) {
+  const option = customerTypeOptions.value.find((item) => item.code === code)
+  return option ? `${option.code}｜${option.description}` : code
+}
+
 /** 載入客戶建檔使用的 KYC、國家與郵遞區號代碼定義。 */
 async function loadKycCodeDefinitions() {
   codeLoading.value = true
   try {
-    const [occupations, sourcesOfFunds, insurancePurposes, countries, postalCodes] =
+    const [occupations, sourcesOfFunds, insurancePurposes, countries, postalCodes, customerTypes] =
       await Promise.all([
         customerCodeDefinitionApi.findOccupations(),
         customerCodeDefinitionApi.findSourcesOfFunds(),
         customerCodeDefinitionApi.findInsurancePurposes(),
         codeDefinitionApi.findActiveOptions('common', 'country_code'),
         codeDefinitionApi.findActiveOptions('customer-contact', 'postal_code3'),
+        codeDefinitionApi.findActiveOptions('customer-master', 'customer_type_code'),
       ])
     occupationOptions.value = occupations
     sourceOfFundsOptions.value = sourcesOfFunds
     insurancePurposeOptions.value = insurancePurposes
     countryOptions.value = countries
     postalCodeOptions.value = postalCodes
+    customerTypeOptions.value = customerTypes
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'KYC 代碼載入失敗'
   } finally {
@@ -84,7 +93,7 @@ async function loadKycCodeDefinitions() {
   }
 }
 function switchType() {
-  if (form.customerTypeCode === 'ORGANIZATION') {
+  if (form.customerTypeCode === '2') {
     form.identityTypeCode = 'BUSINESS_REGISTRATION_NO'
     form.genderCode = ''
     form.birthDate = ''
@@ -98,7 +107,7 @@ function switchType() {
     form.occupationCode = ''
   }
 }
-function selectCustomerType(type: 'PERSON' | 'ORGANIZATION') {
+function selectCustomerType(type: '1' | '2') {
   form.customerTypeCode = type
   switchType()
   message.value = null
@@ -113,17 +122,13 @@ async function submit() {
     const payload = {
       ...form,
       contactAddress: selectedPostalCode.value.description + form.contactAddress,
-      genderCode: form.customerTypeCode === 'PERSON' ? form.genderCode : null,
-      birthDate: form.customerTypeCode === 'PERSON' ? form.birthDate : null,
+      genderCode: form.customerTypeCode === '1' ? form.genderCode : null,
+      birthDate: form.customerTypeCode === '1' ? form.birthDate : null,
       establishmentDate:
-        form.customerTypeCode === 'ORGANIZATION' && form.establishmentDate
-          ? form.establishmentDate
-          : null,
-      responsiblePersonName:
-        form.customerTypeCode === 'ORGANIZATION' ? form.responsiblePersonName : null,
-      industryCode: form.customerTypeCode === 'ORGANIZATION' ? form.industryCode : null,
-      organizationTypeCode:
-        form.customerTypeCode === 'ORGANIZATION' ? form.organizationTypeCode : null,
+        form.customerTypeCode === '2' && form.establishmentDate ? form.establishmentDate : null,
+      responsiblePersonName: form.customerTypeCode === '2' ? form.responsiblePersonName : null,
+      industryCode: form.customerTypeCode === '2' ? form.industryCode : null,
+      organizationTypeCode: form.customerTypeCode === '2' ? form.organizationTypeCode : null,
     }
     const result = await customerApi.create(payload)
     message.value = `客戶建立已送覆核，覆核編號：${result.reviewId}`
@@ -198,33 +203,33 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
         <p class="eyebrow">{{ props.mode === 'query' ? 'CUSTOMER LOOKUP' : 'CUSTOMER 360' }}</p>
         <h2 v-if="props.mode === 'query'">客戶資料查詢</h2>
         <h2 v-else>
-          {{ form.customerTypeCode === 'PERSON' ? '自然人客戶建立' : '公司／行號客戶建立' }}
+          {{ form.customerTypeCode === '1' ? '自然人客戶建立' : '公司／行號客戶建立' }}
         </h2>
         <p>
           {{
             props.mode === 'query'
               ? '查詢客戶主檔摘要、狀態與新增、修改、覆核紀錄。'
-              : form.customerTypeCode === 'PERSON'
+              : form.customerTypeCode === '1'
                 ? '建立自然人身分、聯絡方式與個人 KYC 資料。'
                 : '建立法人或商號的統一編號、負責人、聯絡方式與法人 KYC 資料。'
           }}
         </p>
       </div>
       <span v-if="props.mode === 'create'" class="status-chip">{{
-        form.customerTypeCode === 'PERSON' ? '自然人' : '公司／行號'
+        form.customerTypeCode === '1' ? '自然人' : '公司／行號'
       }}</span>
     </header>
     <nav v-if="props.mode === 'create'" class="customer-type-switch" aria-label="客戶建立類型">
       <button
         type="button"
-        :class="{ active: form.customerTypeCode === 'PERSON' }"
-        @click="selectCustomerType('PERSON')"
+        :class="{ active: form.customerTypeCode === '1' }"
+        @click="selectCustomerType('1')"
       >
         <b>自然人客戶</b><small>身分證、居留證或護照</small></button
       ><button
         type="button"
-        :class="{ active: form.customerTypeCode === 'ORGANIZATION' }"
-        @click="selectCustomerType('ORGANIZATION')"
+        :class="{ active: form.customerTypeCode === '2' }"
+        @click="selectCustomerType('2')"
       >
         <b>公司／行號客戶</b><small>公司、商號或非營利組織</small>
       </button>
@@ -289,7 +294,7 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
                   </button>
                 </td>
                 <td>{{ item.customerId }}</td>
-                <td>{{ item.customerTypeCode }}</td>
+                <td>{{ customerTypeLabel(item.customerTypeCode) }}</td>
                 <td>{{ item.customerName }}</td>
                 <td>{{ item.nationalityCode }}</td>
                 <td>{{ item.recordStatus }}</td>
@@ -342,7 +347,7 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
                 <th scope="row">客戶 ID</th>
                 <td>{{ selectedCustomer.customerId }}</td>
                 <th scope="row">客戶類型</th>
-                <td>{{ selectedCustomer.customerTypeCode }}</td>
+                <td>{{ customerTypeLabel(selectedCustomer.customerTypeCode) }}</td>
               </tr>
               <tr>
                 <th scope="row">姓名／名稱</th>
@@ -380,20 +385,21 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
     <form v-if="props.mode === 'create'" class="panel" @submit.prevent="submit">
       <div class="panel-title">
         <h3>
-          {{ form.customerTypeCode === 'PERSON' ? '自然人身分與基本資料' : '公司／行號基本資料' }}
+          {{ form.customerTypeCode === '1' ? '自然人身分與基本資料' : '公司／行號基本資料' }}
         </h3>
         <small>＊為必填欄位</small>
       </div>
       <div class="field-grid">
         <label
           >客戶類型＊<select v-model="form.customerTypeCode" @change="switchType">
-            <option value="PERSON">自然人</option>
-            <option value="ORGANIZATION">公司／行號</option>
+            <option v-for="option in customerTypeOptions" :key="option.code" :value="option.code">
+              {{ option.code }}｜{{ option.description }}
+            </option>
           </select></label
         ><label
           >識別類型＊<select
             v-model="form.identityTypeCode"
-            :disabled="form.customerTypeCode === 'ORGANIZATION'"
+            :disabled="form.customerTypeCode === '2'"
           >
             <option value="NATIONAL_ID">國民身分證</option>
             <option value="RESIDENT_CERTIFICATE">居留證</option>
@@ -401,17 +407,17 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
             <option value="BUSINESS_REGISTRATION_NO">統一編號</option>
           </select></label
         ><label
-          >{{ form.customerTypeCode === 'PERSON' ? '證件號碼' : '統一編號' }}＊<input
+          >{{ form.customerTypeCode === '1' ? '證件號碼' : '統一編號' }}＊<input
             v-model.trim="form.identityNo"
             maxlength="20"
             autocomplete="off"
             required /></label
         ><label
-          >{{ form.customerTypeCode === 'PERSON' ? '姓名' : '公司／行號名稱' }}＊<input
+          >{{ form.customerTypeCode === '1' ? '姓名' : '公司／行號名稱' }}＊<input
             v-model.trim="form.customerName"
             maxlength="100"
             required /></label
-        ><template v-if="form.customerTypeCode === 'PERSON'"
+        ><template v-if="form.customerTypeCode === '1'"
           ><label
             >性別＊<select v-model="form.genderCode" required>
               <option value="" disabled>請選擇</option>
@@ -441,7 +447,7 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
               required
               placeholder="例：FINANCIAL_SERVICES" /></label></template
         ><label
-          >{{ form.customerTypeCode === 'PERSON' ? '國籍' : '登記國家' }}＊<select
+          >{{ form.customerTypeCode === '1' ? '國籍' : '登記國家' }}＊<select
             v-model="form.nationalityCode"
             :disabled="codeLoading"
             required
@@ -451,7 +457,7 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
             </option>
           </select></label
         ><label
-          >{{ form.customerTypeCode === 'PERSON' ? '居住國家' : '營業所在國' }}＊<select
+          >{{ form.customerTypeCode === '1' ? '居住國家' : '營業所在國' }}＊<select
             v-model="form.residencyCountryCode"
             :disabled="codeLoading"
             required
@@ -461,7 +467,7 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
             </option>
           </select></label
         ><label
-          >{{ form.customerTypeCode === 'PERSON' ? '行動電話' : '公司電話' }}＊<input
+          >{{ form.customerTypeCode === '1' ? '行動電話' : '公司電話' }}＊<input
             v-model.trim="form.mobilePhone"
             maxlength="30"
             autocomplete="off"
@@ -487,9 +493,7 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
             placeholder="依郵遞區號自動帶入" /></label
         ><label class="wide-field"
           >{{
-            form.customerTypeCode === 'PERSON'
-              ? '通訊地址（路街門牌）'
-              : '登記／通訊地址（路街門牌）'
+            form.customerTypeCode === '1' ? '通訊地址（路街門牌）' : '登記／通訊地址（路街門牌）'
           }}＊<input
             v-model.trim="form.contactAddress"
             maxlength="280"

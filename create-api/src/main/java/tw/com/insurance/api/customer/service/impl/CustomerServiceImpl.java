@@ -45,10 +45,12 @@ public class CustomerServiceImpl implements CustomerService {
 	public CustomerResult create(CreateCustomerRequest request, String requestId, String reviewerId) {
 		String identity = normalize(request.identityNo());
 		String customerType = request.customerTypeCode() == null || request.customerTypeCode().isBlank()
-				? "PERSON"
+				? "1"
 				: request.customerTypeCode();
-		boolean organization = "ORGANIZATION".equals(customerType);
-		if (!organization && !"PERSON".equals(customerType))
+		if (!codeDefinitionService.isActiveCode("customer-master", "customer_type_code", customerType))
+			throw new BusinessException(CustomerErrorCode.INVALID_CUSTOMER_TYPE);
+		boolean organization = "2".equals(customerType);
+		if (!organization && !"1".equals(customerType))
 			throw new BusinessException(CustomerErrorCode.INVALID_CUSTOMER_TYPE);
 		if (!organization
 				&& (request.genderCode() == null || request.genderCode().isBlank() || request.birthDate() == null))

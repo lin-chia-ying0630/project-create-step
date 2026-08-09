@@ -1,6 +1,6 @@
 /** 客戶建檔 feature 的 transport contract。 */
 export interface CreateCustomerRequest {
-  customerTypeCode: 'PERSON' | 'ORGANIZATION'
+  customerTypeCode: '1' | '2'
   identityTypeCode: string
   identityNo: string
   customerName: string
