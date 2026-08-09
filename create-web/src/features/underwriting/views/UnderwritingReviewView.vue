@@ -113,27 +113,50 @@ onMounted(async () => {
           <h3>案件與投保摘要</h3>
           <small>核保案件 {{ preview.underwritingCaseNo }}</small>
         </div>
-        <dl class="case-grid">
-          <div><dt>要保書號碼</dt><dd>{{ preview.applicationNo }}</dd></div>
-          <div><dt>正式保單號碼</dt><dd>{{ preview.policyNo || '—' }}</dd></div>
-          <div><dt>商品代碼</dt><dd>{{ preview.productCode }}</dd></div>
-          <div><dt>要保日期</dt><dd>{{ preview.applicationDate }}</dd></div>
-          <div><dt>預定生效日</dt><dd>{{ preview.requestedEffectiveDate }}</dd></div>
-          <div><dt>保險金額</dt><dd>{{ money(preview.currencyCode, preview.sumAssuredAmount) }}</dd></div>
-          <div><dt>首期保險費</dt><dd>{{ money(preview.currencyCode, preview.premiumAmount) }}</dd></div>
-          <div>
-            <dt>目前核保階段</dt>
-            <dd>{{ preview.currentStageCode }} {{ preview.currentStageDescription }}</dd>
-          </div>
-          <div>
-            <dt>目前核保結果</dt>
-            <dd>{{ preview.currentDecisionCode || '尚未決定' }}</dd>
-          </div>
-          <div>
-            <dt>目前契約狀態</dt>
-            <dd>{{ preview.currentContractStatusCode || 'NULL' }} {{ preview.currentContractStatusDescription }}</dd>
-          </div>
-        </dl>
+        <div class="summary-table-scope">
+          <table class="data-table summary-table">
+            <thead>
+              <tr>
+                <th scope="col">欄位</th>
+                <th scope="col">內容</th>
+                <th scope="col">欄位</th>
+                <th scope="col">內容</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">要保書號碼</th>
+                <td>{{ preview.applicationNo }}</td>
+                <th scope="row">正式保單號碼</th>
+                <td>{{ preview.policyNo || '—' }}</td>
+              </tr>
+              <tr>
+                <th scope="row">商品代碼</th>
+                <td>{{ preview.productCode }}</td>
+                <th scope="row">要保日期</th>
+                <td>{{ preview.applicationDate }}</td>
+              </tr>
+              <tr>
+                <th scope="row">預定生效日</th>
+                <td>{{ preview.requestedEffectiveDate }}</td>
+                <th scope="row">保險金額</th>
+                <td>{{ money(preview.currencyCode, preview.sumAssuredAmount) }}</td>
+              </tr>
+              <tr>
+                <th scope="row">首期保險費</th>
+                <td>{{ money(preview.currencyCode, preview.premiumAmount) }}</td>
+                <th scope="row">目前核保階段</th>
+                <td>{{ preview.currentStageCode }} {{ preview.currentStageDescription }}</td>
+              </tr>
+              <tr>
+                <th scope="row">目前核保結果</th>
+                <td>{{ preview.currentDecisionCode || '尚未決定' }}</td>
+                <th scope="row">目前契約狀態</th>
+                <td>{{ preview.currentContractStatusCode || 'NULL' }} {{ preview.currentContractStatusDescription }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </article>
 
       <article class="panel section-gap">
@@ -219,7 +242,21 @@ onMounted(async () => {
   color: #065f46;
 }
 
-.case-grid dd {
-  overflow-wrap: anywhere;
+.summary-table-scope {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.summary-table {
+  min-width: 720px;
+
+  th[scope='row'] {
+    width: 16%;
+    white-space: nowrap;
+  }
+
+  td {
+    width: 34%;
+  }
 }
 </style>
