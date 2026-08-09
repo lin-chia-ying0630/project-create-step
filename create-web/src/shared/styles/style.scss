@@ -283,6 +283,16 @@ button:disabled {
   width: 100%;
   min-width: 0;
 }
+
+.query-condition-form {
+  grid-template-columns: minmax(0, 1fr) 220px;
+}
+
+.query-condition-form > .primary-button,
+.query-condition-form > .search-actions,
+.query-condition-form .search-actions .primary-button {
+  width: 100%;
+}
 .search-actions {
   display: flex;
   align-items: flex-end;
@@ -578,6 +588,9 @@ button:disabled {
   }
   .search-row {
     grid-template-columns: 1fr;
+  }
+  .query-condition-form {
+    grid-template-columns: minmax(0, 1fr);
   }
   .search-row button {
     width: 100%;
