@@ -7,6 +7,7 @@ import PageNavigator from '../../../shared/components/PageNavigator.vue'
 import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
 import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
 import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
+import CodeDefinitionSelect from '../../../shared/components/CodeDefinitionSelect.vue'
 import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import type { CustomerPage, CustomerSummary } from '../types/customer'
 const props = withDefaults(defineProps<{ mode?: 'create' | 'query' }>(), { mode: 'create' })
@@ -390,13 +391,13 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
         <small>＊為必填欄位</small>
       </div>
       <div class="field-grid">
-        <label
-          >客戶類型＊<select v-model="form.customerTypeCode" @change="switchType">
-            <option v-for="option in customerTypeOptions" :key="option.code" :value="option.code">
-              {{ option.code }}｜{{ option.description }}
-            </option>
-          </select></label
-        ><label
+        <CodeDefinitionSelect
+          v-model="form.customerTypeCode"
+          label="客戶類型"
+          :options="customerTypeOptions"
+          required
+          @update:model-value="switchType"
+        /><label
           >識別類型＊<select
             v-model="form.identityTypeCode"
             :disabled="form.customerTypeCode === '2'"
@@ -446,27 +447,19 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
               maxlength="32"
               required
               placeholder="例：FINANCIAL_SERVICES" /></label></template
-        ><label
-          >{{ form.customerTypeCode === '1' ? '國籍' : '登記國家' }}＊<select
-            v-model="form.nationalityCode"
-            :disabled="codeLoading"
-            required
-          >
-            <option v-for="country in countryOptions" :key="country.code" :value="country.code">
-              {{ country.code }}｜{{ country.description }}
-            </option>
-          </select></label
-        ><label
-          >{{ form.customerTypeCode === '1' ? '居住國家' : '營業所在國' }}＊<select
-            v-model="form.residencyCountryCode"
-            :disabled="codeLoading"
-            required
-          >
-            <option v-for="country in countryOptions" :key="country.code" :value="country.code">
-              {{ country.code }}｜{{ country.description }}
-            </option>
-          </select></label
-        ><label
+        ><CodeDefinitionSelect
+          v-model="form.nationalityCode"
+          :label="form.customerTypeCode === '1' ? '國籍' : '登記國家'"
+          :options="countryOptions"
+          :disabled="codeLoading"
+          required
+        /><CodeDefinitionSelect
+          v-model="form.residencyCountryCode"
+          :label="form.customerTypeCode === '1' ? '居住國家' : '營業所在國'"
+          :options="countryOptions"
+          :disabled="codeLoading"
+          required
+        /><label
           >{{ form.customerTypeCode === '1' ? '行動電話' : '公司電話' }}＊<input
             v-model.trim="form.mobilePhone"
             maxlength="30"
@@ -479,14 +472,13 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
             maxlength="254"
             autocomplete="off"
             required /></label
-        ><label
-          >郵遞區號＊<select v-model="form.postalCode" :disabled="codeLoading" required>
-            <option value="" disabled>請選擇</option>
-            <option v-for="postal in postalCodeOptions" :key="postal.code" :value="postal.code">
-              {{ postal.code }}｜{{ postal.description }}
-            </option>
-          </select></label
-        ><label
+        ><CodeDefinitionSelect
+          v-model="form.postalCode"
+          label="郵遞區號"
+          :options="postalCodeOptions"
+          :disabled="codeLoading"
+          required
+        /><label
           >縣市／行政區<input
             :value="selectedPostalCode?.description ?? ''"
             readonly
@@ -504,30 +496,26 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
       </div>
       <div class="panel-title section-gap"><h3>KYC 基本資料</h3></div>
       <div class="field-grid">
-        <label
-          >職業＊<select v-model="form.occupationCode" :disabled="codeLoading" required>
-            <option value="" disabled>{{ codeLoading ? '代碼載入中…' : '請選擇' }}</option>
-            <option v-for="option in occupationOptions" :key="option.code" :value="option.code">
-              {{ option.code }}｜{{ option.description }}
-            </option>
-          </select></label
-        ><label
-          >資金來源＊<select v-model="form.sourceOfFundsCode" :disabled="codeLoading" required>
-            <option v-for="option in sourceOfFundsOptions" :key="option.code" :value="option.code">
-              {{ option.code }}｜{{ option.description }}
-            </option>
-          </select></label
-        ><label
-          >投保目的＊<select v-model="form.insurancePurposeCode" :disabled="codeLoading" required>
-            <option
-              v-for="option in insurancePurposeOptions"
-              :key="option.code"
-              :value="option.code"
-            >
-              {{ option.code }}｜{{ option.description }}
-            </option>
-          </select></label
-        >
+        <CodeDefinitionSelect
+          v-model="form.occupationCode"
+          label="職業"
+          :options="occupationOptions"
+          :disabled="codeLoading"
+          :placeholder="codeLoading ? '代碼載入中…' : '請選擇'"
+          required
+        /><CodeDefinitionSelect
+          v-model="form.sourceOfFundsCode"
+          label="資金來源"
+          :options="sourceOfFundsOptions"
+          :disabled="codeLoading"
+          required
+        /><CodeDefinitionSelect
+          v-model="form.insurancePurposeCode"
+          label="投保目的"
+          :options="insurancePurposeOptions"
+          :disabled="codeLoading"
+          required
+        />
       </div>
       <label class="consent-row"
         ><input

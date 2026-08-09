@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
 import SectionTabNavigator from '../../../shared/components/SectionTabNavigator.vue'
+import CodeDefinitionSelect from '../../../shared/components/CodeDefinitionSelect.vue'
 import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
 import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import { applicationEntryApi } from '../api/applicationEntryApi'
@@ -275,17 +276,13 @@ onMounted(loadCodeDefinitionOptions)
             >總保額 <strong>{{ form.currencyCode }} {{ totalSum }}</strong></span
           ><span
             >首期應繳 <strong>{{ form.currencyCode }} {{ totalPremium }}</strong></span
-          ><label
-            >幣別<select v-model="form.currencyCode" :disabled="codeLoading" required>
-              <option
-                v-for="currency in currencyOptions"
-                :key="currency.code"
-                :value="currency.code"
-              >
-                {{ currency.code }}｜{{ currency.description }}
-              </option>
-            </select></label
-          ><label
+          ><CodeDefinitionSelect
+            v-model="form.currencyCode"
+            label="幣別"
+            :options="currencyOptions"
+            :disabled="codeLoading"
+            required
+          /><label
             >繳別<select v-model="form.paymentModeCode">
               <option value="ANNUAL">年繳</option>
               <option value="SEMI_ANNUAL">半年繳</option>

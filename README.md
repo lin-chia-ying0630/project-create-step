@@ -89,6 +89,8 @@ create-web/src/
 
 只有跨兩個以上 feature 且責任一致的程式才能進入 `shared/`。
 
+表單欄位外框由 `FormField.vue` 共用；資料庫代碼下拉由 `CodeDefinitionSelect.vue` 共用，統一顯示「代碼｜中文」。目前客戶類型、國籍、居住國家、郵遞區號、職業、資金來源、投保目的與保單幣別皆使用相同元件。
+
 前端導覽由 `create-web/src/router/index.ts` 集中管理，使用 Vue Router history mode。路由名稱、URL、頁面標題及側邊選單項目共用同一份定義；Nginx 以 `try_files ... /index.html` 支援直接開啟及重新整理深層網址。
 
 新契約系統提供 `/code-definitions` 的唯讀「Code Definitions 代碼定義」頁面，依代碼群組與欄位查詢資料庫目前生效的動態代碼及繁體中文說明；畫面不另行維護代碼對照。

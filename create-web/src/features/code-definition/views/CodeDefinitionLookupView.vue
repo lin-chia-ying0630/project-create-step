@@ -165,6 +165,16 @@ onMounted(initialize)
   max-width: 100%;
 }
 
+.code-definition-page :deep(.query-condition-form) {
+  grid-template-columns: minmax(0, 1fr) 150px;
+}
+
+@media (max-width: 700px) {
+  .code-definition-page :deep(.query-condition-form) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .lookup-form {
   margin-top: 4px;
 }
