@@ -82,6 +82,15 @@ paths:
       summary: 送出保單登打覆核案件
       responses:
         '200': {description: 保單登打已送覆核}
+        '400': {description: 要保書、付款授權、投資適合度或附件欄位驗證失敗}
+        '422': {description: 付款工具未驗證或投資型商品適合度未完成}
+  /api/v1/new-contract/payment-instruments/validate:
+    post:
+      summary: 一次性驗證銀行帳號或信用卡號並回傳 Token 與遮罩值
+      description: 完整號碼不得寫入 log、要保書、覆核 payload 或正式業務資料；信用卡執行 Luhn 與有效年月檢核，銀行帳號依金融機構代碼及格式檢核。
+      responses:
+        '200': {description: 格式驗證成功，只回傳 paymentToken、maskedNumber、validationStatus 與 institutionCode}
+        '400': {description: 銀行帳號、信用卡號、有效年月或金融機構代碼格式無效}
   /api/v1/new-contract/applications/{applicationNo}/initial-premium:
     get:
       summary: 依要保書號碼或正式保單號碼查詢首期應繳

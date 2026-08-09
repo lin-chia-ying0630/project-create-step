@@ -23,6 +23,8 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversa
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PremiumDueDetail;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PremiumDuePreview;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PremiumMatchResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PaymentInstrumentValidationRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PaymentInstrumentValidationResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.RemittanceSlipRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.SignatureDetail;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchExecutionSummary;
@@ -82,6 +84,45 @@ public class NewContractServiceImpl implements NewContractService {
 		this.piiKey = sha256(keyText);
 	}
 
+	/** 驗證銀行帳號或信用卡格式並產生不可逆 Token；方法不保存完整號碼。 */
+	@Override
+	public PaymentInstrumentValidationResult validatePaymentInstrument(PaymentInstrumentValidationRequest request) {
+		String number = request.instrumentNumber().replaceAll("[\\s-]", "");
+		boolean bank = "B".equals(request.instrumentTypeCode());
+		boolean card = "C".equals(request.instrumentTypeCode());
+		boolean valid = bank ? number.matches("\\d{6,20}") && request.bankCode() != null
+				&& request.bankCode().matches("\\d{3}") : card && number.matches("\\d{13,19}")
+				&& luhn(number) && validExpiry(request.expiryMonth(), request.expiryYear());
+		if (!valid)
+			throw new BusinessException(NewContractErrorCode.INVALID_PAYMENT_INSTRUMENT);
+		String tokenSource = HexFormat.of().formatHex(piiKey) + ":" + request.instrumentTypeCode() + ":" + number;
+		String token = "PAY-" + HexFormat.of().formatHex(sha256(tokenSource));
+		String masked = "*".repeat(Math.max(0, number.length() - 4)) + number.substring(number.length() - 4);
+		return new PaymentInstrumentValidationResult(token, masked, "S", request.bankCode());
+	}
+
+	/** 信用卡基本檢查碼；通過不代表發卡機構已授權扣款。 */
+	private boolean luhn(String number) {
+		int sum = 0;
+		boolean doubleDigit = false;
+		for (int index = number.length() - 1; index >= 0; index--) {
+			int digit = number.charAt(index) - '0';
+			if (doubleDigit && (digit *= 2) > 9)
+				digit -= 9;
+			sum += digit;
+			doubleDigit = !doubleDigit;
+		}
+		return sum % 10 == 0;
+	}
+
+	/** 驗證信用卡有效年月仍在臺北目前月份之後。 */
+	private boolean validExpiry(String month, String year) {
+		if (month == null || year == null || !month.matches("0[1-9]|1[0-2]") || !year.matches("\\d{4}"))
+			return false;
+		java.time.YearMonth expiry = java.time.YearMonth.of(Integer.parseInt(year), Integer.parseInt(month));
+		return !expiry.isBefore(java.time.YearMonth.now(java.time.ZoneId.of("Asia/Taipei")));
+	}
+
 	@Transactional
 	public CreateApplicationResult createApplication(CreateApplicationRequest request) {
 		if (!codeDefinitionService.isActiveCode("new-contract", "currency_code", request.currencyCode()))
@@ -103,6 +144,13 @@ public class NewContractServiceImpl implements NewContractService {
 			if ("YES".equals(h.answerCode()) && (h.supplementalDetail() == null || h.supplementalDetail().isBlank()))
 				throw new BusinessException(NewContractErrorCode.HEALTH_DETAIL_REQUIRED);
 		});
+		if (!request.initialPremiumAuthorization().paymentToken().startsWith("PAY-")
+				|| request.initialPremiumAuthorization().maskedNumber().length() < 4)
+			throw new BusinessException(NewContractErrorCode.PAYMENT_INSTRUMENT_NOT_VALIDATED);
+		if (request.investmentProduct() && (!request.investmentRisk().applicable()
+				|| !request.investmentRisk().suitable() || !request.investmentRisk().disclosureConfirmed()
+				|| !request.investmentRisk().proposalDelivered()))
+			throw new BusinessException(NewContractErrorCode.INVESTMENT_SUITABILITY_REQUIRED);
 		BigDecimal sumAssured = request.coverages().stream().map(CoverageInput::sumAssuredAmount)
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal premium = request.coverages().stream().map(CoverageInput::premiumAmount).reduce(BigDecimal.ZERO,
@@ -156,6 +204,30 @@ public class NewContractServiceImpl implements NewContractService {
 			mapper.insertComplianceEvidence(UUID.randomUUID().toString(), request.applicationNo(), "INSURANCE_PURPOSE",
 					request.insurancePurposeCode());
 			mapper.insertPremiumDue(dueId, request.applicationNo(), request.currencyCode(), premium);
+			var authorization = request.initialPremiumAuthorization();
+			mapper.insertPremiumAuthorization(UUID.randomUUID().toString(), request.applicationNo(),
+					authorization.authorizationTypeCode(), authorization.payerRoleCode(),
+					authorization.payerCustomerId(), authorization.payerRelationshipCode(), authorization.payerName(),
+					authorization.institutionCode(), authorization.branchCode(), authorization.paymentToken(),
+					authorization.maskedNumber(), authorization.expiryMonth(), authorization.expiryYear(),
+					authorization.authorizationDate(), authorization.authorizationVersion());
+			if (request.crossSellingConsent().applicable()) {
+				var consent = request.crossSellingConsent();
+				mapper.insertCrossSellingConsent(UUID.randomUUID().toString(), request.applicationNo(), consent.agreed(),
+						consent.consentVersion(), consent.recipientCompanies(), consent.dataScopeCodes(),
+						consent.stopMethodAcknowledged());
+			}
+			if (request.investmentProduct()) {
+				var risk = request.investmentRisk();
+				mapper.insertInvestmentRisk(UUID.randomUUID().toString(), request.applicationNo(),
+						risk.questionnaireVersion(), risk.customerRiskLevel(), risk.productRiskLevel(), risk.riskScore(),
+						risk.suitable(), risk.allocationSummary(), risk.disclosureConfirmed(), risk.proposalDelivered(),
+						risk.recordingRequired(), risk.recordingReference());
+			}
+			request.attachments().forEach(attachment -> mapper.insertAttachment(UUID.randomUUID().toString(),
+					request.applicationNo(), attachment.attachmentTypeCode(), attachment.ownerPartyRole(),
+					attachment.documentNoMasked(), attachment.fileName(), attachment.fileReference(),
+					attachment.fileHash(), attachment.pageCount(), attachment.issueDate(), attachment.expiryDate()));
 		} catch (DuplicateKeyException exception) {
 			throw new BusinessException(NewContractErrorCode.DUPLICATE_APPLICATION);
 		}

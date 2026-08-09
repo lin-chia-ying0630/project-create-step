@@ -4,6 +4,8 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQu
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQueryPage;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.CreateApplicationRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.CreateApplicationResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PaymentInstrumentValidationRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PaymentInstrumentValidationResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyNumberReservationResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalPreview;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalPage;
@@ -23,6 +25,8 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingO
 import java.util.List;
 
 public interface NewContractService {
+	/** 驗證付款工具後只回傳代碼與遮罩值，完整號碼不進入要保書覆核資料。 */
+	PaymentInstrumentValidationResult validatePaymentInstrument(PaymentInstrumentValidationRequest request);
 	CreateApplicationResult createApplication(CreateApplicationRequest request);
 	PolicyNumberReservationResult reservePolicyNumber(String applicationNo);
 	List<ApplicationQueryResult> queryApplication(String query);

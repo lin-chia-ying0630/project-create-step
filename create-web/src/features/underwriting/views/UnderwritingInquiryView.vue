@@ -179,7 +179,7 @@ onMounted(() => loadInquiries(1))
               <tr v-for="item in inquiryPage.items" :key="item.inquiryNo">
                 <td>
                   <button class="secondary-button" @click="openInquiry(item.inquiryNo)">
-                    查詢
+                    查詢照會單
                   </button>
                 </td>
                 <td>{{ item.inquiryNo }}</td>

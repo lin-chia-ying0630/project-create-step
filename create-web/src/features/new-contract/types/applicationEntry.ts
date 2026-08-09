@@ -12,6 +12,7 @@ export interface CreateApplicationRequest {
   paymentModeCode: string
   requestedEffectiveDate: string
   electronicPolicy: boolean
+  investmentProduct: boolean
   fundsSourceCode: string
   insurancePurposeCode: string
   coverages: CoverageInput[]
@@ -23,6 +24,72 @@ export interface CreateApplicationRequest {
   applicantSignatureConfirmed: boolean
   insuredSignatureConfirmed: boolean
   signatureMethod: string
+  initialPremiumAuthorization: InitialPremiumAuthorizationInput
+  crossSellingConsent: CrossSellingConsentInput
+  investmentRisk: InvestmentRiskInput
+  attachments: ApplicationAttachmentInput[]
+}
+export interface PaymentInstrumentValidationRequest {
+  instrumentTypeCode: 'B' | 'C'
+  instrumentNumber: string
+  bankCode: string | null
+  branchCode: string | null
+  expiryMonth: string | null
+  expiryYear: string | null
+}
+export interface PaymentInstrumentValidationResult {
+  paymentToken: string
+  maskedNumber: string
+  validationStatus: string
+  institutionCode: string | null
+}
+export interface InitialPremiumAuthorizationInput {
+  authorizationTypeCode: 'B' | 'C'
+  payerRoleCode: string
+  payerCustomerId: string
+  payerRelationshipCode: string
+  payerName: string
+  institutionCode: string | null
+  branchCode: string | null
+  paymentToken: string
+  maskedNumber: string
+  expiryMonth: string | null
+  expiryYear: string | null
+  authorizationDate: string
+  authorizationVersion: string
+  confirmed: boolean
+}
+export interface CrossSellingConsentInput {
+  applicable: boolean
+  agreed: boolean
+  consentVersion: string | null
+  recipientCompanies: string | null
+  dataScopeCodes: string | null
+  stopMethodAcknowledged: boolean
+}
+export interface InvestmentRiskInput {
+  applicable: boolean
+  questionnaireVersion: string | null
+  customerRiskLevel: string | null
+  productRiskLevel: string | null
+  riskScore: number | null
+  suitable: boolean
+  allocationSummary: string | null
+  disclosureConfirmed: boolean
+  proposalDelivered: boolean
+  recordingRequired: boolean
+  recordingReference: string | null
+}
+export interface ApplicationAttachmentInput {
+  attachmentTypeCode: string
+  ownerPartyRole: string
+  documentNoMasked: string | null
+  fileName: string
+  fileReference: string
+  fileHash: string | null
+  pageCount: number | null
+  issueDate: string | null
+  expiryDate: string | null
 }
 export interface CoverageInput {
   coverageItemType: 'BASE' | 'RIDER'

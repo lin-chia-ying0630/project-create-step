@@ -59,6 +59,30 @@ public interface NewContractMapper {
 			@Param("type") String type, @Param("reference") String reference);
 	int insertPremiumDue(@Param("id") String id, @Param("applicationNo") String applicationNo,
 			@Param("currencyCode") String currencyCode, @Param("premium") BigDecimal premium);
+	int insertPremiumAuthorization(@Param("id") String id, @Param("applicationNo") String applicationNo,
+			@Param("type") String type, @Param("payerRole") String payerRole, @Param("payerId") String payerId,
+			@Param("relationship") String relationship, @Param("payerName") String payerName,
+			@Param("institution") String institution, @Param("branch") String branch,
+			@Param("token") String token, @Param("masked") String masked, @Param("expiryMonth") String expiryMonth,
+			@Param("expiryYear") String expiryYear, @Param("authorizationDate") LocalDate authorizationDate,
+			@Param("version") String version);
+	int insertCrossSellingConsent(@Param("id") String id, @Param("applicationNo") String applicationNo,
+			@Param("agreed") boolean agreed, @Param("version") String version,
+			@Param("recipients") String recipients, @Param("scopes") String scopes,
+			@Param("stopAcknowledged") boolean stopAcknowledged);
+	int insertInvestmentRisk(@Param("id") String id, @Param("applicationNo") String applicationNo,
+			@Param("version") String version, @Param("customerRisk") String customerRisk,
+			@Param("productRisk") String productRisk, @Param("score") Integer score,
+			@Param("suitable") boolean suitable, @Param("allocation") String allocation,
+			@Param("disclosure") boolean disclosure, @Param("proposal") boolean proposal,
+			@Param("recordingRequired") boolean recordingRequired,
+			@Param("recordingReference") String recordingReference);
+	int insertAttachment(@Param("id") String id, @Param("applicationNo") String applicationNo,
+			@Param("type") String type, @Param("ownerRole") String ownerRole,
+			@Param("documentNo") String documentNo, @Param("fileName") String fileName,
+			@Param("fileReference") String fileReference, @Param("fileHash") String fileHash,
+			@Param("pageCount") Integer pageCount, @Param("issueDate") LocalDate issueDate,
+			@Param("expiryDate") LocalDate expiryDate);
 
 	Map<String, Object> findPremiumDue(String applicationNo);
 

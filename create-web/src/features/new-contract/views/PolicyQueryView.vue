@@ -121,7 +121,7 @@ onMounted(() => loadPolicies(1))
       <template #query>
         <SingleQueryForm
           v-model="query"
-          button-label="查詢保單資料"
+          button-label="查詢保單"
           description="可輸入完整要保人 ID、被保險人 ID、要保書號碼或正式保單號碼；留白查詢全部資料"
           field-label="要保書／保單號碼"
           :loading="loading"
@@ -177,7 +177,7 @@ onMounted(() => loadPolicies(1))
               <tr v-for="item in queryPage.items" :key="item.applicationNo">
                 <td>
                   <button class="secondary-button" @click="openDetail(item.applicationNo)">
-                    查詢
+                    查詢保單
                   </button>
                 </td>
                 <td>{{ item.applicationNo }}</td>

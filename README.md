@@ -91,6 +91,10 @@ create-web/src/
 
 表單欄位外框由 `FormField.vue` 共用；資料庫代碼下拉由 `CodeDefinitionSelect.vue` 共用，統一顯示「代碼｜中文」。目前客戶類型、國籍、居住國家、郵遞區號、職業、資金來源、投保目的與保單幣別皆使用相同元件。
 
+人身保險要保書採十頁條件式登打：受理與通路、契約關係人、投保內容、受益人、健康告知、聲明與簽署、首期保費授權、共同行銷同意、投資風險適合度及附件資料。共同行銷頁只在適用案件啟用且「不同意」不得阻擋投保；投資風險頁由商品是否屬投資型決定，未完成適合度、風險揭露及文件交付不得送件。
+
+完整銀行帳號或信用卡號只送至 `/api/v1/new-contract/payment-instruments/validate` 做格式檢核與不可逆代碼化；正式要保資料與覆核內容僅保存 Token、遮罩值及驗證狀態，不保存完整號碼、CVV、PIN，也不得輸出至 log。附件資料只保存受控 DMS／物件儲存參照及完整性 metadata，檔案內容不直接存入業務 JSON。
+
 前端導覽由 `create-web/src/router/index.ts` 集中管理，使用 Vue Router history mode。路由名稱、URL、頁面標題及側邊選單項目共用同一份定義；Nginx 以 `try_files ... /index.html` 支援直接開啟及重新整理深層網址。
 
 新契約系統提供 `/code-definitions` 的唯讀「Code Definitions 代碼定義」頁面，依代碼群組與欄位查詢資料庫目前生效的動態代碼及繁體中文說明；畫面不另行維護代碼對照。
@@ -102,6 +106,10 @@ create-web/src/
 客戶類型主檔只保存一碼：`1｜自然人（PERSON）`、`2｜公司（ORGANIZATION）`，英文識別與中文說明由 `new_contract.code_definition` 管理。國家 `TW` 與幣別 `TWD` 等正式標準代碼不縮碼，但輸入畫面必須使用代碼定義下拉選單顯示中文。
 
 全域視覺樣式集中於 `create-web/src/shared/styles/style.scss`，統一維護色彩、斷點、版面、選單、表單、按鈕與狀態訊息；feature-specific 樣式才留在各 View 或 feature 樣式檔，不得重新定義第二份全域設計 token。
+
+按鈕依動作語意固定使用共用樣式：查詢、送出及排入作業使用青綠實心 `primary-button`；重新整理、查看、清除、取消及頁面導覽使用不填色的青綠外框 `secondary-button`；承保撤回固定使用藍色實心 `reversal-button`；刪除等不可逆危險動作才使用紅色 `danger-button`。feature scoped 樣式不得覆蓋這些語意顏色。
+
+查詢按鈕文字固定為「查詢＋功能名詞」，例如「查詢保單、查詢客戶、查詢照會單」；不得使用「查詢影響、取得資料、載入案件」等非功能名詞 wording。「重新整理」只重新載入目前清單，不代替查詢動作。
 
 前端採裝置無關的 Responsive Web Design：所有裝置使用同一份 route、Vue component、DOM、API 與業務功能，只依 viewport 可用空間自動重排。禁止 user-agent／裝置型號分支或手機專用頁。頁面至少支援 320px viewport，不得產生整頁水平捲動；空間不足時表單改為單欄，導覽、頁籤與寬表格只在自身容器內橫向捲動。交付前以 320×568、390×844 與桌面 viewport 驗證相同功能。
 

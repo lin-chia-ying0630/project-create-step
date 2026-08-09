@@ -60,16 +60,17 @@ onMounted(refresh)
           <h3>排入批次承保作業</h3>
           <small>畫面只能排入案件，不修改正式排程</small>
         </div>
-        <div class="form">
+        <div class="scheduled-query-form">
           <label
-            >要保書／保單號碼<input
-              v-model="applicationNo"
-              maxlength="32"
-              autocomplete="off"
+            >要保書／保單號碼<input v-model="applicationNo" maxlength="32" autocomplete="off"
           /></label>
           <label>執行日<input v-model="executionDate" type="date" /></label>
-          <button :disabled="loading || !applicationNo.trim() || !executionDate" @click="enqueue">
-            依執行日排入批次承保作業
+          <button
+            class="primary-button"
+            :disabled="loading || !applicationNo.trim() || !executionDate"
+            @click="enqueue"
+          >
+            執行承保作業
           </button>
         </div>
       </template>
@@ -113,28 +114,16 @@ onMounted(refresh)
 </template>
 
 <style scoped>
-.form {
-  display: grid;
-  grid-template-columns: 2fr 1fr auto;
-  align-items: end;
-  gap: 1rem;
-}
 label {
   display: grid;
   gap: 0.35rem;
 }
-input,
-button {
+input {
   padding: 0.7rem;
   border-radius: 0.4rem;
 }
 input {
   border: 1px solid #9aa4b2;
-}
-button {
-  border: 0;
-  background: #174ea6;
-  color: white;
 }
 .error {
   color: #b42318;
@@ -143,10 +132,7 @@ button {
   color: #087443;
 }
 @media (max-width: 700px) {
-  .form {
-    grid-template-columns: 1fr;
-  }
-  .form button {
+  .scheduled-query-form button {
     width: 100%;
     min-height: 44px;
   }

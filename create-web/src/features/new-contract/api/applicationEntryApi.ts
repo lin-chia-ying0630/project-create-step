@@ -3,9 +3,20 @@ import type {
   ApplicationQueryPage,
   ApplicationQueryResult,
   CreateApplicationRequest,
+  PaymentInstrumentValidationRequest,
+  PaymentInstrumentValidationResult,
 } from '../types/applicationEntry'
 import type { ReviewSubmissionResult } from '../../review/types/review'
 export const applicationEntryApi = {
+  validatePaymentInstrument(
+    command: PaymentInstrumentValidationRequest,
+  ): Promise<PaymentInstrumentValidationResult> {
+    return request('/api/v1/new-contract/payment-instruments/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(command),
+    })
+  },
   create(command: CreateApplicationRequest): Promise<ReviewSubmissionResult> {
     return request('/api/v1/new-contract/applications', {
       method: 'POST',

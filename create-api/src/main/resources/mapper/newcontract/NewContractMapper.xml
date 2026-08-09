@@ -143,6 +143,40 @@
              calculation_rule_version,due_status,calculated_at)
             VALUES (#{id},#{applicationNo},1,#{currencyCode},#{premium},'ENTRY-V1','PENDING',CURRENT_TIMESTAMP(6))
   </insert>
+  <insert id="insertPremiumAuthorization">
+    INSERT INTO new_contract.initial_premium_authorization
+      (authorization_id,application_no,authorization_type_code,payer_role_code,payer_customer_id,
+       payer_relationship_code,payer_name,institution_code,branch_code,payment_token,masked_number,
+       expiry_month,expiry_year,authorization_date,authorization_version,validation_status,
+       created_by,updated_by,reviewer_id,reviewed_at)
+    VALUES (#{id},#{applicationNo},#{type},#{payerRole},#{payerId},#{relationship},#{payerName},
+      #{institution},#{branch},#{token},#{masked},#{expiryMonth},#{expiryYear},#{authorizationDate},
+      #{version},'S','local-tester','local-tester','local-checker',CURRENT_TIMESTAMP(6))
+  </insert>
+  <insert id="insertCrossSellingConsent">
+    INSERT INTO new_contract.cross_selling_consent
+      (consent_id,application_no,agreed_flag,consent_version,recipient_companies,data_scope_codes,
+       stop_method_acknowledged,confirmed_at,created_by,updated_by,reviewer_id,reviewed_at)
+    VALUES (#{id},#{applicationNo},IF(#{agreed},'Y','N'),#{version},#{recipients},#{scopes},
+      IF(#{stopAcknowledged},'Y','N'),CURRENT_TIMESTAMP(6),'local-tester','local-tester','local-checker',CURRENT_TIMESTAMP(6))
+  </insert>
+  <insert id="insertInvestmentRisk">
+    INSERT INTO new_contract.investment_risk_assessment
+      (assessment_id,application_no,questionnaire_version,customer_risk_level,product_risk_level,risk_score,
+       suitable_flag,allocation_summary,disclosure_confirmed,proposal_delivered,recording_required,
+       recording_reference,created_by,updated_by,reviewer_id,reviewed_at)
+    VALUES (#{id},#{applicationNo},#{version},#{customerRisk},#{productRisk},#{score},IF(#{suitable},'Y','N'),
+      #{allocation},IF(#{disclosure},'Y','N'),IF(#{proposal},'Y','N'),IF(#{recordingRequired},'Y','N'),
+      #{recordingReference},'local-tester','local-tester','local-checker',CURRENT_TIMESTAMP(6))
+  </insert>
+  <insert id="insertAttachment">
+    INSERT INTO new_contract.application_attachment
+      (attachment_id,application_no,attachment_type_code,owner_party_role,document_no_masked,file_name,
+       file_reference,file_hash,page_count,issue_date,expiry_date,verification_status,
+       created_by,updated_by,reviewer_id,reviewed_at)
+    VALUES (#{id},#{applicationNo},#{type},#{ownerRole},#{documentNo},#{fileName},#{fileReference},#{fileHash},
+      #{pageCount},#{issueDate},#{expiryDate},'S','local-tester','local-tester','local-checker',CURRENT_TIMESTAMP(6))
+  </insert>
   <select id="findPremiumDue" resultType="map">
     SELECT application_no, premium_due_id, currency_code, calculated_premium_amount,
                    calculation_rule_version, due_status

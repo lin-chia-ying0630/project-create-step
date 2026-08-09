@@ -177,7 +177,7 @@ onMounted(refresh)
       <template #query>
         <SingleQueryForm
           v-model="queryInput"
-          button-label="查詢審核案件"
+          button-label="查詢覆核案件"
           description="可輸入完整客戶 ID、要保書號碼或正式保單號碼；留白查詢全部待覆核案件"
           :loading="loading"
           @submit="search"

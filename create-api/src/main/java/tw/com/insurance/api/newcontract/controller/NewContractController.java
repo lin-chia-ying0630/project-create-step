@@ -4,6 +4,8 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQu
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQueryPage;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.CreateApplicationRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalPreview;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PaymentInstrumentValidationRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PaymentInstrumentValidationResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalPage;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PremiumDuePreview;
@@ -52,6 +54,13 @@ public class NewContractController {
 			@AuthenticationPrincipal Jwt jwt) {
 		return ResponseBodyDto.success("保單登打已送覆核", reviewService.submit(ReviewOperationType.APPLICATION_CREATE,
 				request.applicationNo(), request, jwt.getSubject()));
+	}
+
+	/** 完整帳號或卡號只供即時格式驗證，回應只含 Token 與遮罩值。 */
+	@PostMapping("/payment-instruments/validate")
+	ResponseBodyDto<PaymentInstrumentValidationResult> validatePaymentInstrument(
+			@Valid @RequestBody PaymentInstrumentValidationRequest request) {
+		return ResponseBodyDto.success("付款資料格式驗證成功", service.validatePaymentInstrument(request));
 	}
 
 	/** 保單號碼編發屬資料異動，需經保單登打類別覆核。 */

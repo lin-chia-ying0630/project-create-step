@@ -129,7 +129,7 @@ onMounted(() => loadPolicies(1))
       <template #query>
         <div class="panel-title">
           <h3>承保撤回查詢</h3>
-          <small>輸入正式保單號碼，查詢撤回影響</small>
+          <small>輸入正式保單號碼查詢可撤回資料</small>
         </div>
         <div class="search-row">
           <label>保單號碼<input v-model="policyNo" maxlength="32" autocomplete="off" /></label>
@@ -138,7 +138,7 @@ onMounted(() => loadPolicies(1))
             :disabled="!policyNo.trim() || loading"
             @click="loadPreview"
           >
-            查詢影響
+            查詢承保案件
           </button>
         </div>
       </template>
@@ -187,7 +187,7 @@ onMounted(() => loadPolicies(1))
             <tbody>
               <tr v-for="item in policyPage.items" :key="item.policyNo">
                 <td>
-                  <button class="secondary-button" @click="openPolicy(item.policyNo)">撤回</button>
+                  <button class="reversal-button" @click="openPolicy(item.policyNo)">撤回</button>
                 </td>
                 <td>{{ item.policyNo }}</td>
                 <td>{{ item.applicationNo }}</td>
@@ -277,7 +277,7 @@ onMounted(() => loadPolicies(1))
           ><input v-model="confirmed" type="checkbox" />我已確認將保留正式保單並把契約狀態 01
           改為空白</label
         >
-        <button class="danger" :disabled="!canExecute" @click="executeReversal">
+        <button class="reversal-button" :disabled="!canExecute" @click="executeReversal">
           送出契約狀態撤回覆核
         </button>
       </section>
@@ -312,16 +312,6 @@ textarea {
   padding: 0.65rem;
   border: 1px solid #9aa4b2;
   border-radius: 0.4rem;
-}
-button {
-  padding: 0.7rem 1rem;
-  border: 0;
-  border-radius: 0.4rem;
-  background: #174ea6;
-  color: white;
-}
-.danger {
-  background: #b42318;
 }
 .form {
   display: grid;

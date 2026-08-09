@@ -111,6 +111,38 @@ public final class NewContractDtos {
 	public record HealthDisclosureInput(@NotBlank @Size(max = 32) String questionCode,
 			@NotBlank @Size(max = 10) String answerCode, @Size(max = 2000) String supplementalDetail) {
 	}
+	public record PaymentInstrumentValidationRequest(@NotBlank @Size(max = 4) String instrumentTypeCode,
+			@NotBlank @Size(max = 32) String instrumentNumber, @Size(max = 3) String bankCode,
+			@Size(max = 4) String branchCode, @Size(max = 2) String expiryMonth,
+			@Size(max = 4) String expiryYear) {
+	}
+	public record PaymentInstrumentValidationResult(String paymentToken, String maskedNumber,
+			String validationStatus, String institutionCode) {
+	}
+	public record InitialPremiumAuthorizationInput(@NotBlank @Size(max = 4) String authorizationTypeCode,
+			@NotBlank @Size(max = 20) String payerRoleCode, @NotBlank @Size(max = 36) String payerCustomerId,
+			@NotBlank @Size(max = 20) String payerRelationshipCode, @NotBlank @Size(max = 100) String payerName,
+			@Size(max = 3) String institutionCode, @Size(max = 4) String branchCode,
+			@NotBlank @Size(max = 100) String paymentToken, @NotBlank @Size(max = 32) String maskedNumber,
+			@Size(max = 2) String expiryMonth, @Size(max = 4) String expiryYear,
+			@NotNull LocalDate authorizationDate, @NotBlank @Size(max = 20) String authorizationVersion,
+			@AssertTrue(message = "須確認首期保費授權") boolean confirmed) {
+	}
+	public record CrossSellingConsentInput(boolean applicable, boolean agreed,
+			@Size(max = 20) String consentVersion, @Size(max = 500) String recipientCompanies,
+			@Size(max = 200) String dataScopeCodes, boolean stopMethodAcknowledged) {
+	}
+	public record InvestmentRiskInput(boolean applicable, @Size(max = 20) String questionnaireVersion,
+			@Size(max = 4) String customerRiskLevel, @Size(max = 4) String productRiskLevel,
+			Integer riskScore, boolean suitable, @Size(max = 1000) String allocationSummary,
+			boolean disclosureConfirmed, boolean proposalDelivered, boolean recordingRequired,
+			@Size(max = 200) String recordingReference) {
+	}
+	public record ApplicationAttachmentInput(@NotBlank @Size(max = 32) String attachmentTypeCode,
+			@NotBlank @Size(max = 20) String ownerPartyRole, @Size(max = 100) String documentNoMasked,
+			@NotBlank @Size(max = 255) String fileName, @NotBlank @Size(max = 500) String fileReference,
+			@Size(max = 100) String fileHash, Integer pageCount, LocalDate issueDate, LocalDate expiryDate) {
+	}
 	public record CreateApplicationRequest(@NotBlank @Size(max = 32) String applicationNo,
 			@NotNull LocalDate applicationDate, @NotBlank @Size(max = 20) String channelCode,
 			@Size(max = 20) String branchCode, @Size(max = 32) String insuranceAgentCode,
@@ -118,6 +150,7 @@ public final class NewContractDtos {
 			@NotBlank @Size(max = 20) String applicantRelationshipToInsuredCode,
 			@NotBlank @Size(min = 3, max = 3) String currencyCode, @NotBlank @Size(max = 16) String paymentModeCode,
 			@NotNull LocalDate requestedEffectiveDate, boolean electronicPolicy,
+			boolean investmentProduct,
 			@NotBlank @Size(max = 32) String fundsSourceCode, @NotBlank @Size(max = 32) String insurancePurposeCode,
 			@NotNull @Size(min = 1, max = 20) List<@Valid CoverageInput> coverages,
 			@NotNull @Size(min = 1, max = 20) List<@Valid BeneficiaryInput> beneficiaries,
@@ -127,7 +160,11 @@ public final class NewContractDtos {
 			@AssertTrue(message = "須確認已審閱條款") boolean termsReviewedConfirmed,
 			@AssertTrue(message = "要保人須完成簽署") boolean applicantSignatureConfirmed,
 			@AssertTrue(message = "被保險人須完成簽署") boolean insuredSignatureConfirmed,
-			@NotBlank @Size(max = 20) String signatureMethod) {
+			@NotBlank @Size(max = 20) String signatureMethod,
+			@NotNull @Valid InitialPremiumAuthorizationInput initialPremiumAuthorization,
+			@NotNull @Valid CrossSellingConsentInput crossSellingConsent,
+			@NotNull @Valid InvestmentRiskInput investmentRisk,
+			@NotNull @Size(min = 1, max = 30) List<@Valid ApplicationAttachmentInput> attachments) {
 	}
 	public record CreateApplicationResult(String applicationId, String applicationNo, String applicationStatus,
 			String premiumDueId, @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal calculatedPremiumAmount,
