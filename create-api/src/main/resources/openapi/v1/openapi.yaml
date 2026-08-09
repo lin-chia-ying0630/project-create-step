@@ -137,7 +137,7 @@ paths:
   /api/v1/new-contract/underwriting-reviews/decisions:
     post:
       summary: 修改核保結果並送交 Maker-Checker 覆核
-      description: 核准後依固定契約更新 DC拒保為NS/13、PO延期為DS/14、CN取消為CS/15，並追加核保決行稽核。
+      description: 核准後依固定契約更新 DC拒保為NS/13、PO延期為DS/14、CN取消為CS/15，並追加核保決行稽核；26十天猶豫期變更屬新契約狀態但不是核保結果。
       responses:
         '200': {description: 核保結果修改已送覆核}
         '400': {description: 核保結果或欄位驗證失敗}
