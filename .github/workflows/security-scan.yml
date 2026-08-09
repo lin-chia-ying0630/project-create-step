@@ -1,0 +1,90 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly scan on Sunday
+
+jobs:
+  secrets-scan:
+    runs-on: ubuntu-latest
+    name: Scan for Secrets
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: TruffleHog Secrets Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug
+
+  dependency-vulnerabilities:
+    runs-on: ubuntu-latest
+    name: Check Dependency Vulnerabilities
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: OWASP Dependency Check (API)
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'create-api'
+          path: 'create-api'
+          format: 'JSON'
+      
+      - name: OWASP Dependency Check (Batch)
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'create-batch'
+          path: 'create-batch'
+          format: 'JSON'
+      
+      - name: Upload Dependency Check Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-reports
+          path: reports/
+
+  npm-audit:
+    runs-on: ubuntu-latest
+    name: NPM Security Audit
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: create-web/package-lock.json
+      
+      - name: Install Dependencies
+        working-directory: create-web
+        run: npm ci
+      
+      - name: NPM Audit
+        working-directory: create-web
+        run: npm audit --json > npm-audit.json || true
+      
+      - name: Upload NPM Audit Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: npm-audit-report
+          path: create-web/npm-audit.json

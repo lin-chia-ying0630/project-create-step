@@ -1,0 +1,100 @@
+name: Docker Build and Push
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build Docker Images
+    
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build API Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: create-api
+          push: false
+          tags: insurance-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Build Batch Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: create-batch
+          push: false
+          tags: insurance-batch:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Build Web Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: create-web
+          push: false
+          tags: insurance-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Run Docker Compose Build
+        run: docker compose build
+      
+      - name: Upload Docker Compose Build Log
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-build-logs
+          path: |
+            docker-compose.yml
+            compose.yaml
+
+  security-scan:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Security Scan
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy Vulnerability Scanner on API
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'create-api'
+          format: 'sarif'
+          output: 'trivy-api.sarif'
+      
+      - name: Run Trivy Vulnerability Scanner on Batch
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'create-batch'
+          format: 'sarif'
+          output: 'trivy-batch.sarif'
+      
+      - name: Run Trivy Vulnerability Scanner on Web
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'create-web'
+          format: 'sarif'
+          output: 'trivy-web.sarif'
+      
+      - name: Upload Trivy Results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-*.sarif'
