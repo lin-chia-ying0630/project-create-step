@@ -91,7 +91,11 @@ create-web/src/
 
 前端導覽由 `create-web/src/router/index.ts` 集中管理，使用 Vue Router history mode。路由名稱、URL、頁面標題及側邊選單項目共用同一份定義；Nginx 以 `try_files ... /index.html` 支援直接開啟及重新整理深層網址。
 
-新契約系統提供 `/code-definitions` 的唯讀「Code Table 對照」頁面，依代碼群組與欄位查詢資料庫目前生效的動態代碼及繁體中文說明；畫面不另行維護代碼對照。
+新契約系統提供 `/code-definitions` 的唯讀「Code Definitions 代碼定義」頁面，依代碼群組與欄位查詢資料庫目前生效的動態代碼及繁體中文說明；畫面不另行維護代碼對照。
+
+`customer-kyc / occupation_code` 採用衛生福利部 TW Core IG 的「臺灣壽險公會傷害保險個人職業分類表」CodeSystem `2023-06-01`，保存 1,324 筆 8 碼代碼、繁體中文名稱、大分類、中分類、工作性質及來源版本。來源未提供英文名稱，因此英文欄位維持 `NULL`，不得自行翻譯；客戶職業選單以「代碼｜繁體中文」顯示。
+
+國籍與居住國家採中華郵政國外郵政國名／地區名中英文對照，保存 169 筆二碼代碼；聯絡地址採中華郵政 368 筆前三碼郵遞區號；保單幣別目前依系統實際支援範圍提供 `TWD｜新臺幣` 與 `USD｜美元`。Code Definitions、客戶建立及保單登打畫面的動態代碼欄位皆以資料庫回傳的「代碼｜中文」下拉選單呈現，英文名稱獨立顯示或保存。
 
 全域視覺樣式集中於 `create-web/src/shared/styles/style.scss`，統一維護色彩、斷點、版面、選單、表單、按鈕與狀態訊息；feature-specific 樣式才留在各 View 或 feature 樣式檔，不得重新定義第二份全域設計 token。
 

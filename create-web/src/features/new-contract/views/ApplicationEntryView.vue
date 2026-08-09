@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
+import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import { applicationEntryApi } from '../api/applicationEntryApi'
 import type { BeneficiaryInput, CoverageInput } from '../types/applicationEntry'
 import '../../../application-entry.css'
@@ -54,6 +56,10 @@ const form = reactive({
   signatureMethod: 'ELECTRONIC',
 })
 const loading = ref(false),
+  codeLoading = ref(false),
+  currencyOptions = ref<CodeDefinitionOption[]>([]),
+  sourceOfFundsOptions = ref<CodeDefinitionOption[]>([]),
+  insurancePurposeOptions = ref<CodeDefinitionOption[]>([]),
   message = ref<string | null>(null),
   error = ref<string | null>(null),
   activePage = ref(0)
@@ -64,6 +70,25 @@ const totalPremium = computed(() =>
 const totalSum = computed(() =>
   form.coverages.reduce((n, c) => n + (Number(c.sumAssuredAmount) || 0), 0).toLocaleString('zh-TW'),
 )
+
+/** 載入資料庫維護的幣別、資金來源與投保目的，選單只顯示代碼與中文。 */
+async function loadCodeDefinitionOptions() {
+  codeLoading.value = true
+  try {
+    const [currencies, sourcesOfFunds, insurancePurposes] = await Promise.all([
+      codeDefinitionApi.findActiveOptions('new-contract', 'currency_code'),
+      codeDefinitionApi.findActiveOptions('customer-kyc', 'source_of_funds_code'),
+      codeDefinitionApi.findActiveOptions('customer-kyc', 'insurance_purpose_code'),
+    ])
+    currencyOptions.value = currencies
+    sourceOfFundsOptions.value = sourcesOfFunds
+    insurancePurposeOptions.value = insurancePurposes
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '幣別代碼載入失敗'
+  } finally {
+    codeLoading.value = false
+  }
+}
 function addCoverage() {
   form.coverages.push({
     coverageItemType: 'RIDER',
@@ -116,6 +141,8 @@ async function submit() {
     loading.value = false
   }
 }
+
+onMounted(loadCodeDefinitionOptions)
 </script>
 <template>
   <section class="content-page application-page">
@@ -247,9 +274,14 @@ async function submit() {
           ><span
             >首期應繳 <strong>{{ form.currencyCode }} {{ totalPremium }}</strong></span
           ><label
-            >幣別<select v-model="form.currencyCode">
-              <option>TWD</option>
-              <option>USD</option>
+            >幣別<select v-model="form.currencyCode" :disabled="codeLoading" required>
+              <option
+                v-for="currency in currencyOptions"
+                :key="currency.code"
+                :value="currency.code"
+              >
+                {{ currency.code }}｜{{ currency.description }}
+              </option>
             </select></label
           ><label
             >繳別<select v-model="form.paymentModeCode">
@@ -340,18 +372,24 @@ async function submit() {
         </div>
         <div class="field-grid">
           <label
-            >保費資金來源＊<select v-model="form.fundsSourceCode">
-              <option value="SALARY">薪資所得</option>
-              <option value="SAVINGS">儲蓄</option>
-              <option value="INVESTMENT">投資所得</option>
-              <option value="OTHER">其他</option>
+            >保費資金來源＊<select v-model="form.fundsSourceCode" :disabled="codeLoading">
+              <option
+                v-for="option in sourceOfFundsOptions"
+                :key="option.code"
+                :value="option.code"
+              >
+                {{ option.code }}｜{{ option.description }}
+              </option>
             </select></label
           ><label
-            >投保目的＊<select v-model="form.insurancePurposeCode">
-              <option value="PROTECTION">保障需求</option>
-              <option value="RETIREMENT">退休規劃</option>
-              <option value="EDUCATION">教育準備</option>
-              <option value="OTHER">其他</option>
+            >投保目的＊<select v-model="form.insurancePurposeCode" :disabled="codeLoading">
+              <option
+                v-for="option in insurancePurposeOptions"
+                :key="option.code"
+                :value="option.code"
+              >
+                {{ option.code }}｜{{ option.description }}
+              </option>
             </select></label
           ><label
             >簽署方式＊<select v-model="form.signatureMethod">

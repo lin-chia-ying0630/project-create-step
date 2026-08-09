@@ -100,6 +100,14 @@ public class CustomerServiceImpl implements CustomerService {
 				request.insurancePurposeCode());
 		if (!validOccupation || !validFunds || !validPurpose)
 			throw new BusinessException(CustomerErrorCode.INVALID_KYC_CODE);
+		boolean validNationality = codeDefinitionService.isActiveCode("common", "country_code",
+				request.nationalityCode());
+		boolean validResidence = codeDefinitionService.isActiveCode("common", "country_code",
+				request.residencyCountryCode());
+		boolean validPostalCode = codeDefinitionService.isActiveCode("customer-contact", "postal_code3",
+				request.postalCode());
+		if (!validNationality || !validResidence || !validPostalCode)
+			throw new BusinessException(CustomerErrorCode.INVALID_CONTACT_CODE);
 	}
 	private byte[] encrypt(String value) {
 		try {

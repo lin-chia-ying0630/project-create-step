@@ -50,16 +50,20 @@ import org.springframework.transaction.annotation.Transactional;
 import tw.com.insurance.api.common.BusinessException;
 import tw.com.insurance.api.newcontract.domain.NewContractApplicationStatus;
 import tw.com.insurance.api.newcontract.domain.NewContractErrorCode;
+import tw.com.insurance.api.newcontract.codedefinition.service.CodeDefinitionService;
 import tw.com.insurance.api.newcontract.persistence.NewContractMapper;
 import tw.com.insurance.api.newcontract.service.NewContractService;
 
 @Service
 public class NewContractServiceImpl implements NewContractService {
 	private final NewContractMapper mapper;
+	private final CodeDefinitionService codeDefinitionService;
 	private final byte[] piiKey;
 
-	public NewContractServiceImpl(NewContractMapper mapper, @Value("${app.pii-encryption-key}") String keyText) {
+	public NewContractServiceImpl(NewContractMapper mapper, CodeDefinitionService codeDefinitionService,
+			@Value("${app.pii-encryption-key}") String keyText) {
 		this.mapper = mapper;
+		this.codeDefinitionService = codeDefinitionService;
 		if (keyText == null || keyText.length() < 24)
 			throw new IllegalStateException("PII_ENCRYPTION_KEY 長度至少需要 24 字元");
 		this.piiKey = sha256(keyText);
@@ -67,6 +71,8 @@ public class NewContractServiceImpl implements NewContractService {
 
 	@Transactional
 	public CreateApplicationResult createApplication(CreateApplicationRequest request) {
+		if (!codeDefinitionService.isActiveCode("new-contract", "currency_code", request.currencyCode()))
+			throw new BusinessException(NewContractErrorCode.INVALID_CURRENCY);
 		if (request.requestedEffectiveDate().isBefore(request.applicationDate()))
 			throw new BusinessException(NewContractErrorCode.INVALID_EFFECTIVE_DATE);
 		Long applicantVersion = mapper.findCustomerVersion(request.applicantCustomerId());

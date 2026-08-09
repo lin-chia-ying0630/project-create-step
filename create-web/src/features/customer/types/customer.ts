@@ -1,9 +1,4 @@
 /** 客戶建檔 feature 的 transport contract。 */
-export interface CodeDefinitionOption {
-  code: string
-  description: string
-}
-
 export interface CreateCustomerRequest {
   customerTypeCode: 'PERSON' | 'ORGANIZATION'
   identityTypeCode: string

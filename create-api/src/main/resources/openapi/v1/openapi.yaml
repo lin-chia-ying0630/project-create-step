@@ -60,8 +60,13 @@ paths:
         - {name: codeGroup, in: path, required: true, schema: {type: string, pattern: '^[a-z0-9-]{1,64}$'}}
         - {name: codeField, in: path, required: true, schema: {type: string, pattern: '^[a-z0-9_]{1,64}$'}}
       responses:
-        '200': {description: 代碼對照查詢成功}
+        '200': {description: 代碼對照查詢成功；中文及英文說明分欄，職業代碼另含來源分類與版本}
         '400': {description: 群組或欄位格式錯誤}
+  /api/v1/new-contract/code-definitions/tables:
+    get:
+      summary: 查詢目前生效且可供下拉選擇的代碼表
+      responses:
+        '200': {description: 代碼表清單查詢成功}
   /api/v1/new-contract/applications:
     post:
       summary: 送出保單登打覆核案件

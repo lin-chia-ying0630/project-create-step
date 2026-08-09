@@ -1,81 +1,92 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { codeDefinitionApi } from '../api/codeDefinitionApi'
-import type { CodeDefinitionOption } from '../types/codeDefinition'
+import { computed, onMounted, ref } from 'vue'
+import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
+import type {
+  CodeDefinitionOption,
+  CodeDefinitionTableOption,
+} from '../../../shared/types/codeDefinition'
 
-const codeGroup = ref('customer-kyc')
-const codeField = ref('occupation_code')
+const tableOptions = ref<CodeDefinitionTableOption[]>([])
+const selectedTableKey = ref('customer-kyc::occupation_code')
 const items = ref<CodeDefinitionOption[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-/** 依輸入的群組與欄位載入資料庫中目前生效的 Code Table 對照。 */
+const selectedTable = computed(() =>
+  tableOptions.value.find(
+    (table) => `${table.codeGroup}::${table.codeField}` === selectedTableKey.value,
+  ),
+)
+
+/** 依下拉選取的群組與欄位載入資料庫中目前生效的 Code Definitions。 */
 async function search() {
+  const table = selectedTable.value
+  if (!table) return
   loading.value = true
   error.value = null
   try {
-    items.value = await codeDefinitionApi.findActiveOptions(
-      codeGroup.value.trim(),
-      codeField.value.trim(),
-    )
+    items.value = await codeDefinitionApi.findActiveOptions(table.codeGroup, table.codeField)
   } catch (e) {
     items.value = []
-    error.value = e instanceof Error ? e.message : 'Code Table 對照載入失敗'
+    error.value = e instanceof Error ? e.message : 'Code Definitions 載入失敗'
   } finally {
     loading.value = false
   }
 }
 
-onMounted(search)
+/** 初次進入時先載入可查詢代碼表，再預設顯示正式職業代碼。 */
+async function initialize() {
+  loading.value = true
+  error.value = null
+  try {
+    tableOptions.value = await codeDefinitionApi.findActiveTables()
+    if (!selectedTable.value && tableOptions.value.length) {
+      const first = tableOptions.value[0]
+      selectedTableKey.value = `${first.codeGroup}::${first.codeField}`
+    }
+    await search()
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '代碼表清單載入失敗'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(initialize)
 </script>
 
 <template>
   <section class="content-page code-definition-page">
     <header class="page-header">
       <div>
-        <p class="eyebrow">CODE TABLE</p>
-        <h2>代碼對照查詢</h2>
+        <p class="eyebrow">CODE DEFINITIONS</p>
+        <h2>代碼定義查詢</h2>
         <p>查詢資料庫目前生效的動態代碼與繁體中文說明。</p>
       </div>
       <span class="status-chip">{{ items.length }} 筆</span>
     </header>
 
-    <form class="panel lookup-form" @submit.prevent="search">
-      <div class="field-grid">
-        <label
-          >代碼群組
-          <input
-            v-model.trim="codeGroup"
-            required
-            maxlength="64"
-            pattern="[a-z0-9-]+"
-            autocomplete="off"
-            placeholder="例如 customer-kyc"
-          />
-        </label>
-        <label
-          >代碼欄位
-          <input
-            v-model.trim="codeField"
-            required
-            maxlength="64"
-            pattern="[a-z0-9_]+"
-            autocomplete="off"
-            placeholder="例如 occupation_code"
-          />
-        </label>
-      </div>
-      <div class="form-actions">
-        <button class="primary-button" type="submit" :disabled="loading">
-          {{ loading ? '查詢中…' : '查詢對照' }}
-        </button>
-      </div>
-    </form>
+    <div class="panel lookup-form">
+      <label
+        >代碼表
+        <select v-model="selectedTableKey" :disabled="loading" @change="search">
+          <option
+            v-for="table in tableOptions"
+            :key="`${table.codeGroup}::${table.codeField}`"
+            :value="`${table.codeGroup}::${table.codeField}`"
+          >
+            {{ table.codeField }}｜{{ table.codeFieldDescription }}（{{
+              table.codeGroupDescription
+            }}）
+          </option>
+        </select>
+      </label>
+    </div>
 
     <article class="panel section-gap">
       <div class="panel-title">
         <h3>對照結果</h3>
-        <small>{{ codeGroup }}／{{ codeField }}</small>
+        <small>{{ selectedTable?.codeGroup }}／{{ selectedTable?.codeField }}</small>
       </div>
       <div class="data-table-scope">
         <table class="data-table">
@@ -83,15 +94,28 @@ onMounted(search)
             <tr>
               <th>代碼</th>
               <th>繁體中文說明</th>
+              <th>英文說明</th>
+              <th>大分類</th>
+              <th>中分類</th>
+              <th>工作性質</th>
+              <th>來源版本</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in items" :key="item.code">
               <td class="code-value">{{ item.code }}</td>
               <td>{{ item.description }}</td>
+              <td>{{ item.descriptionEn || '—' }}</td>
+              <td>
+                {{ item.classificationCode || '—' }}
+                {{ item.classificationDescription || '' }}
+              </td>
+              <td>{{ item.breakdownCode || '—' }} {{ item.breakdownDescription || '' }}</td>
+              <td>{{ item.natureOfWork || '—' }}</td>
+              <td>{{ item.sourceVersion || '—' }}</td>
             </tr>
             <tr v-if="!loading && !items.length">
-              <td colspan="2">查無目前生效的代碼對照。</td>
+              <td colspan="7">查無目前生效的代碼對照。</td>
             </tr>
           </tbody>
         </table>

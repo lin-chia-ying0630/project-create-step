@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { customerApi } from '../api/customerApi'
 import { customerCodeDefinitionApi } from '../api/customerCodeDefinitionApi'
-import { postalCodeApi } from '../../postal-code/api/postalCodeApi'
-import type { PostalCodeArea } from '../../postal-code/types/postalCode'
-import type { CodeDefinitionOption } from '../types/customer'
+import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
+import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 const form = reactive({
   customerTypeCode: 'PERSON' as 'PERSON' | 'ORGANIZATION',
   identityTypeCode: 'NATIONAL_ID',
@@ -30,25 +29,35 @@ const form = reactive({
 const consent = ref(false),
   loading = ref(false),
   codeLoading = ref(false),
-  postalLoading = ref(false),
-  postalArea = ref<PostalCodeArea | null>(null),
   occupationOptions = ref<CodeDefinitionOption[]>([]),
   sourceOfFundsOptions = ref<CodeDefinitionOption[]>([]),
   insurancePurposeOptions = ref<CodeDefinitionOption[]>([]),
+  countryOptions = ref<CodeDefinitionOption[]>([]),
+  postalCodeOptions = ref<CodeDefinitionOption[]>([]),
   message = ref<string | null>(null),
   error = ref<string | null>(null)
-/** 載入新契約自己維護的 KYC 代碼與繁體中文說明。 */
+
+const selectedPostalCode = computed(() =>
+  postalCodeOptions.value.find((option) => option.code === form.postalCode),
+)
+
+/** 載入客戶建檔使用的 KYC、國家與郵遞區號代碼定義。 */
 async function loadKycCodeDefinitions() {
   codeLoading.value = true
   try {
-    const [occupations, sourcesOfFunds, insurancePurposes] = await Promise.all([
-      customerCodeDefinitionApi.findOccupations(),
-      customerCodeDefinitionApi.findSourcesOfFunds(),
-      customerCodeDefinitionApi.findInsurancePurposes(),
-    ])
+    const [occupations, sourcesOfFunds, insurancePurposes, countries, postalCodes] =
+      await Promise.all([
+        customerCodeDefinitionApi.findOccupations(),
+        customerCodeDefinitionApi.findSourcesOfFunds(),
+        customerCodeDefinitionApi.findInsurancePurposes(),
+        codeDefinitionApi.findActiveOptions('common', 'country_code'),
+        codeDefinitionApi.findActiveOptions('customer-contact', 'postal_code3'),
+      ])
     occupationOptions.value = occupations
     sourceOfFundsOptions.value = sourcesOfFunds
     insurancePurposeOptions.value = insurancePurposes
+    countryOptions.value = countries
+    postalCodeOptions.value = postalCodes
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'KYC 代碼載入失敗'
   } finally {
@@ -60,7 +69,7 @@ function switchType() {
     form.identityTypeCode = 'BUSINESS_REGISTRATION_NO'
     form.genderCode = ''
     form.birthDate = ''
-    form.occupationCode = 'BUSINESS_ENTITY'
+    form.occupationCode = ''
   } else {
     form.identityTypeCode = 'NATIONAL_ID'
     form.organizationTypeCode = 'COMPANY'
@@ -76,28 +85,15 @@ function selectCustomerType(type: 'PERSON' | 'ORGANIZATION') {
   message.value = null
   error.value = null
 }
-async function lookupPostalCode() {
-  form.postalCode = form.postalCode.replace(/\D/g, '').slice(0, 6)
-  postalArea.value = null
-  if (form.postalCode.length !== 3 && form.postalCode.length !== 6) return
-  postalLoading.value = true
-  try {
-    postalArea.value = await postalCodeApi.find(form.postalCode)
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '郵遞區號查詢失敗'
-  } finally {
-    postalLoading.value = false
-  }
-}
 async function submit() {
   loading.value = true
   message.value = null
   error.value = null
   try {
-    if (!postalArea.value) throw new Error('請輸入有效的 3 或 6 碼郵遞區號')
+    if (!selectedPostalCode.value) throw new Error('請選擇有效的郵遞區號')
     const payload = {
       ...form,
-      contactAddress: postalArea.value.addressPrefix + form.contactAddress,
+      contactAddress: selectedPostalCode.value.description + form.contactAddress,
       genderCode: form.customerTypeCode === 'PERSON' ? form.genderCode : null,
       birthDate: form.customerTypeCode === 'PERSON' ? form.birthDate : null,
       establishmentDate:
@@ -219,15 +215,25 @@ onMounted(loadKycCodeDefinitions)
               required
               placeholder="例：FINANCIAL_SERVICES" /></label></template
         ><label
-          >{{ form.customerTypeCode === 'PERSON' ? '國籍' : '登記國家' }}＊<input
-            v-model.trim="form.nationalityCode"
-            maxlength="2"
-            required /></label
+          >{{ form.customerTypeCode === 'PERSON' ? '國籍' : '登記國家' }}＊<select
+            v-model="form.nationalityCode"
+            :disabled="codeLoading"
+            required
+          >
+            <option v-for="country in countryOptions" :key="country.code" :value="country.code">
+              {{ country.code }}｜{{ country.description }}
+            </option>
+          </select></label
         ><label
-          >{{ form.customerTypeCode === 'PERSON' ? '居住國家' : '營業所在國' }}＊<input
-            v-model.trim="form.residencyCountryCode"
-            maxlength="2"
-            required /></label
+          >{{ form.customerTypeCode === 'PERSON' ? '居住國家' : '營業所在國' }}＊<select
+            v-model="form.residencyCountryCode"
+            :disabled="codeLoading"
+            required
+          >
+            <option v-for="country in countryOptions" :key="country.code" :value="country.code">
+              {{ country.code }}｜{{ country.description }}
+            </option>
+          </select></label
         ><label
           >{{ form.customerTypeCode === 'PERSON' ? '行動電話' : '公司電話' }}＊<input
             v-model.trim="form.mobilePhone"
@@ -242,17 +248,15 @@ onMounted(loadKycCodeDefinitions)
             autocomplete="off"
             required /></label
         ><label
-          >郵遞區號＊<input
-            v-model.trim="form.postalCode"
-            maxlength="6"
-            inputmode="numeric"
-            placeholder="3 或 6 碼"
-            required
-            @input="lookupPostalCode"
-          /><small v-if="postalLoading">查詢中…</small></label
+          >郵遞區號＊<select v-model="form.postalCode" :disabled="codeLoading" required>
+            <option value="" disabled>請選擇</option>
+            <option v-for="postal in postalCodeOptions" :key="postal.code" :value="postal.code">
+              {{ postal.code }}｜{{ postal.description }}
+            </option>
+          </select></label
         ><label
           >縣市／行政區<input
-            :value="postalArea?.addressPrefix ?? ''"
+            :value="selectedPostalCode?.description ?? ''"
             readonly
             placeholder="依郵遞區號自動帶入" /></label
         ><label class="wide-field"
@@ -274,13 +278,13 @@ onMounted(loadKycCodeDefinitions)
           >職業＊<select v-model="form.occupationCode" :disabled="codeLoading" required>
             <option value="" disabled>{{ codeLoading ? '代碼載入中…' : '請選擇' }}</option>
             <option v-for="option in occupationOptions" :key="option.code" :value="option.code">
-              {{ option.description }}（{{ option.code }}）
+              {{ option.code }}｜{{ option.description }}
             </option>
           </select></label
         ><label
           >資金來源＊<select v-model="form.sourceOfFundsCode" :disabled="codeLoading" required>
             <option v-for="option in sourceOfFundsOptions" :key="option.code" :value="option.code">
-              {{ option.description }}（{{ option.code }}）
+              {{ option.code }}｜{{ option.description }}
             </option>
           </select></label
         ><label
@@ -290,7 +294,7 @@ onMounted(loadKycCodeDefinitions)
               :key="option.code"
               :value="option.code"
             >
-              {{ option.description }}（{{ option.code }}）
+              {{ option.code }}｜{{ option.description }}
             </option>
           </select></label
         >
