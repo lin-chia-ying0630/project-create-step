@@ -77,6 +77,12 @@ paths:
       summary: 查詢目前生效且可供下拉選擇的代碼表
       responses:
         '200': {description: 代碼表清單查詢成功}
+  /api/v1/new-contract/product-definitions/active:
+    get:
+      summary: 查詢目前已完成上架且生效的保險商品定義
+      description: 保單登打以商品定義判斷主約或附約、傳統型壽險或投資型保險、幣別及投保金額限制，不接受前端自行指定商品類型。
+      responses:
+        '200': {description: 回傳有效商品、版本、中文名稱、類型、保障項目類型、幣別及投保限制}
   /api/v1/new-contract/applications:
     post:
       summary: 送出保單登打覆核案件

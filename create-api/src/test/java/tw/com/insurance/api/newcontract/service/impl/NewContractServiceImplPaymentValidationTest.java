@@ -10,6 +10,7 @@ import tw.com.insurance.api.common.BusinessException;
 import tw.com.insurance.api.newcontract.codedefinition.service.CodeDefinitionService;
 import tw.com.insurance.api.newcontract.dto.NewContractDtos.PaymentInstrumentValidationRequest;
 import tw.com.insurance.api.newcontract.persistence.NewContractMapper;
+import tw.com.insurance.api.newcontract.productdefinition.service.ProductDefinitionService;
 
 class NewContractServiceImplPaymentValidationTest {
 	private NewContractServiceImpl service;
@@ -18,7 +19,7 @@ class NewContractServiceImplPaymentValidationTest {
 	@BeforeEach
 	void setUp() {
 		service = new NewContractServiceImpl(mock(NewContractMapper.class), mock(CodeDefinitionService.class),
-				"test-only-payment-token-key");
+				mock(ProductDefinitionService.class), "test-only-payment-token-key");
 	}
 
 	/** 合法信用卡應通過 Luhn 與有效年月檢查，且只回傳遮罩號碼及 Token。 */

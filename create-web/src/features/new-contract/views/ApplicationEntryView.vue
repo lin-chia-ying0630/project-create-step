@@ -6,7 +6,9 @@ import CodeDefinitionSelect from '../../../shared/components/CodeDefinitionSelec
 import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
 import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import { applicationEntryApi } from '../api/applicationEntryApi'
+import { productDefinitionApi } from '../api/productDefinitionApi'
 import type { BeneficiaryInput, CoverageInput } from '../types/applicationEntry'
+import type { ProductDefinitionOption } from '../types/productDefinition'
 import '../../../application-entry.css'
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
 const form = reactive({
@@ -106,6 +108,17 @@ const form = reactive({
       issueDate: today,
       expiryDate: null,
     },
+    {
+      attachmentTypeCode: 'PAY',
+      ownerPartyRole: 'PAYER',
+      documentNoMasked: '',
+      fileName: '',
+      fileReference: '',
+      fileHash: '',
+      pageCount: 1,
+      issueDate: today,
+      expiryDate: null,
+    },
   ],
 })
 const paymentInstrumentNumber = ref('')
@@ -115,6 +128,7 @@ const loading = ref(false),
   sourceOfFundsOptions = ref<CodeDefinitionOption[]>([]),
   insurancePurposeOptions = ref<CodeDefinitionOption[]>([]),
   attachmentTypeOptions = ref<CodeDefinitionOption[]>([]),
+  productOptions = ref<ProductDefinitionOption[]>([]),
   message = ref<string | null>(null),
   error = ref<string | null>(null),
   activePage = ref(0)
@@ -146,20 +160,37 @@ const totalSum = computed(() =>
 async function loadCodeDefinitionOptions() {
   codeLoading.value = true
   try {
-    const [currencies, sourcesOfFunds, insurancePurposes, attachmentTypes] = await Promise.all([
+    const [currencies, sourcesOfFunds, insurancePurposes, attachmentTypes, products] =
+      await Promise.all([
       codeDefinitionApi.findActiveOptions('new-contract', 'currency_code'),
       codeDefinitionApi.findActiveOptions('customer-kyc', 'source_of_funds_code'),
       codeDefinitionApi.findActiveOptions('customer-kyc', 'insurance_purpose_code'),
       codeDefinitionApi.findActiveOptions('new-contract', 'attachment_type_code'),
-    ])
+        productDefinitionApi.findActiveProducts(),
+      ])
     currencyOptions.value = currencies
     sourceOfFundsOptions.value = sourcesOfFunds
     insurancePurposeOptions.value = insurancePurposes
     attachmentTypeOptions.value = attachmentTypes
+    productOptions.value = products
   } catch (e) {
     error.value = e instanceof Error ? e.message : '幣別代碼載入失敗'
   } finally {
     codeLoading.value = false
+  }
+}
+/** 商品選擇後由商品定義帶入版本、幣別與投資型判斷，不接受人工另選商品類型。 */
+function selectProduct(coverage: CoverageInput, selectedKey: string) {
+  const product = productOptions.value.find(
+    (option) => `${option.productCode}::${option.productVersion}` === selectedKey,
+  )
+  if (!product) return
+  coverage.productCode = product.productCode
+  coverage.productVersion = product.productVersion
+  if (coverage.coverageItemType === 'BASE') {
+    form.currencyCode = product.currencyCode
+    form.investmentProduct = product.investmentProduct
+    form.investmentRisk.applicable = product.investmentProduct
   }
 }
 /** 將完整帳號或卡號送往一次性驗證端點，畫面只保留 Token 與遮罩值。 */
@@ -233,8 +264,21 @@ async function submit() {
   message.value = null
   error.value = null
   try {
-    if (!form.initialPremiumAuthorization.paymentToken)
+    if (!form.initialPremiumAuthorization.paymentToken) {
+      activePage.value = 6
       throw new Error('請先完成銀行帳號或信用卡號驗證')
+    }
+    const authorizationAttachment = form.attachments.find(
+      (attachment) => attachment.attachmentTypeCode === 'PAY',
+    )
+    if (!authorizationAttachment?.fileName || !authorizationAttachment.fileReference) {
+      activePage.value = 6
+      throw new Error('請登打首期保費授權書檔名及受控檔案參照')
+    }
+    if (form.attachments.some((attachment) => !attachment.fileName || !attachment.fileReference)) {
+      activePage.value = 9
+      throw new Error('請完成所有附件的檔案名稱及受控檔案參照')
+    }
     form.initialPremiumAuthorization.payerCustomerId ||= form.applicantCustomerId
     form.investmentRisk.applicable = form.investmentProduct
     const payload = JSON.parse(JSON.stringify(form))
@@ -267,12 +311,12 @@ onMounted(loadCodeDefinitionOptions)
     <header class="page-header application-document-header">
       <div>
         <p class="eyebrow">LIFE INSURANCE APPLICATION</p>
-        <h2>人身保險要保書</h2>
+        <h2>保單登打新增</h2>
         <p>
-          依主管機關示範內容，分為基本資料、告知事項及聲明事項；請由要保人及被保險人確認後送件。
+          登打人身保險要保書、首期保費授權、同意書、投資風險資料及附件；完整確認後送交覆核。
         </p>
       </div>
-      <span class="status-chip">草稿</span>
+      <span class="status-chip">新增草稿｜10 頁</span>
     </header>
     <SectionTabNavigator
       :model-value="activePage"
@@ -359,8 +403,26 @@ onMounted(loadCodeDefinitionOptions)
                 <option value="BASE">主約</option>
                 <option value="RIDER">附約</option>
               </select></label
-            ><label>商品代碼＊<input v-model.trim="c.productCode" required /></label
-            ><label>商品版本＊<input v-model.trim="c.productVersion" required /></label
+            ><label
+              >保險商品＊<select
+                :value="`${c.productCode}::${c.productVersion}`"
+                required
+                @change="selectProduct(c, ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="" disabled>請選擇商品</option>
+                <option
+                  v-for="product in productOptions.filter(
+                    (option) => option.coverageItemType === c.coverageItemType,
+                  )"
+                  :key="`${product.productCode}::${product.productVersion}`"
+                  :value="`${product.productCode}::${product.productVersion}`"
+                >
+                  {{ product.productCode }}｜{{ product.productName }}｜{{
+                    product.productTypeDescription
+                  }}
+                </option>
+              </select></label
+            ><label>商品版本<input :value="c.productVersion" readonly /></label
             ><label
               >保險金額＊<input
                 v-model="c.sumAssuredAmount"
@@ -402,9 +464,11 @@ onMounted(loadCodeDefinitionOptions)
             </select></label
           >
         </div>
-        <label class="consent-row"
-          ><input v-model="form.investmentProduct" type="checkbox" />本案包含投資型保險商品</label
-        >
+        <p class="hint">
+          商品類型由商品定義檔判斷：{{
+            form.investmentProduct ? 'I｜投資型保險' : 'L｜傳統型壽險'
+          }}。
+        </p>
       </article>
       <article v-show="activePage === 3" class="panel form-section application-sheet">
         <div class="panel-title">
@@ -652,6 +716,35 @@ onMounted(loadCodeDefinitionOptions)
             required
           />授權人確認首期保費付款授權內容及附件正確。</label
         >
+        <div class="panel-title subsection-title">
+          <h4>首期保費授權書附件</h4>
+          <small>正式檔案存放於受控文件服務，畫面只保存參照</small>
+        </div>
+        <div class="field-grid">
+          <label
+            >授權書檔案名稱＊<input
+              v-model.trim="form.attachments[1].fileName"
+              required
+              placeholder="例如：首期保費授權書.pdf"
+          /></label>
+          <label
+            >受控檔案參照＊<input
+              v-model.trim="form.attachments[1].fileReference"
+              required
+              placeholder="DMS／物件儲存識別碼"
+          /></label>
+          <label
+            >授權書頁數<input
+              v-model.number="form.attachments[1].pageCount"
+              type="number"
+              min="1"
+          /></label>
+          <label
+            >檔案雜湊<input
+              v-model.trim="form.attachments[1].fileHash"
+              placeholder="SHA-256（選填）"
+          /></label>
+        </div>
       </article>
       <article v-show="activePage === 7" class="panel form-section application-sheet">
         <div class="panel-title">

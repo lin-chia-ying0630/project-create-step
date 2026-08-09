@@ -22,6 +22,10 @@ $mobile: 760px;
   font-size: 16px;
   --color-primary: #{$primary};
   --color-primary-hover: #{$primary-hover};
+  // 所有頁面的表單控制項與操作按鈕共用同一尺寸契約，feature 不得另行覆寫。
+  --control-height: 52px;
+  --query-action-width: 220px;
+  --section-tab-height: 84px;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -135,7 +139,7 @@ svg {
 }
 .content-page {
   width: 100%;
-  max-width: 900px;
+  max-width: 100%;
   min-width: 0;
 }
 .page-header {
@@ -189,16 +193,30 @@ label {
   font-size: 0.92rem;
 }
 input,
-select,
-textarea {
+select {
   width: 100%;
   min-width: 0;
-  min-height: 42px;
+  height: var(--control-height);
   border: 1px solid #cbd5df;
   border-radius: 6px;
   background: #fbfcfd;
   padding: 9px 11px;
   color: #111827;
+  &:focus {
+    @include focus-ring;
+  }
+}
+textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: calc(var(--control-height) * 2);
+  border: 1px solid #cbd5df;
+  border-radius: 6px;
+  background: #fbfcfd;
+  padding: 9px 11px;
+  color: #111827;
+  resize: vertical;
+
   &:focus {
     @include focus-ring;
   }
@@ -211,6 +229,7 @@ textarea {
   padding-top: 16px;
 }
 .primary-button {
+  min-height: var(--control-height);
   border: 1px solid $primary;
   border-radius: 6px;
   background: $primary;
@@ -221,6 +240,7 @@ textarea {
   }
 }
 .secondary-button {
+  min-height: var(--control-height);
   border: 1px solid $primary;
   border-radius: 6px;
   background: #fff;
@@ -228,6 +248,7 @@ textarea {
   padding: 8px 12px;
 }
 .reversal-button {
+  min-height: var(--control-height);
   border: 1px solid #174ea6;
   border-radius: 6px;
   background: #174ea6;
@@ -239,6 +260,7 @@ textarea {
   }
 }
 .danger-button {
+  min-height: var(--control-height);
   border: 1px solid #b42318;
   border-radius: 6px;
   background: #b42318;
@@ -303,19 +325,13 @@ button:disabled {
 }
 
 .query-condition-form {
-  grid-template-columns: minmax(0, 1fr) 220px;
-
-  input,
-  select,
-  button {
-    min-height: 52px;
-  }
+  grid-template-columns: minmax(0, 1fr) var(--query-action-width);
 }
 
 // 含日期的排程查詢列沿用統一操作欄寬，避免各頁自行配置不一致比例。
 .scheduled-query-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 220px) 220px;
+  grid-template-columns: minmax(0, 1fr) var(--query-action-width) var(--query-action-width);
   gap: 16px;
   align-items: end;
   width: 100%;
@@ -377,8 +393,10 @@ button:disabled {
 }
 .section-tab-navigator button {
   display: grid;
+  align-content: center;
   flex: 1 0 135px;
   gap: 3px;
+  height: var(--section-tab-height);
   min-width: 135px;
   border: 1px solid #cbd5e1;
   border-radius: 7px;

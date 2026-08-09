@@ -239,9 +239,6 @@ async function createRemittanceSlip() {
   </section>
 </template>
 <style scoped>
-.payment-page {
-  max-width: 960px;
-}
 .panel-title h3 {
   display: flex;
   align-items: center;

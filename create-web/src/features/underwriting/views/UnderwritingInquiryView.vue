@@ -321,9 +321,6 @@ onMounted(() => loadInquiries(1))
   </section>
 </template>
 <style scoped>
-.inquiry-page {
-  max-width: 960px;
-}
 .result-heading {
   border-left: 5px solid #d97706;
   background: #fff7ed;

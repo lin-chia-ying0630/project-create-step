@@ -306,13 +306,6 @@ onMounted(() => loadPolicies(1))
   color: #5c667a;
   font-size: 0.85rem;
 }
-input,
-select,
-textarea {
-  padding: 0.65rem;
-  border: 1px solid #9aa4b2;
-  border-radius: 0.4rem;
-}
 .form {
   display: grid;
   gap: 1rem;
@@ -328,10 +321,8 @@ textarea {
   color: #087443;
 }
 @media (max-width: 760px) {
-  .search-row button,
   .danger {
     width: 100%;
-    min-height: 44px;
   }
 }
 </style>

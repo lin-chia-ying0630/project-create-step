@@ -114,27 +114,10 @@ onMounted(refresh)
 </template>
 
 <style scoped>
-label {
-  display: grid;
-  gap: 0.35rem;
-}
-input {
-  padding: 0.7rem;
-  border-radius: 0.4rem;
-}
-input {
-  border: 1px solid #9aa4b2;
-}
 .error {
   color: #b42318;
 }
 .success {
   color: #087443;
-}
-@media (max-width: 700px) {
-  .scheduled-query-form button {
-    width: 100%;
-    min-height: 44px;
-  }
 }
 </style>

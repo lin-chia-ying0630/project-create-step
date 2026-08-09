@@ -8,9 +8,14 @@ import SortableTableHeader from '../../../shared/components/SortableTableHeader.
 import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
 import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
 import CodeDefinitionSelect from '../../../shared/components/CodeDefinitionSelect.vue'
+import SectionTabNavigator from '../../../shared/components/SectionTabNavigator.vue'
 import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import type { CustomerPage, CustomerSummary } from '../types/customer'
 const props = withDefaults(defineProps<{ mode?: 'create' | 'query' }>(), { mode: 'create' })
+const customerTypeTabItems = [
+  { value: '1', label: '自然人客戶', caption: '身分證、居留證或護照' },
+  { value: '2', label: '公司／行號客戶', caption: '公司、商號或非營利組織' },
+] as const
 const form = reactive({
   customerTypeCode: '1' as '1' | '2',
   identityTypeCode: 'NATIONAL_ID',
@@ -220,21 +225,13 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
         form.customerTypeCode === '1' ? '自然人' : '公司／行號'
       }}</span>
     </header>
-    <nav v-if="props.mode === 'create'" class="customer-type-switch" aria-label="客戶建立類型">
-      <button
-        type="button"
-        :class="{ active: form.customerTypeCode === '1' }"
-        @click="selectCustomerType('1')"
-      >
-        <b>自然人客戶</b><small>身分證、居留證或護照</small></button
-      ><button
-        type="button"
-        :class="{ active: form.customerTypeCode === '2' }"
-        @click="selectCustomerType('2')"
-      >
-        <b>公司／行號客戶</b><small>公司、商號或非營利組織</small>
-      </button>
-    </nav>
+    <SectionTabNavigator
+      v-if="props.mode === 'create'"
+      :model-value="form.customerTypeCode"
+      :items="customerTypeTabItems"
+      navigation-label="客戶建立類型"
+      @update:model-value="selectCustomerType(String($event) as '1' | '2')"
+    />
     <QueryListPanels v-if="props.mode === 'query'">
       <template #query>
         <SingleQueryForm
@@ -534,38 +531,3 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
     <p v-if="error" class="status-message error">{{ error }}</p>
   </section>
 </template>
-<style scoped>
-.customer-type-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin: 0 0 20px;
-}
-.customer-type-switch button {
-  display: grid;
-  gap: 5px;
-  text-align: left;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  background: #fff;
-  color: #475569;
-  padding: 16px 18px;
-  cursor: pointer;
-}
-.customer-type-switch button.active {
-  border: 2px solid #0f766e;
-  background: #e9f7f5;
-  color: #0f766e;
-}
-.customer-type-switch b {
-  font-size: 1.05rem;
-}
-.customer-type-switch small {
-  font-weight: 400;
-}
-@media (max-width: 700px) {
-  .customer-type-switch {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

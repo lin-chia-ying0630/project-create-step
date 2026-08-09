@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tw.com.insurance.api.newcontract.productdefinition.persistence.ProductDefinitionMapper">
+  <sql id="activeProductColumns">
+    product_code AS productCode,
+    product_version AS productVersion,
+    product_name_zh_tw AS productName,
+    product_type_code AS productTypeCode,
+    CASE product_type_code WHEN 'I' THEN '投資型保險' ELSE '傳統型壽險' END AS productTypeDescription,
+    coverage_item_type AS coverageItemType,
+    currency_code AS currencyCode,
+    minimum_entry_age AS minimumEntryAge,
+    maximum_entry_age AS maximumEntryAge,
+    minimum_sum_assured AS minimumSumAssured,
+    maximum_sum_assured AS maximumSumAssured,
+    minimum_premium AS minimumPremium,
+    effective_from AS effectiveFrom,
+    effective_to AS effectiveTo,
+    CASE WHEN product_type_code = 'I' THEN TRUE ELSE FALSE END AS investmentProduct
+  </sql>
+
+  <select id="findActiveProducts" resultType="tw.com.insurance.api.newcontract.productdefinition.dto.ProductDefinitionDto">
+    SELECT <include refid="activeProductColumns"/>
+      FROM new_contract.insurance_product_definition
+     WHERE product_status = 'S'
+       AND effective_from &lt;= CURRENT_DATE
+       AND (effective_to IS NULL OR effective_to &gt;= CURRENT_DATE)
+     ORDER BY product_type_code, product_code, product_version
+  </select>
+
+  <select id="findActiveProduct" resultType="tw.com.insurance.api.newcontract.productdefinition.dto.ProductDefinitionDto">
+    SELECT <include refid="activeProductColumns"/>
+      FROM new_contract.insurance_product_definition
+     WHERE product_code = #{productCode}
+       AND product_version = #{productVersion}
+       AND product_status = 'S'
+       AND effective_from &lt;= CURRENT_DATE
+       AND (effective_to IS NULL OR effective_to &gt;= CURRENT_DATE)
+  </select>
+</mapper>

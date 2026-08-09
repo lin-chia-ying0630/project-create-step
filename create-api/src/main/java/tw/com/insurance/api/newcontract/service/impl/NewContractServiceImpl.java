@@ -67,18 +67,22 @@ import tw.com.insurance.api.newcontract.domain.NewContractErrorCode;
 import tw.com.insurance.api.newcontract.domain.UnderwritingDecisionOutcome;
 import tw.com.insurance.api.newcontract.codedefinition.service.CodeDefinitionService;
 import tw.com.insurance.api.newcontract.persistence.NewContractMapper;
+import tw.com.insurance.api.newcontract.productdefinition.dto.ProductDefinitionDto;
+import tw.com.insurance.api.newcontract.productdefinition.service.ProductDefinitionService;
 import tw.com.insurance.api.newcontract.service.NewContractService;
 
 @Service
 public class NewContractServiceImpl implements NewContractService {
 	private final NewContractMapper mapper;
 	private final CodeDefinitionService codeDefinitionService;
+	private final ProductDefinitionService productDefinitionService;
 	private final byte[] piiKey;
 
 	public NewContractServiceImpl(NewContractMapper mapper, CodeDefinitionService codeDefinitionService,
-			@Value("${app.pii-encryption-key}") String keyText) {
+			ProductDefinitionService productDefinitionService, @Value("${app.pii-encryption-key}") String keyText) {
 		this.mapper = mapper;
 		this.codeDefinitionService = codeDefinitionService;
+		this.productDefinitionService = productDefinitionService;
 		if (keyText == null || keyText.length() < 24)
 			throw new IllegalStateException("PII_ENCRYPTION_KEY 長度至少需要 24 字元");
 		this.piiKey = sha256(keyText);
@@ -139,6 +143,18 @@ public class NewContractServiceImpl implements NewContractService {
 			throw new BusinessException(NewContractErrorCode.INVALID_BASE_COVERAGE);
 		if (request.coverages().stream().anyMatch(c -> !List.of("BASE", "RIDER").contains(c.coverageItemType())))
 			throw new BusinessException(NewContractErrorCode.INVALID_COVERAGE_TYPE);
+		ProductDefinitionDto baseProduct = null;
+		for (CoverageInput coverage : request.coverages()) {
+			ProductDefinitionDto product = productDefinitionService.requireActiveProduct(coverage.productCode(),
+					coverage.productVersion());
+			if (!coverage.coverageItemType().equals(product.coverageItemType())
+					|| !request.currencyCode().equals(product.currencyCode()))
+				throw new BusinessException(NewContractErrorCode.INVALID_PRODUCT);
+			validateProductAmountLimits(coverage, product);
+			if ("BASE".equals(coverage.coverageItemType()))
+				baseProduct = product;
+		}
+		boolean investmentProduct = baseProduct != null && baseProduct.investmentProduct();
 		validateBeneficiaries(request.beneficiaries());
 		request.healthDisclosures().forEach(h -> {
 			if ("YES".equals(h.answerCode()) && (h.supplementalDetail() == null || h.supplementalDetail().isBlank()))
@@ -147,7 +163,7 @@ public class NewContractServiceImpl implements NewContractService {
 		if (!request.initialPremiumAuthorization().paymentToken().startsWith("PAY-")
 				|| request.initialPremiumAuthorization().maskedNumber().length() < 4)
 			throw new BusinessException(NewContractErrorCode.PAYMENT_INSTRUMENT_NOT_VALIDATED);
-		if (request.investmentProduct() && (!request.investmentRisk().applicable()
+		if (investmentProduct && (!request.investmentRisk().applicable()
 				|| !request.investmentRisk().suitable() || !request.investmentRisk().disclosureConfirmed()
 				|| !request.investmentRisk().proposalDelivered()))
 			throw new BusinessException(NewContractErrorCode.INVESTMENT_SUITABILITY_REQUIRED);
@@ -217,7 +233,7 @@ public class NewContractServiceImpl implements NewContractService {
 						consent.consentVersion(), consent.recipientCompanies(), consent.dataScopeCodes(),
 						consent.stopMethodAcknowledged());
 			}
-			if (request.investmentProduct()) {
+			if (investmentProduct) {
 				var risk = request.investmentRisk();
 				mapper.insertInvestmentRisk(UUID.randomUUID().toString(), request.applicationNo(),
 						risk.questionnaireVersion(), risk.customerRiskLevel(), risk.productRiskLevel(), risk.riskScore(),
@@ -235,6 +251,17 @@ public class NewContractServiceImpl implements NewContractService {
 		return new CreateApplicationResult(applicationId, request.applicationNo(),
 				NewContractApplicationStatus.APPLICATION_ACCEPTED.code(), dueId, premium,
 				request.currencyCode());
+	}
+
+	/** 驗證登打金額落在商品定義的承保範圍，避免前端提示被繞過。 */
+	private void validateProductAmountLimits(CoverageInput coverage, ProductDefinitionDto product) {
+		if ((product.minimumSumAssured() != null
+				&& coverage.sumAssuredAmount().compareTo(product.minimumSumAssured()) < 0)
+				|| (product.maximumSumAssured() != null
+						&& coverage.sumAssuredAmount().compareTo(product.maximumSumAssured()) > 0)
+				|| (product.minimumPremium() != null
+						&& coverage.premiumAmount().compareTo(product.minimumPremium()) < 0))
+			throw new BusinessException(NewContractErrorCode.PRODUCT_LIMIT_VIOLATION);
 	}
 
 	@Transactional

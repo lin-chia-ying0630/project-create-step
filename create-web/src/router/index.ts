@@ -46,7 +46,7 @@ const routes: RouteRecordRaw[] = [
     path: '/new-contract/applications/new',
     name: routeNames.applicationEntry,
     component: () => import('../features/new-contract/views/ApplicationEntryView.vue'),
-    meta: { title: '保單登打' },
+    meta: { title: '保單登打新增' },
   },
   {
     path: '/new-contract/applications',
@@ -92,7 +92,7 @@ export const navigationItems = [
   { name: routeNames.codeDefinition, label: '代碼定義查詢', icon: '≡' },
   { name: routeNames.customerQuery, label: '客戶資料查詢', icon: '⌕' },
   { name: routeNames.customer, label: '客戶資料建立', icon: '♙' },
-  { name: routeNames.applicationEntry, label: '保單登打', icon: '▤' },
+  { name: routeNames.applicationEntry, label: '保單登打新增', icon: '▤' },
   { name: routeNames.policyQuery, label: '保單資料查詢', icon: '⌕' },
   { name: routeNames.premium, label: '首期保費收款', icon: '＄' },
   { name: routeNames.batch, label: '新契約批次承保作業', icon: '⚙' },
