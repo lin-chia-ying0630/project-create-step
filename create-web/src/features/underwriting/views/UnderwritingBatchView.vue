@@ -62,7 +62,7 @@ onMounted(refresh)
         </div>
         <div class="form">
           <label
-            >要保書號碼／正式保單號碼（二擇一）<input
+            >要保書／保單號碼<input
               v-model="applicationNo"
               maxlength="32"
               autocomplete="off"
