@@ -62,7 +62,8 @@ public class UnderwritingInquiryServiceImpl implements UnderwritingInquiryServic
 		return switch (code) {
 			case "UW" -> "等待照會回覆";
 			case "US" -> "照會完成";
-			case "NS" -> "核保完成";
+			case "AS" -> "承保完成";
+			case "NS" -> "拒保完成";
 			case "DECLINED" -> "拒保";
 			default -> code;
 		};

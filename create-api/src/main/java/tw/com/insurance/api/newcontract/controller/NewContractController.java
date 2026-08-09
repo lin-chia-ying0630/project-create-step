@@ -8,6 +8,8 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PremiumDuePre
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.RemittanceSlipRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchExecutionSummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPreview;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewSubmissionResult;
 
 import jakarta.validation.Valid;
@@ -71,17 +73,29 @@ public class NewContractController {
 		return ResponseBodyDto.success("新增送金單已送覆核", reviewService.submit(ReviewOperationType.INITIAL_PREMIUM_MATCH,
 				request.applicationNo(), request, jwt.getSubject()));
 	}
-	/** 指定執行日送覆核；核准後才將保單寫入該日的批次核保排程。 */
+	/** 指定執行日送覆核；核准後才將保單寫入該日的新契約批次承保作業排程。 */
 	@PostMapping("/underwriting-batch/requests")
 	ResponseBodyDto<ReviewSubmissionResult> enqueue(@Valid @RequestBody UnderwritingBatchRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
 		String businessKey = request.applicationNo() + ":" + request.executionDate();
-		return ResponseBodyDto.success("新契約批次核保已送覆核", reviewService
+		return ResponseBodyDto.success("新契約批次承保作業已送覆核", reviewService
 				.submit(ReviewOperationType.UNDERWRITING_BATCH_ENQUEUE, businessKey, request, jwt.getSubject()));
 	}
 	@GetMapping("/underwriting-batch/executions")
 	ResponseBodyDto<List<UnderwritingBatchExecutionSummary>> executions() {
 		return ResponseBodyDto.success("查詢成功", service.latestExecutions());
+	}
+	/** 查詢人工核保審查目前結果與版本，不異動正式資料。 */
+	@GetMapping("/underwriting-reviews/{query}")
+	ResponseBodyDto<UnderwritingReviewPreview> previewUnderwritingReview(@PathVariable @NotBlank String query) {
+		return ResponseBodyDto.success("核保審查案件查詢成功", service.previewUnderwritingReview(query));
+	}
+	/** 修改核保結果一律建立覆核案件，核准後才同步階段碼與契約狀態。 */
+	@PostMapping("/underwriting-reviews/decisions")
+	ResponseBodyDto<ReviewSubmissionResult> decideUnderwriting(@Valid @RequestBody UnderwritingDecisionRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		return ResponseBodyDto.success("核保結果修改已送覆核", reviewService.submit(
+				ReviewOperationType.UNDERWRITING_DECISION, request.applicationNo(), request, jwt.getSubject()));
 	}
 	@GetMapping("/policy-reversals/{policyNo}/preview")
 	ResponseBodyDto<PolicyReversalPreview> preview(@PathVariable @NotBlank String policyNo) {

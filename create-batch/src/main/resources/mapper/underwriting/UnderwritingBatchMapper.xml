@@ -88,14 +88,14 @@
 	 WHERE application_no = #{applicationNo}
   </update>
 
-	<!-- 與 NS、PS、BS 狀態更新同一交易建立正式保單；唯一鍵保證重跑不會重複發單。 -->
+	<!-- 與 AS、PS、BS 狀態更新同一交易建立正式保單；唯一鍵保證重跑不會重複發單。 -->
 	<insert id="insertPolicyContract">
 	INSERT INTO main.policy_contract
 	  (policy_contract_id, policy_no, source_application_id, application_no, underwriting_case_no,
 	   product_code, product_version, policy_status, currency_code, sum_assured_amount,
 	   premium_amount, effective_date, contract_date)
 	SELECT #{policyContractId}, #{policyNo}, a.application_id, a.application_no, #{caseNo},
-	       a.product_code, a.product_version, 'ACTIVE', a.currency_code, a.sum_assured_amount,
+	       a.product_code, a.product_version, '01', a.currency_code, a.sum_assured_amount,
 	       a.premium_amount, a.requested_effective_date, CURRENT_DATE
 	  FROM new_contract.insurance_application a
 	 WHERE a.application_no = #{applicationNo} AND a.application_status = 'PW'

@@ -3,6 +3,7 @@ package tw.com.insurance.api.review.service.impl;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.RemittanceSlipRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionRequest;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewDecisionRequest;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewDetail;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewPageResult;
@@ -104,7 +105,7 @@ public class ReviewServiceImpl implements ReviewService {
 	public ReviewDetail approve(String reviewId, ReviewDecisionRequest request, String reviewerId, String requestId) {
 		Map<String, Object> row = lockPending(reviewId, reviewerId);
 		ReviewOperationType operationType = ReviewOperationType.valueOf(text(row, "operation_type"));
-		JsonNode result = execute(operationType, decrypt((byte[]) row.get("payload_ciphertext")), requestId);
+		JsonNode result = execute(operationType, decrypt((byte[]) row.get("payload_ciphertext")), reviewerId, requestId);
 		if (mapper.approve(reviewId, reviewerId, request.comment(), writeJson(result),
 				longNumber(row, "record_version")) != 1) {
 			throw new BusinessException(ReviewErrorCode.ALREADY_DECIDED);
@@ -138,7 +139,7 @@ public class ReviewServiceImpl implements ReviewService {
 	}
 
 	/** 依固定 operation type 將核准案件派送至既有業務 use case。 */
-	private JsonNode execute(ReviewOperationType operationType, byte[] payload, String requestId) {
+	private JsonNode execute(ReviewOperationType operationType, byte[] payload, String reviewerId, String requestId) {
 		try {
 			Object result = switch (operationType) {
 				case CUSTOMER_CREATE ->
@@ -151,6 +152,8 @@ public class ReviewServiceImpl implements ReviewService {
 					newContractService.reverse(objectMapper.readValue(payload, PolicyReversalRequest.class), requestId);
 				case UNDERWRITING_BATCH_ENQUEUE ->
 					newContractService.enqueue(objectMapper.readValue(payload, UnderwritingBatchRequest.class));
+				case UNDERWRITING_DECISION -> newContractService.decideUnderwriting(
+						objectMapper.readValue(payload, UnderwritingDecisionRequest.class), reviewerId);
 				case INITIAL_PREMIUM_MATCH ->
 					newContractService.matchPremium(objectMapper.readValue(payload, RemittanceSlipRequest.class));
 			};

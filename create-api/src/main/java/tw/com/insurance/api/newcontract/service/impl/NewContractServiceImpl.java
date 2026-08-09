@@ -24,6 +24,9 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.SignatureDeta
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchExecutionSummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchRequestResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPreview;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -50,6 +53,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tw.com.insurance.api.common.BusinessException;
 import tw.com.insurance.api.newcontract.domain.NewContractApplicationStatus;
 import tw.com.insurance.api.newcontract.domain.NewContractErrorCode;
+import tw.com.insurance.api.newcontract.domain.UnderwritingDecisionOutcome;
 import tw.com.insurance.api.newcontract.codedefinition.service.CodeDefinitionService;
 import tw.com.insurance.api.newcontract.persistence.NewContractMapper;
 import tw.com.insurance.api.newcontract.service.NewContractService;
@@ -416,6 +420,45 @@ public class NewContractServiceImpl implements NewContractService {
 						number(row, "total_count"), number(row, "approved_count"), number(row, "inquiry_count"),
 						number(row, "failed_count")))
 				.toList();
+	}
+
+	/** 查詢人工核保審查所需的目前階段、結果、契約狀態與樂觀鎖版本。 */
+	@Override
+	@Transactional(readOnly = true)
+	public UnderwritingReviewPreview previewUnderwritingReview(String query) {
+		Map<String, Object> row = mapper.findUnderwritingReview(query);
+		if (row == null)
+			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CASE_NOT_FOUND);
+		return new UnderwritingReviewPreview(text(row, "application_no"), text(row, "policy_no"),
+				text(row, "underwriting_case_no"), text(row, "underwriting_status"),
+				text(row, "underwriting_decision_code"), text(row, "contract_status_code"),
+				longNumber(row, "record_version"));
+	}
+
+	/** 套用固定核保結果對照，並在同一交易更新案件及寫入決行稽核。 */
+	@Override
+	@Transactional
+	public UnderwritingDecisionResult decideUnderwriting(UnderwritingDecisionRequest request, String operatorId) {
+		UnderwritingDecisionOutcome outcome;
+		try {
+			outcome = UnderwritingDecisionOutcome.fromDecisionCode(request.decisionCode());
+		} catch (IllegalArgumentException exception) {
+			throw new BusinessException(NewContractErrorCode.INVALID_UNDERWRITING_DECISION);
+		}
+		Map<String, Object> row = mapper.findUnderwritingReview(request.applicationNo());
+		if (row == null)
+			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CASE_NOT_FOUND);
+		String caseNo = text(row, "underwriting_case_no");
+		if (mapper.updateUnderwritingDecision(caseNo, request.expectedVersion(), outcome.stageCode(),
+				outcome.decisionCode(), outcome.contractStatusCode(), request.reasonCode(), operatorId) != 1)
+			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CONCURRENT_MODIFICATION);
+		mapper.updateApplicationUnderwritingStage(request.applicationNo(), outcome.stageCode());
+		mapper.insertUnderwritingDecisionAudit(UUID.randomUUID().toString(), caseNo, request.applicationNo(),
+				outcome.decisionCode(), outcome.stageCode(), outcome.contractStatusCode(), request.reasonCode(),
+				request.reasonDescription(), operatorId);
+		return new UnderwritingDecisionResult(request.applicationNo(), caseNo, outcome.decisionCode(),
+				outcome.decisionDescription(), outcome.stageCode(), outcome.stageDescription(),
+				outcome.contractStatusCode(), outcome.contractStatusDescription());
 	}
 
 	public PolicyReversalPreview previewReversal(String policyNo) {

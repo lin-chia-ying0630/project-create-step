@@ -15,14 +15,17 @@ public enum NewContractErrorCode implements ErrorCode {
 	INVALID_CURRENCY("NCT-4008", "幣別代碼無效"),
 	INVALID_PAYMENT_CHANNEL("PAY-4001", "繳費管道代碼無效"),
 	INVALID_PAYER_ROLE("PAY-4002", "繳款人身分代碼無效"),
-	INVALID_BATCH_EXECUTION_DATE("BAT-4001", "批次核保執行日不得早於臺北當日"),
+	INVALID_BATCH_EXECUTION_DATE("BAT-4001", "新契約批次承保作業執行日不得早於臺北當日"),
 	APPLICATION_NOT_READY_FOR_BATCH("BAT-4221", "要保案件尚未進入 PW 待發單狀態，不可排入批次"),
 	DUPLICATE_APPLICATION("NCT-4091", "要保書號碼已存在"),
 	PAYMENT_ALREADY_MATCHED("PAY-4091", "繳費憑證、收款交易序號或應收紀錄已完成銷帳"),
 	DUPLICATE_BATCH_REQUEST("BAT-4091", "此案件已排入指定營業日批次"),
 	POLICY_NOT_FOUND("POL-4041", "查無可撤回的正式保單"),
 	POLICY_REVERSAL_BLOCKED("POL-4091", "此保單目前不符合承保撤回條件"),
-	CONCURRENT_MODIFICATION("POL-4092", "資料已被其他人異動，請重新查詢");
+	CONCURRENT_MODIFICATION("POL-4092", "資料已被其他人異動，請重新查詢"),
+	UNDERWRITING_CASE_NOT_FOUND("UWR-4041", "查無可進行核保審查的案件"),
+	INVALID_UNDERWRITING_DECISION("UWR-4001", "核保結果只接受 DC 拒保、PO 延期或 CN 取消"),
+	UNDERWRITING_CONCURRENT_MODIFICATION("UWR-4091", "核保案件已被其他人異動，請重新查詢");
 	private final String code;
 	private final String message;
 	NewContractErrorCode(String code, String message) {

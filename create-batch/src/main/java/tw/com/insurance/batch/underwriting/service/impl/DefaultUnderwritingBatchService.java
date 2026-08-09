@@ -52,7 +52,7 @@ public class DefaultUnderwritingBatchService implements UnderwritingBatchService
 		}
 		mapper.completeExecution(executionId, candidates.size(), approvedCount, inquiryCount, 0,
 				inquiryCount == 0 ? "S" : "R");
-		LOG.info("核保批次完成 executionId={}, executionDate={}, totalCount={}", executionId, businessDate,
+		LOG.info("新契約批次承保作業完成 executionId={}, executionDate={}, totalCount={}", executionId, businessDate,
 				candidates.size());
 	}
 

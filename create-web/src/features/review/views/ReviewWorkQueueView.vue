@@ -8,7 +8,8 @@ const operationFilters = [
   { value: 'CUSTOMER_CREATE', label: '客戶建立' },
   { value: 'APPLICATION_CREATE', label: '保單登打' },
   { value: 'POLICY_REVERSAL', label: '承保撤回' },
-  { value: 'UNDERWRITING_BATCH_ENQUEUE', label: '新契約批次核保' },
+  { value: 'UNDERWRITING_BATCH_ENQUEUE', label: '新契約批次承保作業' },
+  { value: 'UNDERWRITING_DECISION', label: '核保審查結果' },
   { value: 'INITIAL_PREMIUM_MATCH', label: '首期保費資料' },
 ] as const
 

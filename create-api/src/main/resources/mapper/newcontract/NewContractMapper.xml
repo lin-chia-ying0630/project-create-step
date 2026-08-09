@@ -171,6 +171,36 @@
                    approved_count,inquiry_count,failed_count
               FROM new_contract.underwriting_batch_execution ORDER BY started_at DESC LIMIT 20
   </select>
+  <select id="findUnderwritingReview" resultType="map">
+    SELECT a.application_no,a.policy_no,u.underwriting_case_no,u.underwriting_status,
+           u.underwriting_decision_code,u.contract_status_code,u.record_version
+      FROM new_contract.insurance_application a
+      JOIN new_contract.underwriting_case u ON u.application_no=a.application_no
+     WHERE a.application_no=#{query} OR a.policy_no=#{query}
+     LIMIT 1
+  </select>
+  <update id="updateUnderwritingDecision">
+    UPDATE new_contract.underwriting_case
+       SET underwriting_status=#{stageCode},underwriting_decision_code=#{decisionCode},
+           contract_status_code=#{contractStatusCode},decision_reason_code=#{reasonCode},
+           underwriter_id=#{underwriterId},underwritten_at=CURRENT_TIMESTAMP(6),
+           record_version=record_version+1,updated_at=CURRENT_TIMESTAMP(6)
+     WHERE underwriting_case_no=#{caseNo} AND record_version=#{version}
+  </update>
+  <update id="updateApplicationUnderwritingStage">
+    UPDATE new_contract.insurance_application
+       SET application_status=#{stageCode},record_version=record_version+1,
+           updated_by='underwriting-review',updated_at=CURRENT_TIMESTAMP(6)
+     WHERE application_no=#{applicationNo}
+  </update>
+  <insert id="insertUnderwritingDecisionAudit">
+    INSERT INTO new_contract.underwriting_decision_audit
+      (audit_id,underwriting_case_no,application_no,decision_code,stage_code,contract_status_code,
+       reason_code,reason_description,operator_id,occurred_at)
+    VALUES
+      (#{auditId},#{caseNo},#{applicationNo},#{decisionCode},#{stageCode},#{contractStatusCode},
+       #{reasonCode},#{reasonDescription},#{operatorId},CURRENT_TIMESTAMP(6))
+  </insert>
   <select id="findPolicyForReversal" resultType="map">
     SELECT p.policy_no,p.application_no,p.underwriting_case_no,p.policy_status,p.effective_date,
                    p.record_version policy_version,a.application_status,a.record_version application_version,

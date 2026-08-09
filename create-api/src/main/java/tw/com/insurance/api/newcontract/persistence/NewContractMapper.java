@@ -80,6 +80,18 @@ public interface NewContractMapper {
 	int insertBatchRequest(@Param("id") String id, @Param("applicationNo") String applicationNo,
 			@Param("businessDate") LocalDate businessDate);
 	List<Map<String, Object>> findLatestExecutions();
+	Map<String, Object> findUnderwritingReview(String query);
+	int updateUnderwritingDecision(@Param("caseNo") String caseNo, @Param("version") long version,
+			@Param("stageCode") String stageCode, @Param("decisionCode") String decisionCode,
+			@Param("contractStatusCode") String contractStatusCode, @Param("reasonCode") String reasonCode,
+			@Param("underwriterId") String underwriterId);
+	int updateApplicationUnderwritingStage(@Param("applicationNo") String applicationNo,
+			@Param("stageCode") String stageCode);
+	int insertUnderwritingDecisionAudit(@Param("auditId") String auditId, @Param("caseNo") String caseNo,
+			@Param("applicationNo") String applicationNo, @Param("decisionCode") String decisionCode,
+			@Param("stageCode") String stageCode, @Param("contractStatusCode") String contractStatusCode,
+			@Param("reasonCode") String reasonCode, @Param("reasonDescription") String reasonDescription,
+			@Param("operatorId") String operatorId);
 
 	Map<String, Object> findPolicyForReversal(String policyNo);
 	int countPolicy(String policyNo);

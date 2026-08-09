@@ -1,4 +1,4 @@
-/** 核保批次 feature 的 transport contract。 */
+/** 新契約批次承保作業 feature 的 transport contract。 */
 export interface UnderwritingBatchRequest {
   applicationNo: string
   executionDate: string

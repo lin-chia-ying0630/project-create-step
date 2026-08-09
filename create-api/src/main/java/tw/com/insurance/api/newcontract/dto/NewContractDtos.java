@@ -50,6 +50,18 @@ public final class NewContractDtos {
 			String executionStatus, LocalDateTime startedAt, LocalDateTime completedAt, int totalCount,
 			int approvedCount, int inquiryCount, int failedCount) {
 	}
+	/** 人工核保審查送覆核的最小異動內容；原因不得包含健康告知原文。 */
+	public record UnderwritingDecisionRequest(@NotBlank @Size(max = 32) String applicationNo,
+			@NotBlank @Size(max = 2) String decisionCode, @NotBlank @Size(max = 32) String reasonCode,
+			@NotBlank @Size(min = 5, max = 500) String reasonDescription, @NotNull Long expectedVersion) {
+	}
+	public record UnderwritingReviewPreview(String applicationNo, String policyNo, String underwritingCaseNo,
+			String currentStageCode, String currentDecisionCode, String currentContractStatusCode, long recordVersion) {
+	}
+	public record UnderwritingDecisionResult(String applicationNo, String underwritingCaseNo, String decisionCode,
+			String decisionDescription, String stageCode, String stageDescription, String contractStatusCode,
+			String contractStatusDescription) {
+	}
 	public record PolicyReversalPreview(String policyNo, String applicationNo, String underwritingCaseNo,
 			String policyStatus, String applicationStatus, String underwritingStatus, LocalDate effectiveDate,
 			long policyVersion, long applicationVersion, long underwritingVersion, Map<String, Integer> deleteCounts,

@@ -259,9 +259,9 @@ docker compose up --build mysql api web
 docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作的Job名稱>
 ```
 
-第一條業務規格已建立為「新契約批次核保」：`create-api` 的 Flyway 建立 `new_contract` 要保、核保、照會、規則結果、稽核與 outbox，並以 `main.policy_contract` 作正式保單寫入邊界；`create-batch` 執行基本檢核，有問題建立照會，全部通過才承保。完整規格見 `docs/analysis/new-contract/underwriting/00-requirements.md`。
+第一條業務規格已建立為「新契約批次承保作業」：`create-api` 的 Flyway 建立 `new_contract` 要保、核保、照會、規則結果、稽核與 outbox，並以 `main.policy_contract` 作正式保單寫入邊界；`create-batch` 執行基本檢核，有問題建立照會，全部通過才承保。完整規格見 `docs/analysis/new-contract/underwriting/00-requirements.md`。
 
-目前已完成本機開發用的客戶建立、保單登打、首期保險費收款與銷帳、核保批次排程與紀錄查詢、核保照會單查詢與 PDF，以及未生效保單承保撤回 API／畫面。客戶身分證、聯絡方式與地址採 AES-GCM 加密，身分證另存不可逆雜湊供查重；姓名只有 `customer.customer_master` 是可維護來源，送件資料只保存 `customer_id` 與不可變快照參考。
+目前已完成本機開發用的客戶建立、保單登打、首期保險費收款與銷帳、新契約批次承保作業排程與紀錄查詢、核保照會單查詢與 PDF，以及未生效保單承保撤回 API／畫面。客戶身分證、聯絡方式與地址採 AES-GCM 加密，身分證另存不可逆雜湊供查重；姓名只有 `customer.customer_master` 是可維護來源，送件資料只保存 `customer_id` 與不可變快照參考。
 
 本機啟動前複製 `.env.example` 為 `.env`，將 `PII_ENCRYPTION_KEY` 換成至少 24 字元的隨機密鑰；`.env` 已排除版本控制。測試入口為 `http://localhost:5173`，API 為 `http://localhost:8082`，MySQL 為 `127.0.0.1:3308`。
 
@@ -273,7 +273,8 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 | 保單登打 | `POST /api/v1/new-contract/applications` | 建立要保案件與首期應繳。 |
 | 首期保險費收款與銷帳 | `GET .../initial-premium`、`POST .../remittance-slips` | 查詢應收後由「新增送金單」登錄繳費憑證及實收金額並送覆核；核准後才建立送金單、比對應收與實收並決定是否完成銷帳。舊路徑 `POST .../initial-premium-payments/reconcile` 與 `POST .../remittance-slips/match` 暫保留相容。 |
 | 核保照會單 | `GET .../underwriting-inquiries/{query}`、`GET .../{query}/pdf` | 依照會單號或要保書號碼顯示核保未通過項目，並產生繁體中文 PDF。測試資料為 `DEMO-INQ-001`。 |
-| 批次核保 | `POST .../underwriting-batch/requests`、`GET .../executions` | 排入每日 21:00 批次並查詢執行紀錄。 |
+| 新契約批次承保作業 | `POST .../underwriting-batch/requests`、`GET .../executions` | 排入每日 21:00 批次並查詢執行紀錄。 |
+| 核保審查作業 | `GET .../underwriting-reviews/{query}`、`POST .../decisions` | 查詢案件並將拒保、延期或取消結果送覆核；核准後才同步階段碼及契約狀態。 |
 | 承保撤回 | `GET .../preview`、`POST .../policy-reversals` | 僅允許未生效案件，使用版本及確認 token 防止誤刪。 |
 
 上述仍是開發基線，不包含正式商品費率、外部身分驗證、AML／PEP 名單服務、IAM 權限、HSM/KMS 密鑰管理與完整批次物化，因此不可直接上線。
@@ -284,11 +285,13 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 
 ## 新契約 Maker-Checker 覆核
 
-所有會修改正式資料的操作先建立 `business_review_case`，核准前不呼叫原業務 Service。覆核工作台 `/reviews` 統一處理客戶建立、保單登打、承保撤回、新契約批次核保及首期保費資料；保單號碼編發也視為保單登打類別的資料異動。
+所有會修改正式資料的操作先建立 `business_review_case`，核准前不呼叫原業務 Service。覆核工作台 `/reviews` 統一處理客戶建立、保單登打、承保撤回、新契約批次承保作業及首期保費資料；保單號碼編發也視為保單登打類別的資料異動。
 
-新契約批次核保畫面以「保單號碼＋執行日」送覆核；核准後寫入 `underwriting_batch_request.requested_business_date`。排程器每日 21:00（Asia/Taipei）啟動，只原子領取 `request_status = 'PENDING'` 且 `requested_business_date = 當日臺北日期` 的案件。案件必須為已送件、已有要保人與被保險人、基本金額及日期有效、已編發預編保單號碼，且首期保險費已銷帳；全部通過記錄承保，任一條件未通過則轉照會。過去的執行日不得新增，以免留下不會再被排程領取的資料。
+新契約批次承保作業畫面以「要保書號碼或正式保單號碼＋執行日」送覆核；核准後寫入 `underwriting_batch_request.requested_business_date`，排程請求狀態先記為 `W`（等待）。排程器每日 21:00（Asia/Taipei）啟動，只原子領取要保案件狀態為 `PW`、排程請求狀態為 `W`，且 `requested_business_date = 當日臺北日期` 的案件；領件後排程狀態改為 `P`（處理中）。案件必須已有要保人與被保險人、基本金額及日期有效、已於案件建立時固定正式保單號碼，且首期保險費已銷帳；全部通過時狀態改為 `S`（完成）並寫入正式保單主檔，任一條件未通過則改為 `R`（照會／退件）。過去的執行日不得新增，以免留下不會再被排程領取的資料。
 
-資料庫 migration 以英文 table／column 識別字維持跨系統契約，並以繁中 `COMMENT` 定義業務名稱。本次首期保費、送金單、銷帳、核保排程與批次執行表的表名及全部欄位，已由 V21 補齊繁中 metadata；已發布 migration 不回改 checksum。
+新契約契約狀態固定為四種：受理時資料庫值為 `NULL`，承保並生效後為 `01`（有效），人工核保負向決行則為 `13`（拒保）、`14`（延期）或 `15`（取消）。核保審查作業將 `DC` 拒絕承保映射為階段 `NS`／契約狀態 `13`，`PO` 延期承保映射為 `DS`／`14`，`CN` 取消申請映射為 `CS`／`15`；原本代表承保完成的 `NS` 已遷移為 `AS`，避免與拒保完成衝突。`26`（猶豫期變更）歸屬保全／契約變更，不列入新契約四種狀態。
+
+資料庫 migration 以英文 table／column 識別字維持跨系統契約，並以繁中 `COMMENT` 定義業務名稱。本次首期保費、送金單、銷帳、新契約批次承保作業排程與批次執行表的表名及全部欄位，已由 V21 補齊繁中 metadata；既有 migration 不回改 checksum，後續名稱調整以新的 forward-only migration 更新。
 
 | 邊界 | 責任 |
 |---|---|

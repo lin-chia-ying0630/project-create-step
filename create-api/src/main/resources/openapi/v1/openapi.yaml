@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: 保險系統 API
   version: 0.1.0
-  description: 新契約、客戶、首期保費、核保批次、承保撤回與 Maker-Checker 覆核 API。
+  description: 新契約、客戶、首期保費、新契約批次承保作業、承保撤回與 Maker-Checker 覆核 API。
 paths:
   /api/v1/reviews:
     get:
@@ -116,16 +116,32 @@ paths:
         '200': {description: 收款與銷帳完成}
   /api/v1/new-contract/underwriting-batch/requests:
     post:
-      summary: 將指定保單與執行日送出核保排程覆核案件
-      description: 覆核核准後建立 PENDING 排程；每日 21:00（Asia/Taipei）只領取執行日等於當日的待執行案件。executionDate 不得早於臺北當日。
+      summary: 將指定保單與執行日送出新契約批次承保作業覆核案件
+      description: 覆核核准後建立 W 等待排程；每日 21:00（Asia/Taipei）只領取要保案件 PW、執行日等於當日且排程狀態 W 的案件。executionDate 不得早於臺北當日。
       responses:
-        '200': {description: 批次核保已送覆核}
+        '200': {description: 新契約批次承保作業已送覆核}
         '400': {description: 執行日早於臺北當日或欄位驗證失敗}
   /api/v1/new-contract/underwriting-batch/executions:
     get:
-      summary: 查詢最近核保批次執行紀錄
+      summary: 查詢最近新契約批次承保作業執行紀錄
       responses:
         '200': {description: 查詢成功}
+  /api/v1/new-contract/underwriting-reviews/{query}:
+    get:
+      summary: 依要保書號碼或正式保單號碼查詢核保審查案件
+      parameters:
+        - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
+      responses:
+        '200': {description: 核保審查案件查詢成功}
+        '404': {description: 查無核保案件}
+  /api/v1/new-contract/underwriting-reviews/decisions:
+    post:
+      summary: 修改核保結果並送交 Maker-Checker 覆核
+      description: 核准後依固定契約更新 DC拒保為NS/13、PO延期為DS/14、CN取消為CS/15，並追加核保決行稽核。
+      responses:
+        '200': {description: 核保結果修改已送覆核}
+        '400': {description: 核保結果或欄位驗證失敗}
+        '409': {description: 同案件已有待審異動或版本衝突}
   /api/v1/new-contract/underwriting-inquiries/{query}:
     get:
       summary: 依照會單號、要保書號碼或正式保單號碼查詢核保照會結果

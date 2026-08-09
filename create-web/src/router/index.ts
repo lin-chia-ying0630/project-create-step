@@ -7,6 +7,7 @@ export const routeNames = {
   premium: 'initial-premium',
   batch: 'underwriting-batch',
   inquiry: 'underwriting-inquiry',
+  underwritingReview: 'underwriting-review',
   reversal: 'policy-reversal',
   review: 'review-work-queue',
   codeDefinition: 'code-definition-lookup',
@@ -54,7 +55,13 @@ const routes: RouteRecordRaw[] = [
     path: '/underwriting/batches',
     name: routeNames.batch,
     component: () => import('../features/underwriting/views/UnderwritingBatchView.vue'),
-    meta: { title: '批次核保' },
+    meta: { title: '新契約批次承保作業' },
+  },
+  {
+    path: '/underwriting/reviews',
+    name: routeNames.underwritingReview,
+    component: () => import('../features/underwriting/views/UnderwritingReviewView.vue'),
+    meta: { title: '核保審查作業' },
   },
   {
     path: '/underwriting/inquiries',
@@ -78,7 +85,8 @@ export const navigationItems = [
   { name: routeNames.applicationEntry, label: '保單登打', icon: '▤' },
   { name: routeNames.policyQuery, label: '保單資料查詢', icon: '⌕' },
   { name: routeNames.premium, label: '首期保費收款', icon: '＄' },
-  { name: routeNames.batch, label: '批次核保', icon: '⚙' },
+  { name: routeNames.batch, label: '新契約批次承保作業', icon: '⚙' },
+  { name: routeNames.underwritingReview, label: '核保審查作業', icon: '◎' },
   { name: routeNames.inquiry, label: '核保照會單', icon: '!' },
   { name: routeNames.reversal, label: '承保撤回', icon: '↶' },
 ] as const

@@ -6,7 +6,7 @@ import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-/** 核保批次排程領件、結果與稽核的持久層契約。 */
+/** 新契約批次承保作業排程領件、結果與稽核的持久層契約。 */
 @Mapper
 public interface UnderwritingBatchMapper {
 	/** 先建立 P 處理中執行紀錄，讓後續領件及稽核共用同一個批次識別碼。 */
@@ -47,7 +47,7 @@ public interface UnderwritingBatchMapper {
 	int insertPolicyBeneficiaries(@Param("policyNo") String policyNo,
 			@Param("applicationNo") String applicationNo);
 
-	/** 在同一交易追加核保批次成功稽核，不記錄個資、健康告知或付款工具內容。 */
+	/** 在同一交易追加新契約批次承保作業成功稽核，不記錄個資、健康告知或付款工具內容。 */
 	int insertAudit(@Param("auditId") String auditId, @Param("executionId") String executionId,
 			@Param("applicationNo") String applicationNo, @Param("caseNo") String caseNo,
 			@Param("resultCode") String resultCode);

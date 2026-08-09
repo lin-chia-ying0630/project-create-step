@@ -13,6 +13,9 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.RemittanceSli
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchExecutionSummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchRequestResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPreview;
 import java.util.List;
 
 public interface NewContractService {
@@ -25,6 +28,9 @@ public interface NewContractService {
 	/** 將指定保單與執行日建立為待執行核保排程，不在 API request 內直接執行核保。 */
 	UnderwritingBatchRequestResult enqueue(UnderwritingBatchRequest request);
 	List<UnderwritingBatchExecutionSummary> latestExecutions();
+	UnderwritingReviewPreview previewUnderwritingReview(String query);
+	/** 覆核核准後以樂觀鎖同步核保案件、要保案件及 append-only 決行稽核。 */
+	UnderwritingDecisionResult decideUnderwriting(UnderwritingDecisionRequest request, String operatorId);
 	PolicyReversalPreview previewReversal(String policyNo);
 	PolicyReversalResult reverse(PolicyReversalRequest request, String requestId);
 }

@@ -45,7 +45,7 @@ onMounted(refresh)
 
 <template>
   <main class="page">
-    <h1>新契約批次核保</h1>
+    <h1>新契約批次承保作業</h1>
     <p class="schedule">
       固定排程：每日晚上 21:00（Asia/Taipei）啟動，領取執行日為當日且狀態為待執行的保單。
     </p>
@@ -58,7 +58,7 @@ onMounted(refresh)
       /></label>
       <label>執行日<input v-model="executionDate" type="date" /></label>
       <button :disabled="loading || !applicationNo.trim() || !executionDate" @click="enqueue">
-        依執行日排入核保批次
+        依執行日排入批次承保作業
       </button>
     </section>
     <p v-if="message" class="success">{{ message }}</p>
