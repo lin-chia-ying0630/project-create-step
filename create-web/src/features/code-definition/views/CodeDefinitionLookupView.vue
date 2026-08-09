@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
+import QueryConditionForm from '../../../shared/components/QueryConditionForm.vue'
 import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
 import type {
   CodeDefinitionOption,
@@ -66,61 +68,70 @@ onMounted(initialize)
       <span class="status-chip">{{ items.length }} 筆</span>
     </header>
 
-    <div class="panel lookup-form">
-      <label
-        >代碼表
-        <select v-model="selectedTableKey" :disabled="loading" @change="search">
-          <option
-            v-for="table in tableOptions"
-            :key="`${table.codeGroup}::${table.codeField}`"
-            :value="`${table.codeGroup}::${table.codeField}`"
-          >
-            {{ table.codeField }}｜{{ table.codeFieldDescription }}（{{
-              table.codeGroupDescription
-            }}）
-          </option>
-        </select>
-      </label>
-    </div>
+    <QueryListPanels>
+      <template #query>
+        <QueryConditionForm description="請選擇要查詢的代碼表">
+          <label
+            >代碼表
+            <select v-model="selectedTableKey" :disabled="loading">
+              <option
+                v-for="table in tableOptions"
+                :key="`${table.codeGroup}::${table.codeField}`"
+                :value="`${table.codeGroup}::${table.codeField}`"
+              >
+                {{ table.codeField }}｜{{ table.codeFieldDescription }}（{{
+                  table.codeGroupDescription
+                }}）
+              </option>
+            </select>
+          </label>
+          <template #actions>
+            <button type="button" class="primary-button" :disabled="loading" @click="search">
+              {{ loading ? '查詢中…' : '查詢代碼' }}
+            </button>
+          </template>
+        </QueryConditionForm>
+      </template>
 
-    <article class="panel section-gap">
-      <div class="panel-title">
-        <h3>對照結果</h3>
-        <small>{{ selectedTable?.codeGroup }}／{{ selectedTable?.codeField }}</small>
-      </div>
-      <div class="data-table-scope">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>代碼</th>
-              <th>繁體中文說明</th>
-              <th>英文說明</th>
-              <th>大分類</th>
-              <th>中分類</th>
-              <th>工作性質</th>
-              <th>來源版本</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in items" :key="item.code">
-              <td class="code-value">{{ item.code }}</td>
-              <td>{{ item.description }}</td>
-              <td>{{ item.descriptionEn || '—' }}</td>
-              <td>
-                {{ item.classificationCode || '—' }}
-                {{ item.classificationDescription || '' }}
-              </td>
-              <td>{{ item.breakdownCode || '—' }} {{ item.breakdownDescription || '' }}</td>
-              <td>{{ item.natureOfWork || '—' }}</td>
-              <td>{{ item.sourceVersion || '—' }}</td>
-            </tr>
-            <tr v-if="!loading && !items.length">
-              <td colspan="7">查無目前生效的代碼對照。</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </article>
+      <template #list>
+        <div class="panel-title">
+          <h3>對照結果</h3>
+          <small>{{ selectedTable?.codeGroup }}／{{ selectedTable?.codeField }}</small>
+        </div>
+        <div class="data-table-scope">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>代碼</th>
+                <th>繁體中文說明</th>
+                <th>英文說明</th>
+                <th>大分類</th>
+                <th>中分類</th>
+                <th>工作性質</th>
+                <th>來源版本</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in items" :key="item.code">
+                <td class="code-value">{{ item.code }}</td>
+                <td>{{ item.description }}</td>
+                <td>{{ item.descriptionEn || '—' }}</td>
+                <td>
+                  {{ item.classificationCode || '—' }}
+                  {{ item.classificationDescription || '' }}
+                </td>
+                <td>{{ item.breakdownCode || '—' }} {{ item.breakdownDescription || '' }}</td>
+                <td>{{ item.natureOfWork || '—' }}</td>
+                <td>{{ item.sourceVersion || '—' }}</td>
+              </tr>
+              <tr v-if="!loading && !items.length">
+                <td colspan="7">查無目前生效的代碼對照。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+    </QueryListPanels>
 
     <p v-if="error" class="status-message error" role="alert">{{ error }}</p>
   </section>

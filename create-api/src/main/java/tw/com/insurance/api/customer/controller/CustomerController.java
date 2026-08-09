@@ -38,8 +38,9 @@ public class CustomerController {
 	/** 初次進入客戶建立畫面即列出十筆客戶摘要。 */
 	@GetMapping
 	ResponseBodyDto<CustomerPage> findPage(@RequestParam(defaultValue = "1") int page,
+			@RequestParam(defaultValue = "") String query,
 			@RequestParam(defaultValue = "10") int pageSize,
 			@RequestParam(defaultValue = "customerId,asc") String sort) {
-		return ResponseBodyDto.success("客戶清單查詢成功", customerService.findPage(page, pageSize, sort));
+		return ResponseBodyDto.success("客戶清單查詢成功", customerService.findPage(query, page, pageSize, sort));
 	}
 }

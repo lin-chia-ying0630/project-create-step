@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
+import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
 import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
 import { applicationEntryApi } from '../api/applicationEntryApi'
 import type { ApplicationQueryPage, ApplicationQueryResult } from '../types/applicationEntry'
@@ -36,6 +38,13 @@ const pages = [
 async function search() {
   appliedQuery.value = query.value.trim()
   await loadPolicies(1)
+}
+
+/** 清除單一查詢值並回復完整保單清單。 */
+function clearSearch() {
+  query.value = ''
+  appliedQuery.value = ''
+  void loadPolicies(1)
 }
 
 /** 從後端載入保單清單，頁碼、筆數與排序均不在前端二次處理。 */
@@ -108,102 +117,99 @@ onMounted(() => loadPolicies(1))
         <p>可使用要保人 ID、被保險人 ID、要保書號碼或正式保單號碼查詢。</p>
       </div>
     </header>
-    <article class="panel">
-      <div class="panel-title">
-        <h3>查詢條件</h3>
-        <small>客戶 ID 會列出其相關案件</small>
-      </div>
-      <div class="search-row">
-        <label
-          >客戶 ID／要保書／保單號碼＊<input
-            v-model.trim="query"
-            maxlength="36"
-            placeholder="輸入完整查詢值"
-            @keyup.enter="search" /></label
-        ><button class="primary-button" :disabled="loading" @click="search">
-          {{ loading ? '查詢中…' : '查詢保單資料' }}
-        </button>
-      </div>
-    </article>
+    <QueryListPanels>
+      <template #query>
+        <SingleQueryForm
+          v-model="query"
+          button-label="查詢保單資料"
+          description="可輸入完整要保人 ID、被保險人 ID、要保書號碼或正式保單號碼；留白查詢全部資料"
+          field-label="要保書／保單號碼"
+          :loading="loading"
+          :max-length="36"
+          @submit="search"
+          @clear="clearSearch"
+        />
+      </template>
 
-    <article class="panel section-gap">
-      <div class="panel-title responsive-split-row">
-        <h3>保單資料清單</h3>
-        <span>共 {{ queryPage.totalItems }} 筆</span>
-      </div>
-      <div class="data-table-scope">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>操作</th>
-              <SortableTableHeader
-                field="applicationNo"
-                label="要保書號碼"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="policyNo"
-                label="正式保單號碼"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="productCode"
-                label="商品代碼"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <th>要保日期</th>
-              <th>預定生效日</th>
-              <th>狀態</th>
-              <th>新增人員</th>
-              <th>建立時間</th>
-              <th>修改人員</th>
-              <th>修改時間</th>
-              <th>覆核人員</th>
-              <th>覆核時間</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in queryPage.items" :key="item.applicationNo">
-              <td>
-                <button class="secondary-button" @click="openDetail(item.applicationNo)">
-                  查詢
-                </button>
-              </td>
-              <td>{{ item.applicationNo }}</td>
-              <td>{{ item.policyNo || '—' }}</td>
-              <td>{{ item.productCode }}</td>
-              <td>{{ item.applicationDate }}</td>
-              <td>{{ item.requestedEffectiveDate }}</td>
-              <td>{{ item.applicationStatus }} {{ item.applicationStatusDescription }}</td>
-              <td>{{ item.createdBy }}</td>
-              <td>{{ item.createdAt }}</td>
-              <td>{{ item.updatedBy }}</td>
-              <td>{{ item.updatedAt }}</td>
-              <td>{{ item.reviewerId || '尚未覆核' }}</td>
-              <td>{{ item.reviewedAt || '尚未覆核' }}</td>
-            </tr>
-            <tr v-if="!loading && queryPage.items.length === 0">
-              <td colspan="13">查無保單資料。</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <PageNavigator
-        v-if="queryPage.totalPages > 0"
-        :model-value="queryPage.page - 1"
-        :total="queryPage.totalPages"
-        :page-size="queryPage.pageSize"
-        prefix="保單資料清單"
-        @update:model-value="loadPolicies($event + 1)"
-        @update:page-size="changePageSize"
-      />
-    </article>
+      <template #list>
+        <div class="panel-title responsive-split-row">
+          <h3>保單資料清單</h3>
+          <span>共 {{ queryPage.totalItems }} 筆</span>
+        </div>
+        <div class="data-table-scope">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>操作</th>
+                <SortableTableHeader
+                  field="applicationNo"
+                  label="要保書號碼"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="policyNo"
+                  label="正式保單號碼"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="productCode"
+                  label="商品代碼"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <th>要保日期</th>
+                <th>預定生效日</th>
+                <th>狀態</th>
+                <th>新增人員</th>
+                <th>建立時間</th>
+                <th>修改人員</th>
+                <th>修改時間</th>
+                <th>覆核人員</th>
+                <th>覆核時間</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in queryPage.items" :key="item.applicationNo">
+                <td>
+                  <button class="secondary-button" @click="openDetail(item.applicationNo)">
+                    查詢
+                  </button>
+                </td>
+                <td>{{ item.applicationNo }}</td>
+                <td>{{ item.policyNo || '—' }}</td>
+                <td>{{ item.productCode }}</td>
+                <td>{{ item.applicationDate }}</td>
+                <td>{{ item.requestedEffectiveDate }}</td>
+                <td>{{ item.applicationStatus }} {{ item.applicationStatusDescription }}</td>
+                <td>{{ item.createdBy }}</td>
+                <td>{{ item.createdAt }}</td>
+                <td>{{ item.updatedBy }}</td>
+                <td>{{ item.updatedAt }}</td>
+                <td>{{ item.reviewerId || '尚未覆核' }}</td>
+                <td>{{ item.reviewedAt || '尚未覆核' }}</td>
+              </tr>
+              <tr v-if="!loading && queryPage.items.length === 0">
+                <td colspan="13">查無保單資料。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <PageNavigator
+          v-if="queryPage.totalPages > 0"
+          :model-value="queryPage.page - 1"
+          :total="queryPage.totalPages"
+          :page-size="queryPage.pageSize"
+          prefix="保單資料清單"
+          @update:model-value="loadPolicies($event + 1)"
+          @update:page-size="changePageSize"
+        />
+      </template>
+    </QueryListPanels>
 
     <dialog ref="detailDialog" class="review-dialog" @cancel="closeDetail">
       <article

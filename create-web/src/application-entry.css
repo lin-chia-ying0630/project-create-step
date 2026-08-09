@@ -109,29 +109,6 @@
   border-bottom: 3px double #64748b;
   padding-bottom: 18px;
 }
-.application-page-tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  margin: 0 0 16px;
-  padding: 2px 0 8px;
-}
-.application-page-tabs button {
-  display: grid;
-  gap: 3px;
-  min-width: 135px;
-  border: 1px solid #cbd5e1;
-  border-radius: 7px;
-  background: #fff;
-  color: #475569;
-  padding: 10px 13px;
-  text-align: left;
-}
-.application-page-tabs button.active {
-  border: 2px solid #0f766e;
-  background: #e9f7f5;
-  color: #0f766e;
-}
 .application-sheet {
   min-height: 520px;
   border-top: 5px solid #334155;
@@ -148,13 +125,6 @@
   }
   .application-document-header {
     padding-bottom: 12px;
-  }
-  .application-page-tabs {
-    max-width: 100%;
-    overscroll-behavior-x: contain;
-  }
-  .application-page-tabs button {
-    min-width: 118px;
   }
   .application-sheet {
     min-height: auto;

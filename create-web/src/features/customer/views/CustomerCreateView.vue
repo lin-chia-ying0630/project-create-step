@@ -5,8 +5,11 @@ import { customerCodeDefinitionApi } from '../api/customerCodeDefinitionApi'
 import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
 import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
+import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
+import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
 import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import type { CustomerPage, CustomerSummary } from '../types/customer'
+const props = withDefaults(defineProps<{ mode?: 'create' | 'query' }>(), { mode: 'create' })
 const form = reactive({
   customerTypeCode: 'PERSON' as 'PERSON' | 'ORGANIZATION',
   identityTypeCode: 'NATIONAL_ID',
@@ -46,6 +49,8 @@ const customerPage = ref<CustomerPage>({
   pageSize: 10,
   totalPages: 0,
 })
+const queryInput = ref('')
+const appliedQuery = ref('')
 const sortField = ref('customerId')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 const selectedCustomer = ref<CustomerSummary | null>(null)
@@ -136,6 +141,7 @@ async function submit() {
 async function loadCustomers(page = customerPage.value.page) {
   try {
     customerPage.value = await customerApi.findPage(
+      appliedQuery.value,
       page,
       customerPage.value.pageSize,
       `${sortField.value},${sortDirection.value}`,
@@ -143,6 +149,19 @@ async function loadCustomers(page = customerPage.value.page) {
   } catch (e) {
     error.value = e instanceof Error ? e.message : '客戶清單載入失敗'
   }
+}
+
+/** 套用完整客戶 ID 或姓名查詢值並回到第一頁。 */
+function searchCustomers() {
+  appliedQuery.value = queryInput.value.trim()
+  void loadCustomers(1)
+}
+
+/** 清除客戶查詢值並回復完整客戶清單。 */
+function clearCustomerSearch() {
+  queryInput.value = ''
+  appliedQuery.value = ''
+  void loadCustomers(1)
 }
 
 /** 切換前三個資料欄位排序後回到第一頁。 */
@@ -176,21 +195,26 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
   <section class="content-page">
     <header class="page-header">
       <div>
-        <p class="eyebrow">CUSTOMER 360</p>
-        <h2>{{ form.customerTypeCode === 'PERSON' ? '自然人客戶建立' : '公司／行號客戶建立' }}</h2>
+        <p class="eyebrow">{{ props.mode === 'query' ? 'CUSTOMER LOOKUP' : 'CUSTOMER 360' }}</p>
+        <h2 v-if="props.mode === 'query'">客戶資料查詢</h2>
+        <h2 v-else>
+          {{ form.customerTypeCode === 'PERSON' ? '自然人客戶建立' : '公司／行號客戶建立' }}
+        </h2>
         <p>
           {{
-            form.customerTypeCode === 'PERSON'
-              ? '建立自然人身分、聯絡方式與個人 KYC 資料。'
-              : '建立法人或商號的統一編號、負責人、聯絡方式與法人 KYC 資料。'
+            props.mode === 'query'
+              ? '查詢客戶主檔摘要、狀態與新增、修改、覆核紀錄。'
+              : form.customerTypeCode === 'PERSON'
+                ? '建立自然人身分、聯絡方式與個人 KYC 資料。'
+                : '建立法人或商號的統一編號、負責人、聯絡方式與法人 KYC 資料。'
           }}
         </p>
       </div>
-      <span class="status-chip">{{
+      <span v-if="props.mode === 'create'" class="status-chip">{{
         form.customerTypeCode === 'PERSON' ? '自然人' : '公司／行號'
       }}</span>
     </header>
-    <nav class="customer-type-switch" aria-label="客戶建立類型">
+    <nav v-if="props.mode === 'create'" class="customer-type-switch" aria-label="客戶建立類型">
       <button
         type="button"
         :class="{ active: form.customerTypeCode === 'PERSON' }"
@@ -205,80 +229,97 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
         <b>公司／行號客戶</b><small>公司、商號或非營利組織</small>
       </button>
     </nav>
-    <article class="panel">
-      <div class="panel-title responsive-split-row">
-        <h3>客戶資料清單</h3>
-        <span>共 {{ customerPage.totalItems }} 筆</span>
-      </div>
-      <div class="data-table-scope">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>操作</th>
-              <SortableTableHeader
-                field="customerId"
-                label="客戶 ID"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="customerTypeCode"
-                label="客戶類型"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="customerName"
-                label="姓名／名稱"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <th>國籍</th>
-              <th>狀態</th>
-              <th>新增人員</th>
-              <th>建立時間</th>
-              <th>修改人員</th>
-              <th>修改時間</th>
-              <th>覆核人員</th>
-              <th>覆核時間</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in customerPage.items" :key="item.customerId">
-              <td>
-                <button type="button" class="secondary-button" @click="openCustomer(item)">
-                  查看
-                </button>
-              </td>
-              <td>{{ item.customerId }}</td>
-              <td>{{ item.customerTypeCode }}</td>
-              <td>{{ item.customerName }}</td>
-              <td>{{ item.nationalityCode }}</td>
-              <td>{{ item.recordStatus }}</td>
-              <td>{{ item.createdBy }}</td>
-              <td>{{ item.createdAt }}</td>
-              <td>{{ item.updatedBy }}</td>
-              <td>{{ item.updatedAt }}</td>
-              <td>{{ item.reviewerId || '尚未覆核' }}</td>
-              <td>{{ item.reviewedAt || '尚未覆核' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <PageNavigator
-        v-if="customerPage.totalPages > 0"
-        :model-value="customerPage.page - 1"
-        :total="customerPage.totalPages"
-        :page-size="customerPage.pageSize"
-        prefix="客戶資料清單"
-        @update:model-value="loadCustomers($event + 1)"
-        @update:page-size="changePageSize"
-      />
-    </article>
-    <dialog ref="customerDialog" class="review-dialog" @cancel="closeCustomer">
+    <QueryListPanels v-if="props.mode === 'query'">
+      <template #query>
+        <SingleQueryForm
+          v-model="queryInput"
+          button-label="查詢客戶資料"
+          description="可輸入完整客戶 ID 或客戶姓名／名稱；留白查詢全部客戶"
+          :loading="loading"
+          @submit="searchCustomers"
+          @clear="clearCustomerSearch"
+        />
+      </template>
+      <template #list>
+        <div class="panel-title responsive-split-row">
+          <h3>客戶資料清單</h3>
+          <span>共 {{ customerPage.totalItems }} 筆</span>
+        </div>
+        <div class="data-table-scope">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>操作</th>
+                <SortableTableHeader
+                  field="customerId"
+                  label="客戶 ID"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="customerTypeCode"
+                  label="客戶類型"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="customerName"
+                  label="姓名／名稱"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <th>國籍</th>
+                <th>狀態</th>
+                <th>新增人員</th>
+                <th>建立時間</th>
+                <th>修改人員</th>
+                <th>修改時間</th>
+                <th>覆核人員</th>
+                <th>覆核時間</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in customerPage.items" :key="item.customerId">
+                <td>
+                  <button type="button" class="secondary-button" @click="openCustomer(item)">
+                    查看
+                  </button>
+                </td>
+                <td>{{ item.customerId }}</td>
+                <td>{{ item.customerTypeCode }}</td>
+                <td>{{ item.customerName }}</td>
+                <td>{{ item.nationalityCode }}</td>
+                <td>{{ item.recordStatus }}</td>
+                <td>{{ item.createdBy }}</td>
+                <td>{{ item.createdAt }}</td>
+                <td>{{ item.updatedBy }}</td>
+                <td>{{ item.updatedAt }}</td>
+                <td>{{ item.reviewerId || '尚未覆核' }}</td>
+                <td>{{ item.reviewedAt || '尚未覆核' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <PageNavigator
+          v-if="customerPage.totalPages > 0"
+          :model-value="customerPage.page - 1"
+          :total="customerPage.totalPages"
+          :page-size="customerPage.pageSize"
+          prefix="客戶資料清單"
+          @update:model-value="loadCustomers($event + 1)"
+          @update:page-size="changePageSize"
+        />
+      </template>
+    </QueryListPanels>
+    <dialog
+      v-if="props.mode === 'query'"
+      ref="customerDialog"
+      class="review-dialog"
+      @cancel="closeCustomer"
+    >
       <article v-if="selectedCustomer" class="dialog-content">
         <header class="dialog-header">
           <div>
@@ -336,7 +377,7 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
         </div>
       </article>
     </dialog>
-    <form class="panel" @submit.prevent="submit">
+    <form v-if="props.mode === 'create'" class="panel" @submit.prevent="submit">
       <div class="panel-title">
         <h3>
           {{ form.customerTypeCode === 'PERSON' ? '自然人身分與基本資料' : '公司／行號基本資料' }}

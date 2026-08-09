@@ -58,11 +58,13 @@
   </update>
   <select id="countCustomers" resultType="long">
     SELECT COUNT(*) FROM customer.customer_master
+    <where><if test="query != null and query != ''">customer_id=#{query} OR customer_name=#{query}</if></where>
   </select>
   <select id="findCustomerPage" resultType="map">
     SELECT customer_id,customer_type_code,customer_name,nationality_code,record_status,
            created_by,created_at,updated_by,updated_at,reviewer_id,reviewed_at
       FROM customer.customer_master
+    <where><if test="query != null and query != ''">customer_id=#{query} OR customer_name=#{query}</if></where>
      ORDER BY
      <choose>
        <when test="sortField == 'customerTypeCode'">customer_type_code</when>

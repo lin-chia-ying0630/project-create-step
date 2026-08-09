@@ -104,10 +104,11 @@ public class NewContractController {
 	/** 列出新契約受理檔中 NS 照會結束、等待核保審查的案件。 */
 	@GetMapping("/underwriting-reviews")
 	ResponseBodyDto<UnderwritingReviewPage> findUnderwritingReviewCandidates(
+			@RequestParam(defaultValue = "") String query,
 			@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int pageSize,
 			@RequestParam(defaultValue = "applicationNo,asc") String sort) {
 		return ResponseBodyDto.success("待核保審查清單查詢成功",
-				service.findUnderwritingReviewCandidates(page, pageSize, sort));
+				service.findUnderwritingReviewCandidates(query, page, pageSize, sort));
 	}
 	/** 查詢人工核保審查目前結果與版本，不異動正式資料。 */
 	@GetMapping("/underwriting-reviews/{query}")

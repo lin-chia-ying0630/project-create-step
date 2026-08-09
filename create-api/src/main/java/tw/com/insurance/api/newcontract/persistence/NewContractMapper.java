@@ -84,8 +84,8 @@ public interface NewContractMapper {
 	int insertBatchRequest(@Param("id") String id, @Param("applicationNo") String applicationNo,
 			@Param("businessDate") LocalDate businessDate);
 	List<Map<String, Object>> findLatestExecutions();
-	long countUnderwritingReviewCandidates();
-	List<Map<String, Object>> findUnderwritingReviewCandidates(@Param("offset") int offset,
+	long countUnderwritingReviewCandidates(@Param("query") String query);
+	List<Map<String, Object>> findUnderwritingReviewCandidates(@Param("query") String query, @Param("offset") int offset,
 			@Param("pageSize") int pageSize, @Param("sortField") String sortField,
 			@Param("sortDirection") String sortDirection);
 	Map<String, Object> findUnderwritingReview(String query);

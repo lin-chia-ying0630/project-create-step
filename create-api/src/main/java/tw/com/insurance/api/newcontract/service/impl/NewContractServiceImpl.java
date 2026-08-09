@@ -458,12 +458,13 @@ public class NewContractServiceImpl implements NewContractService {
 	/** 以新契約受理檔為清單主體，只提供 NS 照會結束且待審查的案件。 */
 	@Override
 	@Transactional(readOnly = true)
-	public UnderwritingReviewPage findUnderwritingReviewCandidates(int page, int pageSize, String sort) {
+	public UnderwritingReviewPage findUnderwritingReviewCandidates(String queryValue, int page, int pageSize, String sort) {
 		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
 				Set.of("applicationNo", "policyNo", "productCode"), "applicationNo");
-		long totalItems = mapper.countUnderwritingReviewCandidates();
+		String exactQuery = queryValue == null || queryValue.isBlank() ? null : queryValue.trim();
+		long totalItems = mapper.countUnderwritingReviewCandidates(exactQuery);
 		List<UnderwritingReviewSummary> items = mapper
-				.findUnderwritingReviewCandidates(query.offset(), query.pageSize(), query.sortField(), query.sortDirection())
+				.findUnderwritingReviewCandidates(exactQuery, query.offset(), query.pageSize(), query.sortField(), query.sortDirection())
 				.stream()
 				.map(row -> new UnderwritingReviewSummary(text(row, "application_no"), text(row, "policy_no"),
 						text(row, "underwriting_case_no"), text(row, "product_code"),

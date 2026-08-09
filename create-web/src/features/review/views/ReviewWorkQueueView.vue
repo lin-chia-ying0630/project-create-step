@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
+import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
+import SectionTabNavigator from '../../../shared/components/SectionTabNavigator.vue'
 import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
 import { reviewApi } from '../api/reviewApi'
 import type { ReviewDetail, ReviewPageResult, ReviewSummary } from '../types/review'
@@ -14,6 +17,11 @@ const operationFilters = [
   { value: 'UNDERWRITING_DECISION', label: '核保審查結果' },
   { value: 'INITIAL_PREMIUM_MATCH', label: '首期保費資料' },
 ] as const
+const operationTabItems = operationFilters.map((filter, index) => ({
+  value: filter.value,
+  label: filter.label,
+  caption: `第 ${index + 1} 頁`,
+}))
 
 const reviewPage = ref<ReviewPageResult>({
   items: [],
@@ -158,101 +166,88 @@ onMounted(refresh)
       <span class="status-chip">待覆核 {{ reviewPage.totalItems }} 件</span>
     </header>
 
-    <nav class="review-tabs" aria-label="覆核功能分類">
-      <button
-        v-for="filter in operationFilters"
-        :key="filter.value"
-        type="button"
-        :class="{ active: selectedOperation === filter.value }"
-        @click="selectedOperation = filter.value"
-      >
-        {{ filter.label }}
-      </button>
-    </nav>
+    <SectionTabNavigator
+      :model-value="selectedOperation"
+      :items="operationTabItems"
+      navigation-label="覆核功能分類"
+      @update:model-value="selectedOperation = String($event)"
+    />
 
-    <article class="panel">
-      <div class="panel-title responsive-split-row">
-        <div>
-          <h3>查詢條件</h3>
-          <small>客戶 ID 會列出其相關待覆核案件</small>
-        </div>
-      </div>
-      <form class="search-row" @submit.prevent="search">
-        <label
-          >客戶 ID／要保書號碼／正式保單號碼
-          <input v-model.trim="queryInput" maxlength="200" placeholder="輸入完整查詢值" />
-        </label>
-        <div class="search-actions">
-          <button v-if="appliedQuery" type="button" class="secondary-button" @click="clearSearch">
-            清除
-          </button>
-          <button type="submit" class="primary-button" :disabled="loading">查詢審核案件</button>
-        </div>
-      </form>
-    </article>
+    <QueryListPanels>
+      <template #query>
+        <SingleQueryForm
+          v-model="queryInput"
+          button-label="查詢審核案件"
+          description="可輸入完整客戶 ID、要保書號碼或正式保單號碼；留白查詢全部待覆核案件"
+          :loading="loading"
+          @submit="search"
+          @clear="clearSearch"
+        />
+      </template>
 
-    <article class="panel section-gap">
-      <div class="panel-title responsive-split-row">
-        <h3>待覆核案件</h3>
-        <button class="secondary-button" :disabled="loading" @click="refresh()">重新整理</button>
-      </div>
-      <div class="data-table-scope">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>操作</th>
-              <SortableTableHeader
-                field="reviewId"
-                label="覆核編號"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="operationType"
-                label="功能"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="businessKey"
-                label="業務鍵"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <th>送審人</th>
-              <th>送審時間</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in visibleItems" :key="item.reviewId">
-              <td>
-                <button class="secondary-button" @click="openDetail(item.reviewId)">覆核</button>
-              </td>
-              <td>{{ item.reviewId }}</td>
-              <td>{{ item.operationDescription }}</td>
-              <td>{{ item.businessKey }}</td>
-              <td>{{ item.makerId }}</td>
-              <td>{{ item.submittedAt }}</td>
-            </tr>
-            <tr v-if="!visibleItems.length">
-              <td colspan="6">目前沒有待覆核案件。</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <PageNavigator
-        v-if="reviewPage.totalPages > 0"
-        :model-value="reviewPage.page - 1"
-        :total="reviewPage.totalPages"
-        :page-size="reviewPage.pageSize"
-        prefix="待覆核案件"
-        @update:model-value="refresh($event + 1)"
-        @update:page-size="changePageSize"
-      />
-    </article>
+      <template #list>
+        <div class="panel-title responsive-split-row">
+          <h3>待覆核案件</h3>
+          <button class="secondary-button" :disabled="loading" @click="refresh()">重新整理</button>
+        </div>
+        <div class="data-table-scope">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>操作</th>
+                <SortableTableHeader
+                  field="reviewId"
+                  label="覆核編號"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="operationType"
+                  label="功能"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="businessKey"
+                  label="業務鍵"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <th>送審人</th>
+                <th>送審時間</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in visibleItems" :key="item.reviewId">
+                <td>
+                  <button class="secondary-button" @click="openDetail(item.reviewId)">覆核</button>
+                </td>
+                <td>{{ item.reviewId }}</td>
+                <td>{{ item.operationDescription }}</td>
+                <td>{{ item.businessKey }}</td>
+                <td>{{ item.makerId }}</td>
+                <td>{{ item.submittedAt }}</td>
+              </tr>
+              <tr v-if="!visibleItems.length">
+                <td colspan="6">目前沒有待覆核案件。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <PageNavigator
+          v-if="reviewPage.totalPages > 0"
+          :model-value="reviewPage.page - 1"
+          :total="reviewPage.totalPages"
+          :page-size="reviewPage.pageSize"
+          prefix="待覆核案件"
+          @update:model-value="refresh($event + 1)"
+          @update:page-size="changePageSize"
+        />
+      </template>
+    </QueryListPanels>
 
     <article v-if="selected" class="panel section-gap">
       <div class="panel-title">

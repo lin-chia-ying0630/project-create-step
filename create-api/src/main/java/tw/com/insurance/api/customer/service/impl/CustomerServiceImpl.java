@@ -101,11 +101,12 @@ public class CustomerServiceImpl implements CustomerService {
 	/** 分頁列出不含證件號碼及聯絡資料的客戶主檔摘要。 */
 	@Override
 	@Transactional(readOnly = true)
-	public CustomerPage findPage(int page, int pageSize, String sort) {
+	public CustomerPage findPage(String queryText, int page, int pageSize, String sort) {
 		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
 				Set.of("customerId", "customerTypeCode", "customerName"), "customerId");
-		long totalItems = mapper.countCustomers();
-		List<CustomerSummary> items = mapper.findCustomerPage(query.offset(), query.pageSize(), query.sortField(),
+		String exactQuery = queryText == null ? "" : queryText.trim();
+		long totalItems = mapper.countCustomers(exactQuery);
+		List<CustomerSummary> items = mapper.findCustomerPage(exactQuery, query.offset(), query.pageSize(), query.sortField(),
 				query.sortDirection()).stream()
 				.map(row -> new CustomerSummary(text(row, "customer_id"), text(row, "customer_type_code"),
 						text(row, "customer_name"), text(row, "nationality_code"), text(row, "record_status"),

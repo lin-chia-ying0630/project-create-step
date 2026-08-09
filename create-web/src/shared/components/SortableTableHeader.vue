@@ -1,5 +1,10 @@
 <script setup lang="ts">
-const props = defineProps<{ field: string; label: string; activeField: string; direction: 'asc' | 'desc' }>()
+const props = defineProps<{
+  field: string
+  label: string
+  activeField: string
+  direction: 'asc' | 'desc'
+}>()
 const emit = defineEmits<{ sort: [field: string, direction: 'asc' | 'desc'] }>()
 
 /** 同欄位切換升降冪；改選欄位時從升冪開始。 */
@@ -10,9 +15,15 @@ function toggleSort() {
 </script>
 
 <template>
-  <th scope="col" :aria-sort="activeField === field ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'">
+  <th
+    scope="col"
+    :aria-sort="activeField === field ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'"
+  >
     <button type="button" class="sortable-header-button" @click="toggleSort">
-      {{ label }} <span aria-hidden="true">{{ activeField === field ? (direction === 'asc' ? '▲' : '▼') : '↕' }}</span>
+      {{ label }}
+      <span aria-hidden="true">{{
+        activeField === field ? (direction === 'asc' ? '▲' : '▼') : '↕'
+      }}</span>
     </button>
   </th>
 </template>

@@ -271,6 +271,18 @@ button:disabled {
     position: relative;
   }
 }
+
+.single-query-form {
+  width: 100%;
+  min-width: 0;
+}
+
+.query-condition-form,
+.query-condition-form label,
+.single-query-form label {
+  width: 100%;
+  min-width: 0;
+}
 .search-actions {
   display: flex;
   align-items: flex-end;
@@ -284,6 +296,48 @@ button:disabled {
   gap: 16px;
 }
 
+// 查詢型頁面固定由兩個同層 Panel 組成，不允許查詢區與清單區互相巢狀包覆。
+.query-list-panels {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  max-width: 100%;
+}
+.query-list-panels > .panel {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+// 登打與覆核等多區段作業共用卡片頁籤；窄畫面只在導航本身水平捲動。
+.section-tab-navigator {
+  display: flex;
+  gap: 8px;
+  max-width: 100%;
+  margin: 0 0 16px;
+  padding: 2px 0 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+.section-tab-navigator button {
+  display: grid;
+  flex: 1 0 135px;
+  gap: 3px;
+  min-width: 135px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #475569;
+  padding: 10px 13px;
+  text-align: left;
+}
+.section-tab-navigator button.active {
+  border: 2px solid $primary;
+  background: #e9f7f5;
+  color: $primary;
+}
+
 // 清單共用分頁與每頁筆數選擇，不由 feature 建立另一套控制列。
 .shared-page-actions {
   display: flex;
@@ -291,6 +345,10 @@ button:disabled {
   justify-content: center;
   gap: 16px;
   margin: 18px 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
 .shared-page-actions > span {
   color: #475569;
@@ -566,6 +624,10 @@ button:disabled {
   .shared-page-actions > span {
     flex: 0 0 auto;
     text-align: center;
+  }
+  .section-tab-navigator button {
+    flex-basis: 118px;
+    min-width: 118px;
   }
   .review-dialog {
     width: calc(100% - 24px);

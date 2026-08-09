@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 export const routeNames = {
   customer: 'customer-create',
+  customerQuery: 'customer-query',
   applicationEntry: 'application-entry',
   policyQuery: 'policy-query',
   premium: 'initial-premium',
@@ -28,9 +29,17 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Code Definitions 代碼定義' },
   },
   {
+    path: '/customers',
+    name: routeNames.customerQuery,
+    component: () => import('../features/customer/views/CustomerCreateView.vue'),
+    props: { mode: 'query' },
+    meta: { title: '客戶資料查詢' },
+  },
+  {
     path: '/customers/new',
     name: routeNames.customer,
     component: () => import('../features/customer/views/CustomerCreateView.vue'),
+    props: { mode: 'create' },
     meta: { title: '客戶資料建立' },
   },
   {
@@ -81,6 +90,7 @@ const routes: RouteRecordRaw[] = [
 export const navigationItems = [
   { name: routeNames.review, label: '覆核工作台', icon: '✓' },
   { name: routeNames.codeDefinition, label: '代碼定義查詢', icon: '≡' },
+  { name: routeNames.customerQuery, label: '客戶資料查詢', icon: '⌕' },
   { name: routeNames.customer, label: '客戶資料建立', icon: '♙' },
   { name: routeNames.applicationEntry, label: '保單登打', icon: '▤' },
   { name: routeNames.policyQuery, label: '保單資料查詢', icon: '⌕' },

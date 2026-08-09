@@ -4,6 +4,7 @@ import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
 import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import { premiumPaymentApi } from '../api/premiumPaymentApi'
 import type { PremiumDuePreview } from '../types/premiumPayment'
+import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
 const localNow = () => {
   const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
   return d.toISOString().slice(0, 16)
@@ -109,30 +110,21 @@ async function createRemittanceSlip() {
       <div>
         <p class="eyebrow">INITIAL PREMIUM COLLECTION</p>
         <h2>首期保險費收款與銷帳</h2>
-		<p>依要保書號碼或正式保單號碼查詢應收首期保險費，登錄實際收款資料後執行銷帳。</p>
+        <p>依要保書號碼或正式保單號碼查詢應收首期保險費，登錄實際收款資料後執行銷帳。</p>
       </div>
       <span class="status-chip">新契約收費</span>
     </header>
     <article class="panel">
-      <div class="panel-title">
-        <h3><b>1</b>查詢待收案件</h3>
-		<small>可輸入要保書號碼或正式保單號碼</small>
-      </div>
-      <div class="search-row">
-        <label
-          >要保書／保單號碼＊<input
-            v-model.trim="applicationNo"
-            maxlength="32"
-            placeholder="例：NC-20260808-001"
-            @keyup.enter="search" /></label
-        ><button
-          class="primary-button"
-          :disabled="!applicationNo.trim() || loading"
-          @click="search"
-        >
-          查詢應收保險費
-        </button>
-      </div>
+      <SingleQueryForm
+        v-model="applicationNo"
+        button-label="查詢應收保險費"
+        description="請輸入完整要保書號碼或正式保單號碼"
+        field-label="要保書／保單號碼"
+        :loading="loading"
+        :max-length="32"
+        @submit="search"
+        @clear="applicationNo = ''"
+      />
     </article>
     <article v-if="due" class="panel section-gap">
       <div class="panel-title">

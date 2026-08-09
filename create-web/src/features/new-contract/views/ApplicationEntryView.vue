@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import SectionTabNavigator from '../../../shared/components/SectionTabNavigator.vue'
 import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
 import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import { applicationEntryApi } from '../api/applicationEntryApi'
@@ -64,6 +65,11 @@ const loading = ref(false),
   error = ref<string | null>(null),
   activePage = ref(0)
 const applicationPages = ['要保事項', '契約關係人', '投保內容', '受益人', '健康告知', '聲明與簽署']
+const applicationTabItems = applicationPages.map((label, index) => ({
+  value: index,
+  label,
+  caption: `第 ${index + 1} 頁`,
+}))
 const totalPremium = computed(() =>
   form.coverages.reduce((n, c) => n + (Number(c.premiumAmount) || 0), 0).toLocaleString('zh-TW'),
 )
@@ -156,16 +162,12 @@ onMounted(loadCodeDefinitionOptions)
       </div>
       <span class="status-chip">草稿</span>
     </header>
-    <nav class="application-page-tabs" aria-label="要保書頁次">
-      <button
-        v-for="(page, index) in applicationPages"
-        :key="page"
-        :class="{ active: activePage === index }"
-        @click="activePage = index"
-      >
-        <small>第 {{ index + 1 }} 頁</small><b>{{ page }}</b>
-      </button>
-    </nav>
+    <SectionTabNavigator
+      :model-value="activePage"
+      :items="applicationTabItems"
+      navigation-label="要保書頁次"
+      @update:model-value="activePage = Number($event)"
+    />
     <form @submit.prevent="submit">
       <article v-show="activePage === 0" class="panel form-section application-sheet">
         <div class="panel-title">

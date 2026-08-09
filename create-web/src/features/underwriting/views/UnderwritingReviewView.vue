@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
+import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
 import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
 import { underwritingReviewApi } from '../api/underwritingReviewApi'
 import type {
@@ -30,6 +32,8 @@ const error = ref<string | null>(null)
 const reviewDialog = ref<HTMLDialogElement | null>(null)
 const sortField = ref('applicationNo')
 const sortDirection = ref<'asc' | 'desc'>('asc')
+const queryInput = ref('')
+const appliedQuery = ref('')
 const selectedOutcome = computed(() =>
   outcomes.value.find((outcome) => outcome.decisionCode === decisionCode.value),
 )
@@ -53,6 +57,7 @@ async function loadCases(page = 1) {
   error.value = null
   try {
     reviewPage.value = await underwritingReviewApi.list(
+      appliedQuery.value,
       page,
       reviewPage.value.pageSize,
       `${sortField.value},${sortDirection.value}`,
@@ -62,6 +67,19 @@ async function loadCases(page = 1) {
   } finally {
     listLoading.value = false
   }
+}
+
+/** 套用要保書、正式保單或核保案件完整號碼，從第一頁查詢 NS 待審案件。 */
+function searchCases() {
+  appliedQuery.value = queryInput.value.trim()
+  void loadCases(1)
+}
+
+/** 清除核保審查查詢條件並回復全部 NS 待審案件。 */
+function clearSearch() {
+  queryInput.value = ''
+  appliedQuery.value = ''
+  void loadCases(1)
 }
 
 /** 由共用排序表頭切換欄位與方向，並從第一頁重新向後端查詢。 */
@@ -149,93 +167,111 @@ onMounted(async () => {
       <span class="status-chip">待審查 {{ reviewPage.totalItems }} 件</span>
     </header>
 
-    <article class="panel">
-      <div class="panel-title responsive-split-row">
-        <div>
-          <h3>待核保審查清單</h3>
-          <small>點選案件後，以彈跳視窗檢視投保資料並送交核保決定覆核</small>
+    <QueryListPanels>
+      <template #query>
+        <SingleQueryForm
+          v-model="queryInput"
+          button-label="查詢核保案件"
+          description="可輸入完整要保書號碼、正式保單號碼或核保案件號碼；留白查詢全部 NS 待審案件"
+          field-label="要保書／保單號碼"
+          :loading="listLoading"
+          :max-length="32"
+          @submit="searchCases"
+          @clear="clearSearch"
+        />
+      </template>
+      <template #list>
+        <div class="panel-title responsive-split-row">
+          <div>
+            <h3>待核保審查清單</h3>
+            <small>點選案件後，以彈跳視窗檢視投保資料並送交核保決定覆核</small>
+          </div>
+          <button
+            class="secondary-button"
+            :disabled="listLoading"
+            @click="loadCases(reviewPage.page)"
+          >
+            {{ listLoading ? '讀取中…' : '重新整理' }}
+          </button>
         </div>
-        <button
-          class="secondary-button"
-          :disabled="listLoading"
-          @click="loadCases(reviewPage.page)"
-        >
-          {{ listLoading ? '讀取中…' : '重新整理' }}
-        </button>
-      </div>
-      <div class="candidate-table-scope">
-        <table class="data-table candidate-table">
-          <thead>
-            <tr>
-              <th scope="col">操作</th>
-              <SortableTableHeader
-                field="applicationNo"
-                label="要保書號碼"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="policyNo"
-                label="正式保單號碼"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="productCode"
-                label="商品代碼"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <th scope="col">要保日期</th>
-              <th scope="col">預定生效日</th>
-              <th scope="col">核保階段</th>
-              <th scope="col">新增人員</th>
-              <th scope="col">建立時間</th>
-              <th scope="col">修改人員</th>
-              <th scope="col">修改時間</th>
-              <th scope="col">覆核人員</th>
-              <th scope="col">覆核時間</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in reviewPage.items" :key="item.underwritingCaseNo">
-              <td>
-                <button class="secondary-button" :disabled="detailLoading" @click="openCase(item)">
-                  進入審查
-                </button>
-              </td>
-              <td>{{ item.applicationNo }}</td>
-              <td>{{ item.policyNo || '—' }}</td>
-              <td>{{ item.productCode }}</td>
-              <td>{{ item.applicationDate }}</td>
-              <td>{{ item.requestedEffectiveDate }}</td>
-              <td>{{ item.currentStageCode }} {{ item.currentStageDescription }}</td>
-              <td>{{ item.createdBy }}</td>
-              <td>{{ item.createdAt }}</td>
-              <td>{{ item.updatedBy }}</td>
-              <td>{{ item.updatedAt }}</td>
-              <td>{{ item.reviewerId || '尚未覆核' }}</td>
-              <td>{{ item.reviewedAt || '尚未覆核' }}</td>
-            </tr>
-            <tr v-if="!listLoading && reviewPage.items.length === 0">
-              <td colspan="13">目前沒有 NS 照會結束、需要核保審查的案件。</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <PageNavigator
-        v-if="reviewPage.totalPages > 1"
-        :model-value="reviewPage.page - 1"
-        :total="reviewPage.totalPages"
-        :page-size="reviewPage.pageSize"
-        prefix="待核保審查清單"
-        @update:model-value="loadCases($event + 1)"
-        @update:page-size="changePageSize"
-      />
-    </article>
+        <div class="candidate-table-scope">
+          <table class="data-table candidate-table">
+            <thead>
+              <tr>
+                <th scope="col">操作</th>
+                <SortableTableHeader
+                  field="applicationNo"
+                  label="要保書號碼"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="policyNo"
+                  label="正式保單號碼"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="productCode"
+                  label="商品代碼"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <th scope="col">要保日期</th>
+                <th scope="col">預定生效日</th>
+                <th scope="col">核保階段</th>
+                <th scope="col">新增人員</th>
+                <th scope="col">建立時間</th>
+                <th scope="col">修改人員</th>
+                <th scope="col">修改時間</th>
+                <th scope="col">覆核人員</th>
+                <th scope="col">覆核時間</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in reviewPage.items" :key="item.underwritingCaseNo">
+                <td>
+                  <button
+                    class="secondary-button"
+                    :disabled="detailLoading"
+                    @click="openCase(item)"
+                  >
+                    進入審查
+                  </button>
+                </td>
+                <td>{{ item.applicationNo }}</td>
+                <td>{{ item.policyNo || '—' }}</td>
+                <td>{{ item.productCode }}</td>
+                <td>{{ item.applicationDate }}</td>
+                <td>{{ item.requestedEffectiveDate }}</td>
+                <td>{{ item.currentStageCode }} {{ item.currentStageDescription }}</td>
+                <td>{{ item.createdBy }}</td>
+                <td>{{ item.createdAt }}</td>
+                <td>{{ item.updatedBy }}</td>
+                <td>{{ item.updatedAt }}</td>
+                <td>{{ item.reviewerId || '尚未覆核' }}</td>
+                <td>{{ item.reviewedAt || '尚未覆核' }}</td>
+              </tr>
+              <tr v-if="!listLoading && reviewPage.items.length === 0">
+                <td colspan="13">目前沒有 NS 照會結束、需要核保審查的案件。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <PageNavigator
+          v-if="reviewPage.totalPages > 1"
+          :model-value="reviewPage.page - 1"
+          :total="reviewPage.totalPages"
+          :page-size="reviewPage.pageSize"
+          prefix="待核保審查清單"
+          @update:model-value="loadCases($event + 1)"
+          @update:page-size="changePageSize"
+        />
+      </template>
+    </QueryListPanels>
 
     <p v-if="message" class="status-message success section-gap">{{ message }}</p>
     <p v-if="error" class="status-message error section-gap">{{ error }}</p>

@@ -8,10 +8,19 @@ import type {
 } from '../types/underwritingReview'
 
 export const underwritingReviewApi = {
-  list(page = 1, pageSize = 10, sort = 'applicationNo,asc'): Promise<UnderwritingReviewPage> {
-    return get(
-      `/api/v1/new-contract/underwriting-reviews?page=${page}&pageSize=${pageSize}&sort=${encodeURIComponent(sort)}`,
-    )
+  list(
+    query = '',
+    page = 1,
+    pageSize = 10,
+    sort = 'applicationNo,asc',
+  ): Promise<UnderwritingReviewPage> {
+    const params = new URLSearchParams({
+      query,
+      page: String(page),
+      pageSize: String(pageSize),
+      sort,
+    })
+    return get(`/api/v1/new-contract/underwriting-reviews?${params.toString()}`)
   },
   find(query: string): Promise<UnderwritingReviewPreview> {
     return get(`/api/v1/new-contract/underwriting-reviews/${encodeURIComponent(query)}`)

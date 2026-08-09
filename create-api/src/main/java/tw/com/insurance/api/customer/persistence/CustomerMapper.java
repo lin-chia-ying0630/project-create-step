@@ -38,7 +38,7 @@ public interface CustomerMapper {
 	int insertAudit(@Param("id") String id, @Param("customerId") String customerId,
 			@Param("requestId") String requestId);
 	int markReviewed(@Param("customerId") String customerId, @Param("reviewerId") String reviewerId);
-	long countCustomers();
-	List<Map<String, Object>> findCustomerPage(@Param("offset") int offset, @Param("pageSize") int pageSize,
+	long countCustomers(@Param("query") String query);
+	List<Map<String, Object>> findCustomerPage(@Param("query") String query, @Param("offset") int offset, @Param("pageSize") int pageSize,
 			@Param("sortField") String sortField, @Param("sortDirection") String sortDirection);
 }

@@ -34,7 +34,7 @@ public interface NewContractService {
 	UnderwritingBatchRequestResult enqueue(UnderwritingBatchRequest request);
 	List<UnderwritingBatchExecutionSummary> latestExecutions();
 	/** 分頁列出新契約受理檔中階段為 NS、需要人工核保審查的案件。 */
-	UnderwritingReviewPage findUnderwritingReviewCandidates(int page, int pageSize, String sort);
+	UnderwritingReviewPage findUnderwritingReviewCandidates(String query, int page, int pageSize, String sort);
 	UnderwritingReviewPreview previewUnderwritingReview(String query);
 	/** 取得核保審查完整結果選項及其後續狀態映射。 */
 	List<UnderwritingOutcomeOption> findUnderwritingOutcomes();

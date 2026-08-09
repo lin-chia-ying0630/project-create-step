@@ -206,6 +206,9 @@
       FROM new_contract.insurance_application a
       JOIN new_contract.underwriting_case u ON u.application_no=a.application_no
      WHERE a.application_status='NS' AND u.underwriting_status='NS'
+     <if test="query != null and query != ''">
+       AND (a.application_no=#{query} OR a.policy_no=#{query} OR u.underwriting_case_no=#{query})
+     </if>
   </select>
   <select id="findUnderwritingReviewCandidates" resultType="map">
     SELECT a.application_no,a.policy_no,a.product_code,a.application_date,a.requested_effective_date,
@@ -218,6 +221,9 @@
          WHERE br2.business_key=a.application_no AND br2.review_status IN ('A','R')
          ORDER BY br2.reviewed_at DESC LIMIT 1)
      WHERE a.application_status='NS' AND u.underwriting_status='NS'
+     <if test="query != null and query != ''">
+       AND (a.application_no=#{query} OR a.policy_no=#{query} OR u.underwriting_case_no=#{query})
+     </if>
      ORDER BY
      <choose>
        <when test="sortField == 'policyNo'">a.policy_no</when>
@@ -238,7 +244,7 @@
         SELECT br2.review_id FROM new_contract.business_review_case br2
          WHERE br2.business_key=a.application_no AND br2.review_status IN ('A','R')
          ORDER BY br2.reviewed_at DESC LIMIT 1)
-     WHERE (a.application_no=#{query} OR a.policy_no=#{query})
+     WHERE (a.application_no=#{query} OR a.policy_no=#{query} OR u.underwriting_case_no=#{query})
        AND a.application_status='NS' AND u.underwriting_status='NS'
      LIMIT 1
   </select>

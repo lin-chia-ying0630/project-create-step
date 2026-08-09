@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
+import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
 import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
 import { underwritingInquiryApi } from '../api/underwritingInquiryApi'
 import type { InquiryDetail, InquiryPage } from '../types/underwritingInquiry'
-const query = ref('DEMO-INQ-001'),
+const query = ref(''),
   detail = ref<InquiryDetail | null>(null),
   loading = ref(false),
   pdfLoading = ref(false),
@@ -29,6 +31,11 @@ const formatTime = (v: string | null) =>
 const money = (currency: string, value: string) =>
   `${currency} ${Number(value).toLocaleString('zh-TW')}`
 async function search() {
+  if (!query.value.trim()) {
+    detail.value = null
+    await loadInquiries(1)
+    return
+  }
   loading.value = true
   error.value = null
   detail.value = null
@@ -39,6 +46,14 @@ async function search() {
   } finally {
     loading.value = false
   }
+}
+
+/** 清除照會單查詢值及明細，回復完整照會單清單。 */
+function clearSearch() {
+  query.value = ''
+  detail.value = null
+  error.value = null
+  void loadInquiries(1)
 }
 
 /** 由後端分頁載入照會單清單，初次進入即顯示十筆。 */
@@ -107,94 +122,92 @@ onMounted(() => loadInquiries(1))
       </div>
       <span class="status-chip">核保結果</span>
     </header>
-    <article class="panel">
-      <div class="panel-title">
-        <h3>照會案件查詢</h3>
-        <small>照會單號、要保書號碼或正式保單號碼擇一輸入</small>
-      </div>
-      <div class="search-row">
-        <label
-          >查詢條件＊<input
-            v-model.trim="query"
-            maxlength="32"
-            placeholder="例：DEMO-INQ-001"
-            @keyup.enter="search" /></label
-        ><button class="primary-button" :disabled="!query.trim() || loading" @click="search">
-          {{ loading ? '查詢中…' : '查詢照會單' }}
-        </button>
-      </div>
-    </article>
-    <article class="panel section-gap">
-      <div class="panel-title responsive-split-row">
-        <h3>核保照會單清單</h3>
-        <span>共 {{ inquiryPage.totalItems }} 筆</span>
-      </div>
-      <div class="data-table-scope">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>操作</th>
-              <SortableTableHeader
-                field="inquiryNo"
-                label="照會單號"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="applicationNo"
-                label="要保書號碼"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <SortableTableHeader
-                field="policyNo"
-                label="正式保單號碼"
-                :active-field="sortField"
-                :direction="sortDirection"
-                @sort="changeSort"
-              />
-              <th>照會狀態</th>
-              <th>照會日期</th>
-              <th>新增人員</th>
-              <th>建立時間</th>
-              <th>修改人員</th>
-              <th>修改時間</th>
-              <th>覆核人員</th>
-              <th>覆核時間</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in inquiryPage.items" :key="item.inquiryNo">
-              <td>
-                <button class="secondary-button" @click="openInquiry(item.inquiryNo)">查詢</button>
-              </td>
-              <td>{{ item.inquiryNo }}</td>
-              <td>{{ item.applicationNo }}</td>
-              <td>{{ item.policyNo || '—' }}</td>
-              <td>{{ item.inquiryStatus }} {{ item.inquiryStatusDescription }}</td>
-              <td>{{ formatTime(item.issuedAt) }}</td>
-              <td>{{ item.createdBy }}</td>
-              <td>{{ formatTime(item.createdAt) }}</td>
-              <td>{{ item.updatedBy }}</td>
-              <td>{{ formatTime(item.updatedAt) }}</td>
-              <td>{{ item.reviewerId || '尚未覆核' }}</td>
-              <td>{{ item.reviewedAt ? formatTime(item.reviewedAt) : '尚未覆核' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <PageNavigator
-        v-if="inquiryPage.totalPages > 0"
-        :model-value="inquiryPage.page - 1"
-        :total="inquiryPage.totalPages"
-        :page-size="inquiryPage.pageSize"
-        prefix="核保照會單清單"
-        @update:model-value="loadInquiries($event + 1)"
-        @update:page-size="changePageSize"
-      />
-    </article>
+    <QueryListPanels>
+      <template #query>
+        <SingleQueryForm
+          v-model="query"
+          button-label="查詢照會單"
+          description="可輸入完整照會單號；留白顯示全部核保照會單"
+          :loading="loading"
+          :max-length="32"
+          @submit="search"
+          @clear="clearSearch"
+        />
+      </template>
+      <template #list>
+        <div class="panel-title responsive-split-row">
+          <h3>核保照會單清單</h3>
+          <span>共 {{ inquiryPage.totalItems }} 筆</span>
+        </div>
+        <div class="data-table-scope">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>操作</th>
+                <SortableTableHeader
+                  field="inquiryNo"
+                  label="照會單號"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="applicationNo"
+                  label="要保書號碼"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <SortableTableHeader
+                  field="policyNo"
+                  label="正式保單號碼"
+                  :active-field="sortField"
+                  :direction="sortDirection"
+                  @sort="changeSort"
+                />
+                <th>照會狀態</th>
+                <th>照會日期</th>
+                <th>新增人員</th>
+                <th>建立時間</th>
+                <th>修改人員</th>
+                <th>修改時間</th>
+                <th>覆核人員</th>
+                <th>覆核時間</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in inquiryPage.items" :key="item.inquiryNo">
+                <td>
+                  <button class="secondary-button" @click="openInquiry(item.inquiryNo)">
+                    查詢
+                  </button>
+                </td>
+                <td>{{ item.inquiryNo }}</td>
+                <td>{{ item.applicationNo }}</td>
+                <td>{{ item.policyNo || '—' }}</td>
+                <td>{{ item.inquiryStatus }} {{ item.inquiryStatusDescription }}</td>
+                <td>{{ formatTime(item.issuedAt) }}</td>
+                <td>{{ item.createdBy }}</td>
+                <td>{{ formatTime(item.createdAt) }}</td>
+                <td>{{ item.updatedBy }}</td>
+                <td>{{ formatTime(item.updatedAt) }}</td>
+                <td>{{ item.reviewerId || '尚未覆核' }}</td>
+                <td>{{ item.reviewedAt ? formatTime(item.reviewedAt) : '尚未覆核' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <PageNavigator
+          v-if="inquiryPage.totalPages > 0"
+          :model-value="inquiryPage.page - 1"
+          :total="inquiryPage.totalPages"
+          :page-size="inquiryPage.pageSize"
+          prefix="核保照會單清單"
+          @update:model-value="loadInquiries($event + 1)"
+          @update:page-size="changePageSize"
+        />
+      </template>
+    </QueryListPanels>
     <template v-if="detail"
       ><article class="panel section-gap">
         <div class="result-heading responsive-split-row">

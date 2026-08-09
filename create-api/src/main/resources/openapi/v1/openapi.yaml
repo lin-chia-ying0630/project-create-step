@@ -148,7 +148,7 @@ paths:
         '200': {description: 查詢成功}
   /api/v1/new-contract/underwriting-reviews/{query}:
     get:
-      summary: 依要保書號碼或正式保單號碼查詢核保審查案件
+      summary: 依要保書號碼、正式保單號碼或核保案件號碼查詢核保審查案件
       parameters:
         - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
@@ -159,6 +159,7 @@ paths:
       summary: 分頁查詢待核保審查清單
       description: 以新契約受理檔為主，僅回傳受理檔與核保案件階段皆為 NS 照會結束／待核保審查的案件。
       parameters:
+        - {name: query, in: query, description: 要保書號碼、正式保單號碼或核保案件號碼完整值；空白表示全部, schema: {type: string, maxLength: 32, default: ''}}
         - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
         - {name: pageSize, in: query, description: 每頁筆數，可選 10、20、50、100, schema: {type: integer, enum: [10, 20, 50, 100], default: 10}}
         - {name: sort, in: query, schema: {type: string, enum: ['applicationNo,asc', 'applicationNo,desc', 'policyNo,asc', 'policyNo,desc', 'productCode,asc', 'productCode,desc'], default: 'applicationNo,asc'}}
