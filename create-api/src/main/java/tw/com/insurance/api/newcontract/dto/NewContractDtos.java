@@ -56,7 +56,15 @@ public final class NewContractDtos {
 			@NotBlank @Size(min = 5, max = 500) String reasonDescription, @NotNull Long expectedVersion) {
 	}
 	public record UnderwritingReviewPreview(String applicationNo, String policyNo, String underwritingCaseNo,
-			String currentStageCode, String currentDecisionCode, String currentContractStatusCode, long recordVersion) {
+			String productCode, LocalDate applicationDate, LocalDate requestedEffectiveDate, String currencyCode,
+			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal sumAssuredAmount,
+			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal premiumAmount, String currentStageCode,
+			String currentStageDescription, String currentDecisionCode, String currentContractStatusCode,
+			String currentContractStatusDescription, long recordVersion) {
+	}
+	/** 核保審查畫面使用的固定結果選項，由後端 enum 提供唯一代碼與狀態映射。 */
+	public record UnderwritingOutcomeOption(String decisionCode, String decisionDescription, String stageCode,
+			String stageDescription, String contractStatusCode, String contractStatusDescription, boolean insurable) {
 	}
 	public record UnderwritingDecisionResult(String applicationNo, String underwritingCaseNo, String decisionCode,
 			String decisionDescription, String stageCode, String stageDescription, String contractStatusCode,

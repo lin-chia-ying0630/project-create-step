@@ -172,7 +172,8 @@
               FROM new_contract.underwriting_batch_execution ORDER BY started_at DESC LIMIT 20
   </select>
   <select id="findUnderwritingReview" resultType="map">
-    SELECT a.application_no,a.policy_no,u.underwriting_case_no,u.underwriting_status,
+    SELECT a.application_no,a.policy_no,a.product_code,a.application_date,a.requested_effective_date,
+           a.currency_code,a.sum_assured_amount,a.premium_amount,u.underwriting_case_no,u.underwriting_status,
            u.underwriting_decision_code,u.contract_status_code,u.record_version
       FROM new_contract.insurance_application a
       JOIN new_contract.underwriting_case u ON u.application_no=a.application_no

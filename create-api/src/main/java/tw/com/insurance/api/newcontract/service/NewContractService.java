@@ -16,6 +16,7 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingB
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPreview;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingOutcomeOption;
 import java.util.List;
 
 public interface NewContractService {
@@ -29,6 +30,8 @@ public interface NewContractService {
 	UnderwritingBatchRequestResult enqueue(UnderwritingBatchRequest request);
 	List<UnderwritingBatchExecutionSummary> latestExecutions();
 	UnderwritingReviewPreview previewUnderwritingReview(String query);
+	/** 取得核保審查完整結果選項及其後續狀態映射。 */
+	List<UnderwritingOutcomeOption> findUnderwritingOutcomes();
 	/** 覆核核准後以樂觀鎖同步核保案件、要保案件及 append-only 決行稽核。 */
 	UnderwritingDecisionResult decideUnderwriting(UnderwritingDecisionRequest request, String operatorId);
 	PolicyReversalPreview previewReversal(String policyNo);

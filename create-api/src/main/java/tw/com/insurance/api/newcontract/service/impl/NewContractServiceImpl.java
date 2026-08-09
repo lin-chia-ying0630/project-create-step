@@ -27,6 +27,7 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingB
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPreview;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingOutcomeOption;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -429,10 +430,24 @@ public class NewContractServiceImpl implements NewContractService {
 		Map<String, Object> row = mapper.findUnderwritingReview(query);
 		if (row == null)
 			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CASE_NOT_FOUND);
+		String stageCode = text(row, "underwriting_status");
+		String contractStatusCode = text(row, "contract_status_code");
 		return new UnderwritingReviewPreview(text(row, "application_no"), text(row, "policy_no"),
-				text(row, "underwriting_case_no"), text(row, "underwriting_status"),
-				text(row, "underwriting_decision_code"), text(row, "contract_status_code"),
-				longNumber(row, "record_version"));
+				text(row, "underwriting_case_no"), text(row, "product_code"), localDate(row.get("application_date")),
+				localDate(row.get("requested_effective_date")), text(row, "currency_code"),
+				decimal(row, "sum_assured_amount"), decimal(row, "premium_amount"), stageCode,
+				stageDescription(stageCode), text(row, "underwriting_decision_code"), contractStatusCode,
+				contractStatusDescription(contractStatusCode), longNumber(row, "record_version"));
+	}
+
+	/** 由固定 enum 回傳所有可承保及不承保結果，避免前端維護第二份對照。 */
+	@Override
+	public List<UnderwritingOutcomeOption> findUnderwritingOutcomes() {
+		return Arrays.stream(UnderwritingDecisionOutcome.values())
+				.map(outcome -> new UnderwritingOutcomeOption(outcome.decisionCode(), outcome.decisionDescription(),
+						outcome.stageCode(), outcome.stageDescription(), outcome.contractStatusCode(),
+						outcome.contractStatusDescription(), outcome.insurable()))
+				.toList();
 	}
 
 	/** 套用固定核保結果對照，並在同一交易更新案件及寫入決行稽核。 */
@@ -527,6 +542,23 @@ public class NewContractServiceImpl implements NewContractService {
 	}
 	private static long longNumber(Map<String, Object> row, String key) {
 		return ((Number) row.get(key)).longValue();
+	}
+	/** 將固定案件階段碼轉為繁中說明；未知值視為資料契約錯誤。 */
+	private static String stageDescription(String stageCode) {
+		return NewContractApplicationStatus.fromCode(stageCode).stageDescription();
+	}
+	/** 依新契約固定狀態回傳繁中說明，NULL 代表案件仍在受理流程。 */
+	private static String contractStatusDescription(String contractStatusCode) {
+		if (contractStatusCode == null)
+			return "受理";
+		return switch (contractStatusCode) {
+			case "01" -> "有效";
+			case "13" -> "拒保";
+			case "14" -> "延期";
+			case "15" -> "取消";
+			case "26" -> "十天猶豫期變更";
+			default -> throw new IllegalArgumentException("未知的新契約契約狀態: " + contractStatusCode);
+		};
 	}
 	private static LocalDate localDate(Object value) {
 		return value instanceof Date d ? d.toLocalDate() : (LocalDate) value;

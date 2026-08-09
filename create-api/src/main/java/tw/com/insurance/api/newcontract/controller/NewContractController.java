@@ -10,6 +10,7 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingB
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPreview;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingOutcomeOption;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewSubmissionResult;
 
 import jakarta.validation.Valid;
@@ -89,6 +90,11 @@ public class NewContractController {
 	@GetMapping("/underwriting-reviews/{query}")
 	ResponseBodyDto<UnderwritingReviewPreview> previewUnderwritingReview(@PathVariable @NotBlank String query) {
 		return ResponseBodyDto.success("核保審查案件查詢成功", service.previewUnderwritingReview(query));
+	}
+	/** 回傳完整核保結果選項；可承保與不承保結果使用同一份後端正式對照。 */
+	@GetMapping("/underwriting-reviews/outcomes")
+	ResponseBodyDto<List<UnderwritingOutcomeOption>> findUnderwritingOutcomes() {
+		return ResponseBodyDto.success("核保結果選項查詢成功", service.findUnderwritingOutcomes());
 	}
 	/** 修改核保結果一律建立覆核案件，核准後才同步階段碼與契約狀態。 */
 	@PostMapping("/underwriting-reviews/decisions")

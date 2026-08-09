@@ -24,7 +24,7 @@ public enum NewContractErrorCode implements ErrorCode {
 	POLICY_REVERSAL_BLOCKED("POL-4091", "此保單目前不符合承保撤回條件"),
 	CONCURRENT_MODIFICATION("POL-4092", "資料已被其他人異動，請重新查詢"),
 	UNDERWRITING_CASE_NOT_FOUND("UWR-4041", "查無可進行核保審查的案件"),
-	INVALID_UNDERWRITING_DECISION("UWR-4001", "核保結果只接受 DC 拒保、PO 延期或 CN 取消"),
+	INVALID_UNDERWRITING_DECISION("UWR-4001", "核保結果代碼無效，請重新取得目前可用選項"),
 	UNDERWRITING_CONCURRENT_MODIFICATION("UWR-4091", "核保案件已被其他人異動，請重新查詢");
 	private final String code;
 	private final String message;

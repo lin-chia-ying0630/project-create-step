@@ -134,10 +134,16 @@ paths:
       responses:
         '200': {description: 核保審查案件查詢成功}
         '404': {description: 查無核保案件}
+  /api/v1/new-contract/underwriting-reviews/outcomes:
+    get:
+      summary: 查詢核保審查完整結果選項與後續狀態映射
+      description: 包含 SA標準、RA加費、EA除外、CA條件、PA部分承保，以及 PO延期、DC拒保、CN取消。
+      responses:
+        '200': {description: 核保結果選項查詢成功}
   /api/v1/new-contract/underwriting-reviews/decisions:
     post:
       summary: 修改核保結果並送交 Maker-Checker 覆核
-      description: 核准後依固定契約更新 DC拒保為NS/13、PO延期為DS/14、CN取消為CS/15，並追加核保決行稽核；26十天猶豫期變更屬新契約狀態但不是核保結果。
+      description: 承保類結果 SA/RA/EA/CA/PA 更新為 AS/01；不承保類結果更新 DC為NS/13、PO為DS/14、CN為CS/15，並追加核保決行稽核。26十天猶豫期變更屬新契約狀態但不是核保結果。
       responses:
         '200': {description: 核保結果修改已送覆核}
         '400': {description: 核保結果或欄位驗證失敗}
