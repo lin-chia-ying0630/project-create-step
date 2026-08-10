@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.4.7
+    image: mysql:8.4.9
     environment:
       MYSQL_DATABASE: new_contract
       MYSQL_USER: insurance
@@ -18,9 +18,9 @@ services:
   api:
     build: ./create-api
     environment:
-      DB_URL: jdbc:mysql://mysql:3306/new_contract?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      DB_USER: insurance
-      DB_PASSWORD: insurance-local-only
+      DB_URL: jdbc:mysql://a5f8451aa850accf:4c63d482d844aa634334776c76e718@primary.a-linlin--kkj9gmg9xdcp.addon.code.run:3306/c9bac2668501
+      DB_USER: a5f8451aa850accf 
+      DB_PASSWORD: 4c63d482d844aa634334776c76e718
       DB_MIGRATION_USER: root
       DB_MIGRATION_PASSWORD: root-local-only
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY}
