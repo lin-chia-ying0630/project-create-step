@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
+import SectionTabNavigator from '../../../shared/components/SectionTabNavigator.vue'
+import CodeDefinitionSelect from '../../../shared/components/CodeDefinitionSelect.vue'
+import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
+import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import { applicationEntryApi } from '../api/applicationEntryApi'
-import type {
-  BeneficiaryInput,
-  CoverageInput,
-  CreateApplicationResult,
-  PolicyNumberReservationResult,
-} from '../types/applicationEntry'
+import { productDefinitionApi } from '../api/productDefinitionApi'
+import type { BeneficiaryInput, CoverageInput } from '../types/applicationEntry'
+import type { ProductDefinitionOption } from '../types/productDefinition'
 import '../../../application-entry.css'
 const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date())
 const form = reactive({
@@ -23,6 +24,7 @@ const form = reactive({
   paymentModeCode: 'ANNUAL',
   requestedEffectiveDate: today,
   electronicPolicy: true,
+  investmentProduct: false,
   fundsSourceCode: 'SALARY',
   insurancePurposeCode: 'PROTECTION',
   coverages: [
@@ -57,20 +59,191 @@ const form = reactive({
   applicantSignatureConfirmed: false,
   insuredSignatureConfirmed: false,
   signatureMethod: 'ELECTRONIC',
+  initialPremiumAuthorization: {
+    authorizationTypeCode: 'B',
+    payerRoleCode: 'APPLICANT',
+    payerCustomerId: '',
+    payerRelationshipCode: 'SELF',
+    payerName: '',
+    institutionCode: '',
+    branchCode: '',
+    paymentToken: '',
+    maskedNumber: '',
+    expiryMonth: null,
+    expiryYear: null,
+    authorizationDate: today,
+    authorizationVersion: '1.0',
+    confirmed: false,
+  },
+  crossSellingConsent: {
+    applicable: false,
+    agreed: false,
+    consentVersion: '1.0',
+    recipientCompanies: '',
+    dataScopeCodes: 'BASIC',
+    stopMethodAcknowledged: false,
+  },
+  investmentRisk: {
+    applicable: false,
+    questionnaireVersion: '1.0',
+    customerRiskLevel: 'R1',
+    productRiskLevel: 'R1',
+    riskScore: 0,
+    suitable: true,
+    allocationSummary: '',
+    disclosureConfirmed: false,
+    proposalDelivered: false,
+    recordingRequired: false,
+    recordingReference: '',
+  },
+  attachments: [
+    {
+      attachmentTypeCode: 'APP',
+      ownerPartyRole: 'APPLICANT',
+      documentNoMasked: '',
+      fileName: '',
+      fileReference: '',
+      fileHash: '',
+      fileSizeBytes: null as number | null,
+      pageCount: 1,
+      issueDate: today,
+      expiryDate: null,
+    },
+    {
+      attachmentTypeCode: 'PAY',
+      ownerPartyRole: 'PAYER',
+      documentNoMasked: '',
+      fileName: '',
+      fileReference: '',
+      fileHash: '',
+      fileSizeBytes: null as number | null,
+      pageCount: 1,
+      issueDate: today,
+      expiryDate: null,
+    },
+  ],
 })
+const paymentInstrumentNumber = ref('')
 const loading = ref(false),
+  codeLoading = ref(false),
+  currencyOptions = ref<CodeDefinitionOption[]>([]),
+  sourceOfFundsOptions = ref<CodeDefinitionOption[]>([]),
+  insurancePurposeOptions = ref<CodeDefinitionOption[]>([]),
+  attachmentTypeOptions = ref<CodeDefinitionOption[]>([]),
+  customerRiskOptions = ref<CodeDefinitionOption[]>([]),
+  productRiskOptions = ref<CodeDefinitionOption[]>([]),
+  productOptions = ref<ProductDefinitionOption[]>([]),
   message = ref<string | null>(null),
   error = ref<string | null>(null),
-  created = ref<CreateApplicationResult | null>(null),
-  reservation = ref<PolicyNumberReservationResult | null>(null),
   activePage = ref(0)
-const applicationPages = ['要保事項', '契約關係人', '投保內容', '受益人', '健康告知', '聲明與簽署']
+const applicationPages = [
+  '受理與通路',
+  '契約關係人',
+  '投保內容',
+  '受益人',
+  '健康告知',
+  '聲明與簽署',
+  '首期保費授權',
+  '跨售同意',
+  '投資風險',
+  '附件資料',
+]
+const applicationTabItems = applicationPages.map((label, index) => ({
+  value: index,
+  label,
+  caption: `第 ${index + 1} 頁`,
+}))
 const totalPremium = computed(() =>
   form.coverages.reduce((n, c) => n + (Number(c.premiumAmount) || 0), 0).toLocaleString('zh-TW'),
 )
 const totalSum = computed(() =>
   form.coverages.reduce((n, c) => n + (Number(c.sumAssuredAmount) || 0), 0).toLocaleString('zh-TW'),
 )
+
+/** 載入資料庫維護的幣別、資金來源與投保目的，選單只顯示代碼與中文。 */
+async function loadCodeDefinitionOptions() {
+  codeLoading.value = true
+  try {
+    const [currencies, sourcesOfFunds, insurancePurposes, attachmentTypes, customerRisks, productRisks, products] =
+      await Promise.all([
+      codeDefinitionApi.findActiveOptions('new-contract', 'currency_code'),
+      codeDefinitionApi.findActiveOptions('customer-kyc', 'source_of_funds_code'),
+      codeDefinitionApi.findActiveOptions('customer-kyc', 'insurance_purpose_code'),
+      codeDefinitionApi.findActiveOptions('new-contract', 'attachment_type_code'),
+      codeDefinitionApi.findActiveOptions('new-contract', 'customer_risk_level_code'),
+      codeDefinitionApi.findActiveOptions('new-contract', 'product_risk_level_code'),
+        productDefinitionApi.findActiveProducts(),
+      ])
+    currencyOptions.value = currencies
+    sourceOfFundsOptions.value = sourcesOfFunds
+    insurancePurposeOptions.value = insurancePurposes
+    attachmentTypeOptions.value = attachmentTypes
+    customerRiskOptions.value = customerRisks
+    productRiskOptions.value = productRisks
+    productOptions.value = products
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '幣別代碼載入失敗'
+  } finally {
+    codeLoading.value = false
+  }
+}
+/** 商品選擇後由商品定義帶入版本、幣別與投資型判斷，不接受人工另選商品類型。 */
+function selectProduct(coverage: CoverageInput, selectedKey: string) {
+  const product = productOptions.value.find(
+    (option) => `${option.productCode}::${option.productVersion}` === selectedKey,
+  )
+  if (!product) return
+  coverage.productCode = product.productCode
+  coverage.productVersion = product.productVersion
+  if (coverage.coverageItemType === 'BASE') {
+    form.currencyCode = product.currencyCode
+    form.investmentProduct = product.investmentProduct
+    form.investmentRisk.applicable = product.investmentProduct
+    form.investmentRisk.productRiskLevel = product.productRiskLevelCode ?? ''
+  }
+}
+/** 將完整帳號或卡號送往一次性驗證端點，畫面只保留 Token 與遮罩值。 */
+async function validatePaymentInstrument() {
+  error.value = null
+  try {
+    const authorization = form.initialPremiumAuthorization
+    const result = await applicationEntryApi.validatePaymentInstrument({
+      instrumentTypeCode: authorization.authorizationTypeCode as 'B' | 'C',
+      instrumentNumber: paymentInstrumentNumber.value,
+      bankCode: authorization.institutionCode || null,
+      branchCode: authorization.branchCode || null,
+      expiryMonth: authorization.expiryMonth,
+      expiryYear: authorization.expiryYear,
+    })
+    authorization.paymentToken = result.paymentToken
+    authorization.maskedNumber = result.maskedNumber
+    paymentInstrumentNumber.value = ''
+    message.value = `付款號碼格式驗證完成：${result.maskedNumber}`
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : '付款號碼驗證失敗'
+  }
+}
+/** 切換付款工具時清除前一次驗證結果，避免沿用不同帳號或卡號的 Token。 */
+function resetPaymentValidation() {
+  form.initialPremiumAuthorization.paymentToken = ''
+  form.initialPremiumAuthorization.maskedNumber = ''
+  paymentInstrumentNumber.value = ''
+}
+/** 新增一筆附件 metadata；檔案內容由受控檔案服務的參照識別。 */
+function addAttachment() {
+  form.attachments.push({
+    attachmentTypeCode: 'OTH',
+    ownerPartyRole: 'APPLICANT',
+    documentNoMasked: '',
+    fileName: '',
+    fileReference: '',
+    fileHash: '',
+    fileSizeBytes: null as number | null,
+    pageCount: 1,
+    issueDate: today,
+    expiryDate: null,
+  })
+}
 function addCoverage() {
   form.coverages.push({
     coverageItemType: 'RIDER',
@@ -100,9 +273,24 @@ async function submit() {
   loading.value = true
   message.value = null
   error.value = null
-  created.value = null
-  reservation.value = null
   try {
+    if (!form.initialPremiumAuthorization.paymentToken) {
+      activePage.value = 6
+      throw new Error('請先完成銀行帳號或信用卡號驗證')
+    }
+    const authorizationAttachment = form.attachments.find(
+      (attachment) => attachment.attachmentTypeCode === 'PAY',
+    )
+    if (!authorizationAttachment?.fileName || !authorizationAttachment.fileReference) {
+      activePage.value = 6
+      throw new Error('請登打首期保費授權書檔名及受控檔案參照')
+    }
+    if (form.attachments.some((attachment) => !attachment.fileName || !attachment.fileReference)) {
+      activePage.value = 9
+      throw new Error('請完成所有附件的檔案名稱及受控檔案參照')
+    }
+    form.initialPremiumAuthorization.payerCustomerId ||= form.applicantCustomerId
+    form.investmentRisk.applicable = form.investmentProduct
     const payload = JSON.parse(JSON.stringify(form))
     payload.beneficiaries = payload.beneficiaries.map((b: BeneficiaryInput) => ({
       ...b,
@@ -118,50 +306,34 @@ async function submit() {
       }),
     )
     const result = await applicationEntryApi.create(payload)
-    created.value = result
-    message.value = `要保書 ${result.applicationNo} 已完整送件，首期應繳 ${result.currencyCode} ${result.calculatedPremiumAmount}`
+    message.value = `保單登打已送覆核，覆核編號：${result.reviewId}`
   } catch (e) {
     error.value = e instanceof Error ? e.message : '建立失敗'
   } finally {
     loading.value = false
   }
 }
-async function reservePolicyNumber() {
-  if (!created.value) return
-  loading.value = true
-  error.value = null
-  try {
-    reservation.value = await applicationEntryApi.reservePolicyNumber(created.value.applicationNo)
-    message.value = `已編發保單號碼 ${reservation.value.policyNo}，可至保單資料查詢使用。`
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '保單號碼編發失敗'
-  } finally {
-    loading.value = false
-  }
-}
+
+onMounted(loadCodeDefinitionOptions)
 </script>
 <template>
   <section class="content-page application-page">
     <header class="page-header application-document-header">
       <div>
         <p class="eyebrow">LIFE INSURANCE APPLICATION</p>
-        <h2>人身保險要保書</h2>
+        <h2>保單登打新增</h2>
         <p>
-          依主管機關示範內容，分為基本資料、告知事項及聲明事項；請由要保人及被保險人確認後送件。
+          登打人身保險要保書、首期保費授權、同意書、投資風險資料及附件；完整確認後送交覆核。
         </p>
       </div>
-      <span class="status-chip">草稿</span>
+      <span class="status-chip">新增草稿｜10 頁</span>
     </header>
-    <nav class="application-page-tabs" aria-label="要保書頁次">
-      <button
-        v-for="(page, index) in applicationPages"
-        :key="page"
-        :class="{ active: activePage === index }"
-        @click="activePage = index"
-      >
-        <small>第 {{ index + 1 }} 頁</small><b>{{ page }}</b>
-      </button>
-    </nav>
+    <SectionTabNavigator
+      :model-value="activePage"
+      :items="applicationTabItems"
+      navigation-label="要保書頁次"
+      @update:model-value="activePage = Number($event)"
+    />
     <form @submit.prevent="submit">
       <article v-show="activePage === 0" class="panel form-section application-sheet">
         <div class="panel-title">
@@ -241,8 +413,26 @@ async function reservePolicyNumber() {
                 <option value="BASE">主約</option>
                 <option value="RIDER">附約</option>
               </select></label
-            ><label>商品代碼＊<input v-model.trim="c.productCode" required /></label
-            ><label>商品版本＊<input v-model.trim="c.productVersion" required /></label
+            ><label
+              >保險商品＊<select
+                :value="`${c.productCode}::${c.productVersion}`"
+                required
+                @change="selectProduct(c, ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="" disabled>請選擇商品</option>
+                <option
+                  v-for="product in productOptions.filter(
+                    (option) => option.coverageItemType === c.coverageItemType,
+                  )"
+                  :key="`${product.productCode}::${product.productVersion}`"
+                  :value="`${product.productCode}::${product.productVersion}`"
+                >
+                  {{ product.productCode }}｜{{ product.productName }}｜{{
+                    product.productTypeDescription
+                  }}
+                </option>
+              </select></label
+            ><label>商品版本<input :value="c.productVersion" readonly /></label
             ><label
               >保險金額＊<input
                 v-model="c.sumAssuredAmount"
@@ -269,12 +459,13 @@ async function reservePolicyNumber() {
             >總保額 <strong>{{ form.currencyCode }} {{ totalSum }}</strong></span
           ><span
             >首期應繳 <strong>{{ form.currencyCode }} {{ totalPremium }}</strong></span
-          ><label
-            >幣別<select v-model="form.currencyCode">
-              <option>TWD</option>
-              <option>USD</option>
-            </select></label
-          ><label
+          ><CodeDefinitionSelect
+            v-model="form.currencyCode"
+            label="幣別"
+            :options="currencyOptions"
+            :disabled="codeLoading"
+            required
+          /><label
             >繳別<select v-model="form.paymentModeCode">
               <option value="ANNUAL">年繳</option>
               <option value="SEMI_ANNUAL">半年繳</option>
@@ -283,6 +474,11 @@ async function reservePolicyNumber() {
             </select></label
           >
         </div>
+        <p class="hint">
+          商品類型由商品定義檔判斷：{{
+            form.investmentProduct ? 'I｜投資型保險' : 'L｜傳統型壽險'
+          }}。
+        </p>
       </article>
       <article v-show="activePage === 3" class="panel form-section application-sheet">
         <div class="panel-title">
@@ -363,18 +559,24 @@ async function reservePolicyNumber() {
         </div>
         <div class="field-grid">
           <label
-            >保費資金來源＊<select v-model="form.fundsSourceCode">
-              <option value="SALARY">薪資所得</option>
-              <option value="SAVINGS">儲蓄</option>
-              <option value="INVESTMENT">投資所得</option>
-              <option value="OTHER">其他</option>
+            >保費資金來源＊<select v-model="form.fundsSourceCode" :disabled="codeLoading">
+              <option
+                v-for="option in sourceOfFundsOptions"
+                :key="option.code"
+                :value="option.code"
+              >
+                {{ option.code }}｜{{ option.description }}
+              </option>
             </select></label
           ><label
-            >投保目的＊<select v-model="form.insurancePurposeCode">
-              <option value="PROTECTION">保障需求</option>
-              <option value="RETIREMENT">退休規劃</option>
-              <option value="EDUCATION">教育準備</option>
-              <option value="OTHER">其他</option>
+            >投保目的＊<select v-model="form.insurancePurposeCode" :disabled="codeLoading">
+              <option
+                v-for="option in insurancePurposeOptions"
+                :key="option.code"
+                :value="option.code"
+              >
+                {{ option.code }}｜{{ option.description }}
+              </option>
             </select></label
           ><label
             >簽署方式＊<select v-model="form.signatureMethod">
@@ -418,39 +620,318 @@ async function reservePolicyNumber() {
             />被保險人已親自確認並完成簽署。</label
           >
         </div>
+      </article>
+      <article v-show="activePage === 6" class="panel form-section application-sheet">
+        <div class="panel-title">
+          <h3><b>7</b>首期保費授權</h3>
+          <small>完整號碼驗證後不保存於要保書</small>
+        </div>
+        <div class="field-grid three-cols">
+          <label
+            >授權方式＊<select
+              v-model="form.initialPremiumAuthorization.authorizationTypeCode"
+              @change="resetPaymentValidation"
+            >
+              <option value="B">B｜銀行帳戶</option>
+              <option value="C">C｜信用卡</option>
+            </select></label
+          >
+          <label
+            >繳款人客戶編號＊<input
+              v-model.trim="form.initialPremiumAuthorization.payerCustomerId"
+              required
+          /></label>
+          <label
+            >授權人姓名＊<input v-model.trim="form.initialPremiumAuthorization.payerName" required
+          /></label>
+          <label
+            >繳款人身分＊<select v-model="form.initialPremiumAuthorization.payerRoleCode">
+              <option value="APPLICANT">要保人</option>
+              <option value="INSURED">被保險人</option>
+              <option value="OTHER">其他關係人</option>
+            </select></label
+          >
+          <label
+            >與要保人關係＊<input
+              v-model.trim="form.initialPremiumAuthorization.payerRelationshipCode"
+              required
+          /></label>
+          <label
+            >銀行代碼＊<input
+              v-model.trim="form.initialPremiumAuthorization.institutionCode"
+              maxlength="3"
+              inputmode="numeric"
+              required
+          /></label>
+          <label v-if="form.initialPremiumAuthorization.authorizationTypeCode === 'B'"
+            >分行代碼<input
+              v-model.trim="form.initialPremiumAuthorization.branchCode"
+              maxlength="4"
+              inputmode="numeric"
+          /></label>
+          <label
+            >{{
+              form.initialPremiumAuthorization.authorizationTypeCode === 'B'
+                ? '銀行帳號'
+                : '信用卡號'
+            }}＊<input
+              v-model.trim="paymentInstrumentNumber"
+              inputmode="numeric"
+              autocomplete="off"
+              :placeholder="form.initialPremiumAuthorization.maskedNumber || '輸入後按驗證'"
+          /></label>
+          <template v-if="form.initialPremiumAuthorization.authorizationTypeCode === 'C'"
+            ><label
+              >有效月＊<input
+                v-model.trim="form.initialPremiumAuthorization.expiryMonth"
+                maxlength="2"
+                placeholder="MM" /></label
+            ><label
+              >有效年＊<input
+                v-model.trim="form.initialPremiumAuthorization.expiryYear"
+                maxlength="4"
+                placeholder="YYYY" /></label
+          ></template>
+          <label
+            >授權日期＊<input
+              v-model="form.initialPremiumAuthorization.authorizationDate"
+              type="date"
+              required
+          /></label>
+          <label
+            >授權書版本＊<input
+              v-model.trim="form.initialPremiumAuthorization.authorizationVersion"
+              required
+          /></label>
+        </div>
+        <div class="form-actions">
+          <button
+            type="button"
+            class="secondary-button"
+            :disabled="!paymentInstrumentNumber"
+            @click="validatePaymentInstrument"
+          >
+            驗證付款號碼
+          </button>
+        </div>
+        <p v-if="form.initialPremiumAuthorization.maskedNumber" class="privacy-note">
+          已驗證：{{
+            form.initialPremiumAuthorization.maskedNumber
+          }}；最終扣款仍以金融機構授權回覆為準。
+        </p>
+        <label class="consent-row"
+          ><input
+            v-model="form.initialPremiumAuthorization.confirmed"
+            type="checkbox"
+            required
+          />授權人確認首期保費付款授權內容及附件正確。</label
+        >
+        <div class="panel-title subsection-title">
+          <h4>首期保費授權書附件</h4>
+          <small>正式檔案存放於受控文件服務，畫面只保存參照</small>
+        </div>
+        <div class="field-grid">
+          <label
+            >授權書檔案名稱＊<input
+              v-model.trim="form.attachments[1].fileName"
+              required
+              placeholder="例如：首期保費授權書.pdf"
+          /></label>
+          <label
+            >受控檔案參照＊<input
+              v-model.trim="form.attachments[1].fileReference"
+              required
+              placeholder="DMS／物件儲存識別碼"
+          /></label>
+          <label
+            >授權書頁數<input
+              v-model.number="form.attachments[1].pageCount"
+              type="number"
+              min="1"
+          /></label>
+          <label
+            >檔案雜湊<input
+              v-model.trim="form.attachments[1].fileHash"
+              placeholder="SHA-256（選填）"
+          /></label>
+        </div>
+      </article>
+      <article v-show="activePage === 7" class="panel form-section application-sheet">
+        <div class="panel-title">
+          <h3><b>8</b>共同行銷／跨售同意書</h3>
+          <small>不同意不得影響本次保險要保</small>
+        </div>
+        <label class="consent-row"
+          ><input
+            v-model="form.crossSellingConsent.applicable"
+            type="checkbox"
+          />本案涉及金融控股公司子公司間共同行銷</label
+        >
+        <div v-if="form.crossSellingConsent.applicable" class="field-grid">
+          <label
+            >同意選擇＊<select v-model="form.crossSellingConsent.agreed">
+              <option :value="false">不同意</option>
+              <option :value="true">同意</option>
+            </select></label
+          >
+          <label
+            >同意書版本＊<input v-model.trim="form.crossSellingConsent.consentVersion" required
+          /></label>
+          <label v-if="form.crossSellingConsent.agreed"
+            >接收資料公司＊<input
+              v-model.trim="form.crossSellingConsent.recipientCompanies"
+              required
+          /></label>
+          <label v-if="form.crossSellingConsent.agreed"
+            >資料範圍代碼＊<input
+              v-model.trim="form.crossSellingConsent.dataScopeCodes"
+              placeholder="BASIC,TRANSACTION,INSURANCE"
+              required
+          /></label>
+        </div>
+        <label v-if="form.crossSellingConsent.applicable" class="consent-row"
+          ><input
+            v-model="form.crossSellingConsent.stopMethodAcknowledged"
+            type="checkbox"
+            required
+          />已告知客戶可隨時要求停止資料交互運用的方法。</label
+        >
+      </article>
+      <article v-show="activePage === 8" class="panel form-section application-sheet">
+        <div class="panel-title">
+          <h3><b>9</b>投資風險與商品適合度</h3>
+          <small>{{ form.investmentProduct ? '投資型商品必填' : '非投資型商品不適用' }}</small>
+        </div>
+        <div v-if="form.investmentProduct" class="field-grid three-cols">
+          <label
+            >問卷版本＊<input v-model.trim="form.investmentRisk.questionnaireVersion" required
+          /></label>
+          <label
+            >評估分數＊<input
+              v-model.number="form.investmentRisk.riskScore"
+              type="number"
+              min="0"
+              required
+          /></label>
+          <label
+            >客戶風險等級＊<CodeDefinitionSelect
+              v-model="form.investmentRisk.customerRiskLevel"
+              label="客戶風險等級"
+              :options="customerRiskOptions"
+              placeholder="請選擇客戶風險等級"
+              required
+            /></label
+          >
+          <label
+            >商品風險等級＊<CodeDefinitionSelect
+              v-model="form.investmentRisk.productRiskLevel"
+              label="商品風險等級"
+              :options="productRiskOptions"
+              placeholder="由商品定義帶入"
+              required
+              disabled
+            /></label
+          >
+          <label
+            >適合度結果＊<select v-model="form.investmentRisk.suitable">
+              <option :value="true">適合</option>
+              <option :value="false">不適合</option>
+            </select></label
+          >
+          <label class="wide-field"
+            >投資標的與配置（合計100%）＊<textarea
+              v-model.trim="form.investmentRisk.allocationSummary"
+              rows="3"
+              required
+            />
+          </label>
+          <label
+            >錄音錄影／電子軌跡參照<input v-model.trim="form.investmentRisk.recordingReference"
+          /></label>
+        </div>
+        <div v-if="form.investmentProduct" class="declaration-list">
+          <label
+            ><input
+              v-model="form.investmentRisk.disclosureConfirmed"
+              type="checkbox"
+              required
+            />已確認投資損益、匯率、費用及解約風險。</label
+          ><label
+            ><input
+              v-model="form.investmentRisk.proposalDelivered"
+              type="checkbox"
+              required
+            />商品說明書、建議書及風險預告書已交付。</label
+          ><label
+            ><input
+              v-model="form.investmentRisk.recordingRequired"
+              type="checkbox"
+            />本案須保存錄音、錄影或電子軌跡。</label
+          >
+        </div>
+        <p v-else class="hint">非投資型商品不建立風險適合度資料。</p>
+      </article>
+      <article v-show="activePage === 9" class="panel form-section application-sheet">
+        <div class="panel-title">
+          <h3><b>10</b>附件資料</h3>
+          <button type="button" class="secondary-button" @click="addAttachment">＋新增附件</button>
+        </div>
+        <div v-for="(attachment, index) in form.attachments" :key="index" class="repeat-card">
+          <div class="row-heading">
+            <strong>附件 {{ index + 1 }}</strong
+            ><button
+              v-if="form.attachments.length > 1"
+              type="button"
+              class="text-button danger"
+              @click="form.attachments.splice(index, 1)"
+            >
+              移除
+            </button>
+          </div>
+          <div class="field-grid three-cols">
+            <CodeDefinitionSelect
+              v-model="attachment.attachmentTypeCode"
+              label="附件類型"
+              :options="attachmentTypeOptions"
+              required
+            />
+            <label
+              >所屬角色＊<select v-model="attachment.ownerPartyRole">
+                <option value="APPLICANT">要保人</option>
+                <option value="INSURED">被保險人</option>
+                <option value="PAYER">繳款人</option>
+                <option value="APPLICATION">要保案件</option>
+              </select></label
+            >
+            <label>文件編號遮罩值<input v-model.trim="attachment.documentNoMasked" /></label>
+            <label>檔案名稱＊<input v-model.trim="attachment.fileName" required /></label>
+            <label
+              >受控檔案參照＊<input
+                v-model.trim="attachment.fileReference"
+                placeholder="DMS／物件儲存識別碼"
+                required
+            /></label>
+            <label>檔案雜湊<input v-model.trim="attachment.fileHash" /></label>
+            <label
+              >檔案大小（Bytes）<input
+                v-model.number="attachment.fileSizeBytes"
+                type="number"
+                min="1"
+                max="10485760"
+            /></label>
+            <label>頁數<input v-model.number="attachment.pageCount" type="number" min="1" /></label>
+            <label>發證日<input v-model="attachment.issueDate" type="date" /></label>
+            <label>到期日<input v-model="attachment.expiryDate" type="date" /></label>
+          </div>
+        </div>
         <div class="form-actions">
           <button class="primary-button" :disabled="loading">
-            {{ loading ? '送件中…' : '儲存整份要保書' }}
+            {{ loading ? '送件中…' : '儲存整份要保書並送覆核' }}
           </button>
         </div>
       </article>
       <PageNavigator v-model="activePage" :total="applicationPages.length" prefix="第" />
     </form>
-    <article v-if="created" class="panel form-section policy-number-panel">
-      <div class="panel-title">
-        <h3><b>7</b>編發預編保單號碼</h3>
-        <small>完成承保交易前，契約狀態仍為未承保</small>
-      </div>
-      <div v-if="reservation" class="amount-board">
-        <div>
-          <small>要保書號碼</small><strong>{{ reservation.applicationNo }}</strong>
-        </div>
-        <div>
-          <small>預編保單號碼</small><strong>{{ reservation.policyNo }}</strong>
-        </div>
-        <div><small>契約狀態</small><strong>未承保</strong></div>
-      </div>
-      <div v-else class="form-actions">
-        <button
-          type="button"
-          class="primary-button"
-          :disabled="loading"
-          @click="reservePolicyNumber"
-        >
-          {{ loading ? '編發中…' : '編發預編保單號碼' }}
-        </button>
-      </div>
-    </article>
     <p v-if="message" class="status-message success">{{ message }}</p>
     <p v-if="error" class="status-message error">{{ error }}</p>
   </section>

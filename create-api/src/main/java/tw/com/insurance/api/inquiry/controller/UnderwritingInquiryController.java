@@ -2,12 +2,14 @@ package tw.com.insurance.api.inquiry.controller;
 
 import static tw.com.insurance.api.inquiry.dto.UnderwritingInquiryDtos.InquiryDetail;
 import static tw.com.insurance.api.inquiry.dto.UnderwritingInquiryDtos.InquiryPdfDocument;
+import static tw.com.insurance.api.inquiry.dto.UnderwritingInquiryDtos.InquiryPage;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 import tw.com.insurance.api.common.ResponseBodyDto;
 import tw.com.insurance.api.inquiry.service.UnderwritingInquiryService;
 
@@ -18,6 +20,12 @@ public class UnderwritingInquiryController {
 	private final UnderwritingInquiryService service;
 	public UnderwritingInquiryController(UnderwritingInquiryService service) {
 		this.service = service;
+	}
+	@GetMapping
+	ResponseBodyDto<InquiryPage> findPage(@RequestParam(defaultValue = "1") int page,
+			@RequestParam(defaultValue = "10") int pageSize,
+			@RequestParam(defaultValue = "inquiryNo,asc") String sort) {
+		return ResponseBodyDto.success("核保照會單清單查詢成功", service.findPage(page, pageSize, sort));
 	}
 	@GetMapping("/{query}")
 	ResponseBodyDto<InquiryDetail> find(@PathVariable @NotBlank String query) {

@@ -30,6 +30,16 @@ for source in root.rglob("*"):
             warnings.append(f"檢查 TypeScript any：{relative}")
         if source.suffix == ".vue" and re.search(r"\b(fetch|axios)\s*\(", text):
             errors.append(f"Vue component 不得直接呼叫 HTTP：{relative}")
+        if source.suffix == ".vue" and "/features/" in source.as_posix():
+            style_blocks = "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", text, re.S))
+            shared_size_overrides = (
+                r"(?m)^\s*(?:input|select|textarea)\s*(?:,|\{)",
+                r"(?m)^\s*\.(?:primary-button|secondary-button|reversal-button|danger-button)\s*\{",
+                r"(?m)^\s*\.(?:query-condition-form|scheduled-query-form)\s*\{",
+                r"(?m)^\s*\.[\w-]+-page\s*\{[^}]*max-width\s*:",
+            )
+            if any(re.search(pattern, style_blocks, re.S) for pattern in shared_size_overrides):
+                errors.append(f"feature 不得覆寫共用控制項或頁面尺寸：{relative}")
     for number, line in enumerate(text.splitlines(), 1):
         if len(line) > 140:
             warnings.append(f"行長超過 140：{relative}:{number}")

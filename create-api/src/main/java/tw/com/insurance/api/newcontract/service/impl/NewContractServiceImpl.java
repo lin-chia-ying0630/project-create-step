@@ -1,6 +1,9 @@
 package tw.com.insurance.api.newcontract.service.impl;
 
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQueryResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationAttachmentInput;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQueryPage;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQuerySummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.BeneficiaryDetail;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.BeneficiaryInput;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.CoverageDetail;
@@ -14,16 +17,26 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.HealthDisclos
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.HealthDisclosureInput;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyNumberReservationResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalPreview;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalPage;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalSummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PolicyReversalResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PremiumDueDetail;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PremiumDuePreview;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PremiumMatchResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PaymentInstrumentValidationRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.PaymentInstrumentValidationResult;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.RemittanceSlipRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.SignatureDetail;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchExecutionSummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchRequest;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingBatchRequestResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionRequest;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingDecisionResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPreview;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewPage;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingReviewSummary;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingOutcomeOption;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -33,10 +46,12 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Period;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.Arrays;
 import java.security.SecureRandom;
@@ -48,25 +63,76 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tw.com.insurance.api.common.BusinessException;
+import tw.com.insurance.api.common.util.PageSortRequest;
 import tw.com.insurance.api.newcontract.domain.NewContractApplicationStatus;
 import tw.com.insurance.api.newcontract.domain.NewContractErrorCode;
+import tw.com.insurance.api.newcontract.domain.UnderwritingDecisionOutcome;
+import tw.com.insurance.api.newcontract.codedefinition.service.CodeDefinitionService;
 import tw.com.insurance.api.newcontract.persistence.NewContractMapper;
+import tw.com.insurance.api.newcontract.productdefinition.dto.ProductDefinitionDto;
+import tw.com.insurance.api.newcontract.productdefinition.service.ProductDefinitionService;
 import tw.com.insurance.api.newcontract.service.NewContractService;
 
 @Service
 public class NewContractServiceImpl implements NewContractService {
 	private final NewContractMapper mapper;
+	private final CodeDefinitionService codeDefinitionService;
+	private final ProductDefinitionService productDefinitionService;
 	private final byte[] piiKey;
 
-	public NewContractServiceImpl(NewContractMapper mapper, @Value("${app.pii-encryption-key}") String keyText) {
+	public NewContractServiceImpl(NewContractMapper mapper, CodeDefinitionService codeDefinitionService,
+			ProductDefinitionService productDefinitionService, @Value("${app.pii-encryption-key}") String keyText) {
 		this.mapper = mapper;
+		this.codeDefinitionService = codeDefinitionService;
+		this.productDefinitionService = productDefinitionService;
 		if (keyText == null || keyText.length() < 24)
 			throw new IllegalStateException("PII_ENCRYPTION_KEY 長度至少需要 24 字元");
 		this.piiKey = sha256(keyText);
 	}
 
+	/** 驗證銀行帳號或信用卡格式並產生不可逆 Token；方法不保存完整號碼。 */
+	@Override
+	public PaymentInstrumentValidationResult validatePaymentInstrument(PaymentInstrumentValidationRequest request) {
+		String number = request.instrumentNumber().replaceAll("[\\s-]", "");
+		boolean bank = "B".equals(request.instrumentTypeCode());
+		boolean card = "C".equals(request.instrumentTypeCode());
+		boolean valid = bank ? number.matches("\\d{6,20}") && request.bankCode() != null
+				&& request.bankCode().matches("\\d{3}") : card && number.matches("\\d{13,19}")
+				&& luhn(number) && validExpiry(request.expiryMonth(), request.expiryYear());
+		if (!valid)
+			throw new BusinessException(NewContractErrorCode.INVALID_PAYMENT_INSTRUMENT);
+		String tokenSource = HexFormat.of().formatHex(piiKey) + ":" + request.instrumentTypeCode() + ":" + number;
+		String token = "PAY-" + HexFormat.of().formatHex(sha256(tokenSource));
+		String masked = "*".repeat(Math.max(0, number.length() - 4)) + number.substring(number.length() - 4);
+		return new PaymentInstrumentValidationResult(token, masked, "S", request.bankCode());
+	}
+
+	/** 信用卡基本檢查碼；通過不代表發卡機構已授權扣款。 */
+	private boolean luhn(String number) {
+		int sum = 0;
+		boolean doubleDigit = false;
+		for (int index = number.length() - 1; index >= 0; index--) {
+			int digit = number.charAt(index) - '0';
+			if (doubleDigit && (digit *= 2) > 9)
+				digit -= 9;
+			sum += digit;
+			doubleDigit = !doubleDigit;
+		}
+		return sum % 10 == 0;
+	}
+
+	/** 驗證信用卡有效年月仍在臺北目前月份之後。 */
+	private boolean validExpiry(String month, String year) {
+		if (month == null || year == null || !month.matches("0[1-9]|1[0-2]") || !year.matches("\\d{4}"))
+			return false;
+		java.time.YearMonth expiry = java.time.YearMonth.of(Integer.parseInt(year), Integer.parseInt(month));
+		return !expiry.isBefore(java.time.YearMonth.now(java.time.ZoneId.of("Asia/Taipei")));
+	}
+
 	@Transactional
 	public CreateApplicationResult createApplication(CreateApplicationRequest request) {
+		if (!codeDefinitionService.isActiveCode("new-contract", "currency_code", request.currencyCode()))
+			throw new BusinessException(NewContractErrorCode.INVALID_CURRENCY);
 		if (request.requestedEffectiveDate().isBefore(request.applicationDate()))
 			throw new BusinessException(NewContractErrorCode.INVALID_EFFECTIVE_DATE);
 		Long applicantVersion = mapper.findCustomerVersion(request.applicantCustomerId());
@@ -79,11 +145,48 @@ public class NewContractServiceImpl implements NewContractService {
 			throw new BusinessException(NewContractErrorCode.INVALID_BASE_COVERAGE);
 		if (request.coverages().stream().anyMatch(c -> !List.of("BASE", "RIDER").contains(c.coverageItemType())))
 			throw new BusinessException(NewContractErrorCode.INVALID_COVERAGE_TYPE);
+		ProductDefinitionDto baseProduct = null;
+		LocalDate insuredBirthDate = mapper.findCustomerBirthDate(request.insuredCustomerId());
+		CoverageInput baseCoverage = bases.get(0);
+		for (CoverageInput coverage : request.coverages()) {
+			ProductDefinitionDto product = productDefinitionService.requireActiveProduct(coverage.productCode(),
+					coverage.productVersion());
+			if (!coverage.coverageItemType().equals(product.coverageItemType())
+					|| !request.currencyCode().equals(product.currencyCode()))
+				throw new BusinessException(NewContractErrorCode.INVALID_PRODUCT);
+			validateProductAmountLimits(coverage, product);
+			validateProductTerms(coverage, product);
+			validateEntryAge(insuredBirthDate, request.applicationDate(), product);
+			if (!productDefinitionService.supportsPaymentMode(coverage.productCode(), coverage.productVersion(),
+					request.paymentModeCode()))
+				throw new BusinessException(NewContractErrorCode.PRODUCT_PAYMENT_MODE_VIOLATION);
+			if ("RIDER".equals(coverage.coverageItemType())
+					&& !productDefinitionService.supportsRider(baseCoverage.productCode(), baseCoverage.productVersion(),
+							coverage.productCode(), coverage.productVersion()))
+				throw new BusinessException(NewContractErrorCode.PRODUCT_RIDER_VIOLATION);
+			if ("BASE".equals(coverage.coverageItemType()))
+				baseProduct = product;
+		}
+		boolean investmentProduct = baseProduct != null && baseProduct.investmentProduct();
+		request.attachments().forEach(this::validateAttachment);
 		validateBeneficiaries(request.beneficiaries());
 		request.healthDisclosures().forEach(h -> {
 			if ("YES".equals(h.answerCode()) && (h.supplementalDetail() == null || h.supplementalDetail().isBlank()))
 				throw new BusinessException(NewContractErrorCode.HEALTH_DETAIL_REQUIRED);
 		});
+		if (!request.initialPremiumAuthorization().paymentToken().startsWith("PAY-")
+				|| request.initialPremiumAuthorization().maskedNumber().length() < 4)
+			throw new BusinessException(NewContractErrorCode.PAYMENT_INSTRUMENT_NOT_VALIDATED);
+		if (investmentProduct && (!request.investmentRisk().applicable()
+				|| !request.investmentRisk().suitable() || !request.investmentRisk().disclosureConfirmed()
+				|| !request.investmentRisk().proposalDelivered()))
+			throw new BusinessException(NewContractErrorCode.INVESTMENT_SUITABILITY_REQUIRED);
+		if (investmentProduct && (!codeDefinitionService.isActiveCode("new-contract", "customer_risk_level_code",
+				request.investmentRisk().customerRiskLevel())
+				|| !codeDefinitionService.isActiveCode("new-contract", "product_risk_level_code",
+						request.investmentRisk().productRiskLevel())
+				|| !baseProduct.productRiskLevelCode().equals(request.investmentRisk().productRiskLevel())))
+			throw new BusinessException(NewContractErrorCode.INVESTMENT_SUITABILITY_REQUIRED);
 		BigDecimal sumAssured = request.coverages().stream().map(CoverageInput::sumAssuredAmount)
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
 		BigDecimal premium = request.coverages().stream().map(CoverageInput::premiumAmount).reduce(BigDecimal.ZERO,
@@ -94,7 +197,7 @@ public class NewContractServiceImpl implements NewContractService {
 			mapper.insertApplication(applicationId, request.applicationNo(), request.applicationDate(),
 					request.channelCode(), request.branchCode(), request.insuranceAgentCode(), base.productCode(),
 					base.productVersion(), request.currencyCode(), sumAssured, premium, request.paymentModeCode(),
-					request.requestedEffectiveDate());
+					request.requestedEffectiveDate(), NewContractApplicationStatus.APPLICATION_ACCEPTED.code());
 			mapper.insertParty(UUID.randomUUID().toString(), request.applicationNo(), "APPLICANT",
 					request.applicantCustomerId(), request.applicantRelationshipToInsuredCode(),
 					snapshot(request.applicantCustomerId(), applicantVersion));
@@ -137,11 +240,85 @@ public class NewContractServiceImpl implements NewContractService {
 			mapper.insertComplianceEvidence(UUID.randomUUID().toString(), request.applicationNo(), "INSURANCE_PURPOSE",
 					request.insurancePurposeCode());
 			mapper.insertPremiumDue(dueId, request.applicationNo(), request.currencyCode(), premium);
+			var authorization = request.initialPremiumAuthorization();
+			mapper.insertPremiumAuthorization(UUID.randomUUID().toString(), request.applicationNo(),
+					authorization.authorizationTypeCode(), authorization.payerRoleCode(),
+					authorization.payerCustomerId(), authorization.payerRelationshipCode(), authorization.payerName(),
+					authorization.institutionCode(), authorization.branchCode(), authorization.paymentToken(),
+					authorization.maskedNumber(), authorization.expiryMonth(), authorization.expiryYear(),
+					authorization.authorizationDate(), authorization.authorizationVersion());
+			if (request.crossSellingConsent().applicable()) {
+				var consent = request.crossSellingConsent();
+				mapper.insertCrossSellingConsent(UUID.randomUUID().toString(), request.applicationNo(), consent.agreed(),
+						consent.consentVersion(), consent.recipientCompanies(), consent.dataScopeCodes(),
+						consent.stopMethodAcknowledged());
+			}
+			if (investmentProduct) {
+				var risk = request.investmentRisk();
+				mapper.insertInvestmentRisk(UUID.randomUUID().toString(), request.applicationNo(),
+						risk.questionnaireVersion(), risk.customerRiskLevel(), risk.productRiskLevel(), risk.riskScore(),
+						risk.suitable(), risk.allocationSummary(), risk.disclosureConfirmed(), risk.proposalDelivered(),
+						risk.recordingRequired(), risk.recordingReference());
+			}
+			request.attachments().forEach(attachment -> mapper.insertAttachment(UUID.randomUUID().toString(),
+					request.applicationNo(), attachment.attachmentTypeCode(), attachment.ownerPartyRole(),
+					attachment.documentNoMasked(), attachment.fileName(), attachment.fileReference(),
+					attachment.fileHash(), attachment.fileSizeBytes(), attachment.pageCount(), attachment.issueDate(),
+					attachment.expiryDate()));
 		} catch (DuplicateKeyException exception) {
 			throw new BusinessException(NewContractErrorCode.DUPLICATE_APPLICATION);
 		}
-		return new CreateApplicationResult(applicationId, request.applicationNo(), "SUBMITTED", dueId, premium,
+		reservePolicyNumber(request.applicationNo());
+		return new CreateApplicationResult(applicationId, request.applicationNo(),
+				NewContractApplicationStatus.APPLICATION_ACCEPTED.code(), dueId, premium,
 				request.currencyCode());
+	}
+
+	/** 驗證登打金額落在商品定義的承保範圍，避免前端提示被繞過。 */
+	private void validateProductAmountLimits(CoverageInput coverage, ProductDefinitionDto product) {
+		if ((product.minimumSumAssured() != null
+				&& coverage.sumAssuredAmount().compareTo(product.minimumSumAssured()) < 0)
+				|| (product.maximumSumAssured() != null
+						&& coverage.sumAssuredAmount().compareTo(product.maximumSumAssured()) > 0)
+				|| (product.minimumPremium() != null
+						&& coverage.premiumAmount().compareTo(product.minimumPremium()) < 0))
+			throw new BusinessException(NewContractErrorCode.PRODUCT_LIMIT_VIOLATION);
+	}
+
+	/** 驗證保險期間與繳費期間符合商品版本限制。 */
+	private void validateProductTerms(CoverageInput coverage, ProductDefinitionDto product) {
+		if (outside(coverage.coverageTermYears(), product.minimumCoverageTermYears(), product.maximumCoverageTermYears())
+				|| outside(coverage.premiumPaymentTermYears(), product.minimumPaymentTermYears(),
+						product.maximumPaymentTermYears()))
+			throw new BusinessException(NewContractErrorCode.PRODUCT_TERM_VIOLATION);
+	}
+
+	/** 以要保日足歲驗證商品版本投保年齡。 */
+	private void validateEntryAge(LocalDate birthDate, LocalDate applicationDate, ProductDefinitionDto product) {
+		if (birthDate == null)
+			return;
+		int age = Period.between(birthDate, applicationDate).getYears();
+		if (outside(age, product.minimumEntryAge(), product.maximumEntryAge()))
+			throw new BusinessException(NewContractErrorCode.INVALID_PRODUCT);
+	}
+
+	/** 附件僅接受安全檔名、受控參照、10MB 以下檔案與選填 SHA-256。 */
+	private void validateAttachment(ApplicationAttachmentInput attachment) {
+		String lowerName = attachment.fileName().toLowerCase(java.util.Locale.ROOT);
+		boolean allowedExtension = lowerName.endsWith(".pdf") || lowerName.endsWith(".jpg")
+				|| lowerName.endsWith(".jpeg") || lowerName.endsWith(".png");
+		boolean invalidReference = attachment.fileReference().contains("..")
+				|| attachment.fileReference().matches("(?i)^https?://.*");
+		boolean invalidHash = attachment.fileHash() != null && !attachment.fileHash().isBlank()
+				&& !attachment.fileHash().matches("(?i)^[0-9a-f]{64}$");
+		boolean invalidSize = attachment.fileSizeBytes() != null && attachment.fileSizeBytes() > 10_485_760L;
+		if (!allowedExtension || invalidReference || invalidHash || invalidSize)
+			throw new BusinessException(NewContractErrorCode.INVALID_ATTACHMENT);
+	}
+
+	/** 判斷數值是否超出可為空白的上下限。 */
+	private boolean outside(Integer value, Integer minimum, Integer maximum) {
+		return value != null && ((minimum != null && value < minimum) || (maximum != null && value > maximum));
 	}
 
 	@Transactional
@@ -149,21 +326,21 @@ public class NewContractServiceImpl implements NewContractService {
 		Map<String, Object> current = mapper.findApplicationsByQuery(applicationNo).stream().findFirst().orElse(null);
 		if (current == null)
 			throw new BusinessException(NewContractErrorCode.APPLICATION_NOT_FOUND);
-		String existing = text(current, "reserved_policy_no");
+		String existing = text(current, "policy_no");
 		if (existing != null && !existing.isBlank())
-			return new PolicyNumberReservationResult(applicationNo, existing, "RESERVED",
-					localDateTime(current.get("policy_no_reserved_at")));
+			return new PolicyNumberReservationResult(applicationNo, existing, "ASSIGNED",
+					localDateTime(current.get("policy_no_assigned_at")));
 		mapper.nextPolicyNumber();
 		String policyNo = "N" + LocalDate.now().format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE)
 				+ String.format("%010d", mapper.lastInsertId());
 		if (mapper.reservePolicyNumber(applicationNo, policyNo) != 1) {
 			current = mapper.findApplicationsByQuery(applicationNo).stream().findFirst().orElse(null);
-			return new PolicyNumberReservationResult(applicationNo, text(current, "reserved_policy_no"), "RESERVED",
-					localDateTime(current.get("policy_no_reserved_at")));
+			return new PolicyNumberReservationResult(applicationNo, text(current, "policy_no"), "ASSIGNED",
+					localDateTime(current.get("policy_no_assigned_at")));
 		}
 		current = mapper.findApplicationsByQuery(applicationNo).stream().findFirst().orElseThrow();
-		return new PolicyNumberReservationResult(applicationNo, policyNo, "RESERVED",
-				localDateTime(current.get("policy_no_reserved_at")));
+		return new PolicyNumberReservationResult(applicationNo, policyNo, "ASSIGNED",
+				localDateTime(current.get("policy_no_assigned_at")));
 	}
 
 	public List<ApplicationQueryResult> queryApplication(String query) {
@@ -173,9 +350,33 @@ public class NewContractServiceImpl implements NewContractService {
 		return rows.stream().map(this::toApplicationQueryResult).toList();
 	}
 
+	/** 以後端分頁列出保單資料，查詢條件僅接受完整客戶或保單識別值。 */
+	@Override
+	@Transactional(readOnly = true)
+	public ApplicationQueryPage queryApplications(String query, int page, int pageSize, String sort) {
+		PageSortRequest pageQuery = PageSortRequest.of(page, pageSize, sort,
+				Set.of("applicationNo", "policyNo", "productCode"), "applicationNo");
+		String exactQuery = query == null || query.isBlank() ? null : query.trim();
+		long totalItems = mapper.countApplicationQuery(exactQuery);
+		List<ApplicationQuerySummary> items = mapper.findApplicationQueryPage(exactQuery, pageQuery.offset(),
+				pageQuery.pageSize(), pageQuery.sortField(), pageQuery.sortDirection()).stream()
+				.map(row -> {
+					NewContractApplicationStatus status = NewContractApplicationStatus
+							.fromCode(text(row, "application_status"));
+					return new ApplicationQuerySummary(text(row, "application_no"), text(row, "policy_no"),
+							text(row, "product_code"), status.code(), status.description(),
+							localDate(row.get("application_date")), localDate(row.get("requested_effective_date")),
+							text(row, "created_by"), localDateTime(row.get("created_at")), text(row, "updated_by"),
+							localDateTime(row.get("updated_at")), text(row, "reviewer_id"),
+							localDateTime(row.get("reviewed_at")));
+				}).toList();
+		return new ApplicationQueryPage(items, totalItems, pageQuery.page(), pageQuery.pageSize(),
+				pageQuery.totalPages(totalItems));
+	}
+
 	private ApplicationQueryResult toApplicationQueryResult(Map<String, Object> row) {
 		String status = text(row, "application_status");
-		String policyNo = text(row, "reserved_policy_no");
+		String policyNo = text(row, "policy_no");
 		var applicationStatus = NewContractApplicationStatus.fromCode(status);
 		String applicationNo = text(row, "application_no");
 		List<CoverageDetail> coverages = mapper.findCoverageDetails(applicationNo).stream()
@@ -224,7 +425,7 @@ public class NewContractServiceImpl implements NewContractService {
 						text(x, "due_status"), localDateTime(x.get("calculated_at"))))
 				.toList();
 		return new ApplicationQueryResult(text(row, "application_no"), policyNo,
-				policyNo == null ? "NOT_RESERVED" : "RESERVED", status, applicationStatus.description(),
+				policyNo == null ? "NOT_ASSIGNED" : "ASSIGNED", status, applicationStatus.description(),
 				localDate(row.get("application_date")), applicationStatus.stageCode(),
 				applicationStatus.stageDescription(), applicationStatus.contractStatusCode(),
 				applicationStatus.contractStatusDescription(), localDate(row.get("requested_effective_date")),
@@ -317,8 +518,15 @@ public class NewContractServiceImpl implements NewContractService {
 				dueStatusDescription(text(row, "due_status")));
 	}
 
+	/** 覆核核准後建立送金單與銷帳結果；多表寫入在同一交易內同成同敗。 */
 	@Transactional
 	public PremiumMatchResult matchPremium(RemittanceSlipRequest request) {
+		// 繳費管道與繳款人身分是營運可維護代碼，正式寫入前必須再次以資料庫代碼定義驗證。
+		if (!codeDefinitionService.isActiveCode("initial-premium", "payment_channel_code",
+				request.paymentChannelCode()))
+			throw new BusinessException(NewContractErrorCode.INVALID_PAYMENT_CHANNEL);
+		if (!codeDefinitionService.isActiveCode("initial-premium", "payer_role_code", request.payerRoleCode()))
+			throw new BusinessException(NewContractErrorCode.INVALID_PAYER_ROLE);
 		PremiumDuePreview due = getPremiumDue(request.applicationNo());
 		BigDecimal difference = request.receivedAmount().subtract(due.calculatedPremiumAmount());
 		String status;
@@ -347,7 +555,8 @@ public class NewContractServiceImpl implements NewContractService {
 		}
 		if (status.equals("MATCHED"))
 			mapper.updateDueStatus(due.premiumDueId(), "MATCHED");
-		mapper.updateApplicationMatch(request.applicationNo(), status);
+		mapper.updateApplicationMatch(request.applicationNo(), status,
+				NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.code());
 		return new PremiumMatchResult(matchId, status, matchStatusDescription(status), due.calculatedPremiumAmount(),
 				request.receivedAmount(), difference, status.equals("MATCHED"));
 	}
@@ -369,21 +578,27 @@ public class NewContractServiceImpl implements NewContractService {
 		};
 	}
 
+	/** 核准後將保單排入指定執行日；過期日期與重複排程均拒絕寫入。 */
 	@Transactional
 	public UnderwritingBatchRequestResult enqueue(UnderwritingBatchRequest request) {
+		// 執行日以排程器相同的 Asia/Taipei 日界線判斷；已過日期不得補排，避免產生永遠不會被領取的案件。
+		if (request.executionDate().isBefore(LocalDate.now(java.time.ZoneId.of("Asia/Taipei"))))
+			throw new BusinessException(NewContractErrorCode.INVALID_BATCH_EXECUTION_DATE);
 		String applicationNo = mapper.resolveApplicationNo(request.applicationNo());
 		if (applicationNo == null)
 			throw new BusinessException(NewContractErrorCode.APPLICATION_NOT_FOUND);
-		if (mapper.findReservedPolicyNo(applicationNo) == null)
-			reservePolicyNumber(applicationNo);
+		if (!NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.code()
+				.equals(text(mapper.findApplicationsByQuery(applicationNo).stream().findFirst().orElseThrow(),
+						"application_status")))
+			throw new BusinessException(NewContractErrorCode.APPLICATION_NOT_READY_FOR_BATCH);
 		String id = UUID.randomUUID().toString();
 		try {
-			mapper.insertBatchRequest(id, applicationNo, request.requestedBusinessDate());
+			mapper.insertBatchRequest(id, applicationNo, request.executionDate());
 		} catch (DuplicateKeyException exception) {
 			throw new BusinessException(NewContractErrorCode.DUPLICATE_BATCH_REQUEST);
 		}
-		return new UnderwritingBatchRequestResult(id, applicationNo, "PENDING",
-				LocalDateTime.of(request.requestedBusinessDate(), LocalTime.of(21, 0)));
+		return new UnderwritingBatchRequestResult(id, applicationNo, "W",
+				LocalDateTime.of(request.executionDate(), LocalTime.of(21, 0)));
 	}
 
 	public List<UnderwritingBatchExecutionSummary> latestExecutions() {
@@ -396,19 +611,94 @@ public class NewContractServiceImpl implements NewContractService {
 				.toList();
 	}
 
+	/** 以新契約受理檔為清單主體，只提供 NS 照會結束且待審查的案件。 */
+	@Override
+	@Transactional(readOnly = true)
+	public UnderwritingReviewPage findUnderwritingReviewCandidates(String queryValue, int page, int pageSize, String sort) {
+		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
+				Set.of("applicationNo", "policyNo", "productCode"), "applicationNo");
+		String exactQuery = queryValue == null || queryValue.isBlank() ? null : queryValue.trim();
+		long totalItems = mapper.countUnderwritingReviewCandidates(exactQuery);
+		List<UnderwritingReviewSummary> items = mapper
+				.findUnderwritingReviewCandidates(exactQuery, query.offset(), query.pageSize(), query.sortField(), query.sortDirection())
+				.stream()
+				.map(row -> new UnderwritingReviewSummary(text(row, "application_no"), text(row, "policy_no"),
+						text(row, "underwriting_case_no"), text(row, "product_code"),
+						localDate(row.get("application_date")), localDate(row.get("requested_effective_date")),
+						text(row, "underwriting_status"), stageDescription(text(row, "underwriting_status")),
+						text(row, "created_by"), localDateTime(row.get("created_at")), text(row, "updated_by"),
+						localDateTime(row.get("updated_at")), text(row, "reviewer_id"),
+						localDateTime(row.get("reviewed_at"))))
+				.toList();
+		return new UnderwritingReviewPage(items, totalItems, query.page(), query.pageSize(),
+				query.totalPages(totalItems));
+	}
+
+	/** 查詢人工核保審查所需的目前階段、結果、契約狀態與樂觀鎖版本。 */
+	@Override
+	@Transactional(readOnly = true)
+	public UnderwritingReviewPreview previewUnderwritingReview(String query) {
+		Map<String, Object> row = mapper.findUnderwritingReview(query);
+		if (row == null)
+			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CASE_NOT_FOUND);
+		String stageCode = text(row, "underwriting_status");
+		String contractStatusCode = text(row, "contract_status_code");
+		return new UnderwritingReviewPreview(text(row, "application_no"), text(row, "policy_no"),
+				text(row, "underwriting_case_no"), text(row, "product_code"), localDate(row.get("application_date")),
+				localDate(row.get("requested_effective_date")), text(row, "currency_code"),
+				decimal(row, "sum_assured_amount"), decimal(row, "premium_amount"), stageCode,
+				stageDescription(stageCode), text(row, "underwriting_decision_code"), contractStatusCode,
+				contractStatusDescription(contractStatusCode), text(row, "created_by"),
+				localDateTime(row.get("created_at")), text(row, "updated_by"), localDateTime(row.get("updated_at")),
+				text(row, "reviewer_id"), localDateTime(row.get("reviewed_at")), longNumber(row, "record_version"));
+	}
+
+	/** 由固定 enum 回傳所有可承保及不承保結果，避免前端維護第二份對照。 */
+	@Override
+	public List<UnderwritingOutcomeOption> findUnderwritingOutcomes() {
+		return Arrays.stream(UnderwritingDecisionOutcome.values())
+				.map(outcome -> new UnderwritingOutcomeOption(outcome.decisionCode(), outcome.decisionDescription(),
+						outcome.stageCode(), outcome.stageDescription(), outcome.contractStatusCode(),
+						outcome.contractStatusDescription(), outcome.insurable()))
+				.toList();
+	}
+
+	/** 套用固定核保結果對照，並在同一交易更新案件及寫入決行稽核。 */
+	@Override
+	@Transactional
+	public UnderwritingDecisionResult decideUnderwriting(UnderwritingDecisionRequest request, String operatorId) {
+		UnderwritingDecisionOutcome outcome;
+		try {
+			outcome = UnderwritingDecisionOutcome.fromDecisionCode(request.decisionCode());
+		} catch (IllegalArgumentException exception) {
+			throw new BusinessException(NewContractErrorCode.INVALID_UNDERWRITING_DECISION);
+		}
+		Map<String, Object> row = mapper.findUnderwritingReview(request.applicationNo());
+		if (row == null)
+			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CASE_NOT_FOUND);
+		String caseNo = text(row, "underwriting_case_no");
+		if (mapper.updateUnderwritingDecision(caseNo, request.expectedVersion(), outcome.stageCode(),
+				outcome.decisionCode(), outcome.contractStatusCode(), request.reasonCode(), operatorId) != 1)
+			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CONCURRENT_MODIFICATION);
+		mapper.updateApplicationUnderwritingStage(request.applicationNo(), outcome.stageCode(), operatorId);
+		mapper.insertUnderwritingDecisionAudit(UUID.randomUUID().toString(), caseNo, request.applicationNo(),
+				outcome.decisionCode(), outcome.stageCode(), outcome.contractStatusCode(), request.reasonCode(),
+				request.reasonDescription(), operatorId);
+		return new UnderwritingDecisionResult(request.applicationNo(), caseNo, outcome.decisionCode(),
+				outcome.decisionDescription(), outcome.stageCode(), outcome.stageDescription(),
+				outcome.contractStatusCode(), outcome.contractStatusDescription());
+	}
+
 	public PolicyReversalPreview previewReversal(String policyNo) {
 		Map<String, Object> row = mapper.findPolicyForReversal(policyNo);
 		if (row == null)
 			throw new BusinessException(NewContractErrorCode.POLICY_NOT_FOUND);
-		List<String> blockers = "PENDING".equals(text(row, "policy_status"))
+		List<String> blockers = "01".equals(text(row, "contract_status_code"))
 				? List.of()
-				: List.of("保單狀態不是 PENDING，可能已生效或已有權利義務，禁止直接刪除");
+				: List.of("契約狀態不是 01 有效，不符合承保撤回條件");
 		Map<String, Integer> counts = new LinkedHashMap<>();
-		counts.put("main.policy_underwriting_condition", 0);
-		counts.put("main.policy_beneficiary", 0);
-		counts.put("main.policy_coverage", 0);
-		counts.put("main.policy_party", 0);
-		counts.put("main.policy_contract", mapper.countPolicy(policyNo));
+		counts.put("保留正式保單主檔", mapper.countPolicy(policyNo));
+		counts.put("契約狀態 01 改為空白", 1);
 		long policyVersion = longNumber(row, "policy_version"), appVersion = longNumber(row, "application_version"),
 				uwVersion = longNumber(row, "underwriting_version");
 		return new PolicyReversalPreview(policyNo, text(row, "application_no"), text(row, "underwriting_case_no"),
@@ -417,8 +707,27 @@ public class NewContractServiceImpl implements NewContractService {
 				hash(policyNo + ":" + policyVersion + ":" + appVersion + ":" + uwVersion));
 	}
 
+	/** 分頁列出契約狀態為 01、可進一步檢查承保撤回條件的保單。 */
+	@Override
+	@Transactional(readOnly = true)
+	public PolicyReversalPage findReversiblePolicies(int page, int pageSize, String sort) {
+		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
+				Set.of("policyNo", "applicationNo", "productCode"), "policyNo");
+		long totalItems = mapper.countReversiblePolicies();
+		List<PolicyReversalSummary> items = mapper.findReversiblePolicies(query.offset(), query.pageSize(),
+				query.sortField(), query.sortDirection()).stream()
+				.map(row -> new PolicyReversalSummary(text(row, "policy_no"), text(row, "application_no"),
+						text(row, "product_code"), text(row, "contract_status_code"),
+						localDate(row.get("effective_date")), text(row, "created_by"),
+						localDateTime(row.get("created_at")), text(row, "updated_by"),
+						localDateTime(row.get("updated_at")), text(row, "reviewer_id"),
+						localDateTime(row.get("reviewed_at"))))
+				.toList();
+		return new PolicyReversalPage(items, totalItems, query.page(), query.pageSize(), query.totalPages(totalItems));
+	}
+
 	@Transactional
-	public PolicyReversalResult reverse(PolicyReversalRequest request, String requestId) {
+	public PolicyReversalResult reverse(PolicyReversalRequest request, String requestId, String reviewerId) {
 		PolicyReversalPreview preview = previewReversal(request.policyNo());
 		if (!preview.blockers().isEmpty())
 			throw new BusinessException(NewContractErrorCode.POLICY_REVERSAL_BLOCKED);
@@ -431,14 +740,14 @@ public class NewContractServiceImpl implements NewContractService {
 		String before = "{\"policyNo\":\"" + preview.policyNo() + "\",\"policyStatus\":\"" + preview.policyStatus()
 				+ "\",\"applicationStatus\":\"" + preview.applicationStatus() + "\",\"underwritingStatus\":\""
 				+ preview.underwritingStatus() + "\"}";
-		String after = "{\"policyDeleted\":true,\"applicationStatus\":\"SUBMITTED\",\"underwritingStatus\":\"PENDING\"}";
-		if (mapper.deletePolicy(request.policyNo(), request.expectedPolicyVersion()) != 1
-				|| mapper.resetApplication(preview.applicationNo(), request.expectedApplicationVersion()) != 1
-				|| mapper.resetUnderwriting(preview.underwritingCaseNo(), request.expectedUnderwritingVersion()) != 1)
+		String after = "{\"policyDeleted\":false,\"contractStatusCode\":null}";
+		if (mapper.clearUnderwritingContractStatus(preview.underwritingCaseNo(),
+				request.expectedUnderwritingVersion(), reviewerId) != 1)
 			throw new BusinessException(NewContractErrorCode.CONCURRENT_MODIFICATION);
 		mapper.insertReversalAudit(auditId, request.policyNo(), preview.applicationNo(), preview.underwritingCaseNo(),
 				request.reasonCode(), request.reasonDescription(), requestId, before, after, hash(before), hash(after));
-		return new PolicyReversalResult(auditId, request.policyNo(), preview.applicationNo(), "SUBMITTED", "PENDING");
+		return new PolicyReversalResult(auditId, request.policyNo(), preview.applicationNo(),
+				preview.applicationStatus(), preview.underwritingStatus());
 	}
 
 	private static String text(Map<String, Object> row, String key) {
@@ -457,6 +766,23 @@ public class NewContractServiceImpl implements NewContractService {
 	}
 	private static long longNumber(Map<String, Object> row, String key) {
 		return ((Number) row.get(key)).longValue();
+	}
+	/** 將固定案件階段碼轉為繁中說明；未知值視為資料契約錯誤。 */
+	private static String stageDescription(String stageCode) {
+		return NewContractApplicationStatus.fromCode(stageCode).stageDescription();
+	}
+	/** 依新契約固定狀態回傳繁中說明，NULL 代表案件仍在受理流程。 */
+	private static String contractStatusDescription(String contractStatusCode) {
+		if (contractStatusCode == null)
+			return "受理";
+		return switch (contractStatusCode) {
+			case "01" -> "有效";
+			case "13" -> "拒保";
+			case "14" -> "延期";
+			case "15" -> "取消";
+			case "26" -> "十天猶豫期變更";
+			default -> throw new IllegalArgumentException("未知的新契約契約狀態: " + contractStatusCode);
+		};
 	}
 	private static LocalDate localDate(Object value) {
 		return value instanceof Date d ? d.toLocalDate() : (LocalDate) value;

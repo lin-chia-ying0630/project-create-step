@@ -42,3 +42,24 @@ export interface InquiryPdfDocument {
   contentType: string
   base64Content: string
 }
+export interface InquirySummary {
+  inquiryNo: string
+  applicationNo: string
+  policyNo: string | null
+  inquiryStatus: string
+  inquiryStatusDescription: string
+  issuedAt: string
+  createdBy: string
+  createdAt: string
+  updatedBy: string
+  updatedAt: string
+  reviewerId: string | null
+  reviewedAt: string | null
+}
+export interface InquiryPage {
+  items: InquirySummary[]
+  totalItems: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
