@@ -87,6 +87,7 @@ export interface ApplicationAttachmentInput {
   fileName: string
   fileReference: string
   fileHash: string | null
+  fileSizeBytes: number | null
   pageCount: number | null
   issueDate: string | null
   expiryDate: string | null

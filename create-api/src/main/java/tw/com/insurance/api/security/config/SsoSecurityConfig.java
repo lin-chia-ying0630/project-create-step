@@ -1,4 +1,4 @@
-package tw.com.insurance.api.security;
+package tw.com.insurance.api.security.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;

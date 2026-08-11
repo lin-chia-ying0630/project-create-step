@@ -13,6 +13,9 @@
   <select id="findCustomerVersion" resultType="java.lang.Long">
     SELECT record_version FROM customer.customer_master WHERE customer_id=#{customerId} AND record_status='ACTIVE'
   </select>
+  <select id="findCustomerBirthDate" resultType="java.time.LocalDate">
+    SELECT birth_date FROM customer.customer_master WHERE customer_id=#{customerId} AND record_status='ACTIVE'
+  </select>
   <insert id="nextPolicyNumber">
     INSERT INTO new_contract.policy_number_sequence () VALUES ()
   </insert>
@@ -172,9 +175,9 @@
   <insert id="insertAttachment">
     INSERT INTO new_contract.application_attachment
       (attachment_id,application_no,attachment_type_code,owner_party_role,document_no_masked,file_name,
-       file_reference,file_hash,page_count,issue_date,expiry_date,verification_status,
+       file_reference,file_hash,file_size_bytes,page_count,issue_date,expiry_date,verification_status,
        created_by,updated_by,reviewer_id,reviewed_at)
-    VALUES (#{id},#{applicationNo},#{type},#{ownerRole},#{documentNo},#{fileName},#{fileReference},#{fileHash},
+    VALUES (#{id},#{applicationNo},#{type},#{ownerRole},#{documentNo},#{fileName},#{fileReference},#{fileHash},#{fileSizeBytes},
       #{pageCount},#{issueDate},#{expiryDate},'S','local-tester','local-tester','local-checker',CURRENT_TIMESTAMP(6))
   </insert>
   <select id="findPremiumDue" resultType="map">

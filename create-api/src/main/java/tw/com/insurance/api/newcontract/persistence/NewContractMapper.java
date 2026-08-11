@@ -18,6 +18,7 @@ public interface NewContractMapper {
 			@Param("premium") BigDecimal premium, @Param("paymentMode") String paymentMode,
 			@Param("effectiveDate") LocalDate effectiveDate, @Param("applicationStatus") String applicationStatus);
 	Long findCustomerVersion(String customerId);
+	LocalDate findCustomerBirthDate(String customerId);
 	int nextPolicyNumber();
 	long lastInsertId();
 	int reservePolicyNumber(@Param("applicationNo") String applicationNo, @Param("policyNo") String policyNo);
@@ -81,6 +82,7 @@ public interface NewContractMapper {
 			@Param("type") String type, @Param("ownerRole") String ownerRole,
 			@Param("documentNo") String documentNo, @Param("fileName") String fileName,
 			@Param("fileReference") String fileReference, @Param("fileHash") String fileHash,
+			@Param("fileSizeBytes") Long fileSizeBytes,
 			@Param("pageCount") Integer pageCount, @Param("issueDate") LocalDate issueDate,
 			@Param("expiryDate") LocalDate expiryDate);
 

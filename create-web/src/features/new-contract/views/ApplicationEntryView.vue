@@ -104,6 +104,7 @@ const form = reactive({
       fileName: '',
       fileReference: '',
       fileHash: '',
+      fileSizeBytes: null as number | null,
       pageCount: 1,
       issueDate: today,
       expiryDate: null,
@@ -115,6 +116,7 @@ const form = reactive({
       fileName: '',
       fileReference: '',
       fileHash: '',
+      fileSizeBytes: null as number | null,
       pageCount: 1,
       issueDate: today,
       expiryDate: null,
@@ -128,6 +130,8 @@ const loading = ref(false),
   sourceOfFundsOptions = ref<CodeDefinitionOption[]>([]),
   insurancePurposeOptions = ref<CodeDefinitionOption[]>([]),
   attachmentTypeOptions = ref<CodeDefinitionOption[]>([]),
+  customerRiskOptions = ref<CodeDefinitionOption[]>([]),
+  productRiskOptions = ref<CodeDefinitionOption[]>([]),
   productOptions = ref<ProductDefinitionOption[]>([]),
   message = ref<string | null>(null),
   error = ref<string | null>(null),
@@ -160,18 +164,22 @@ const totalSum = computed(() =>
 async function loadCodeDefinitionOptions() {
   codeLoading.value = true
   try {
-    const [currencies, sourcesOfFunds, insurancePurposes, attachmentTypes, products] =
+    const [currencies, sourcesOfFunds, insurancePurposes, attachmentTypes, customerRisks, productRisks, products] =
       await Promise.all([
       codeDefinitionApi.findActiveOptions('new-contract', 'currency_code'),
       codeDefinitionApi.findActiveOptions('customer-kyc', 'source_of_funds_code'),
       codeDefinitionApi.findActiveOptions('customer-kyc', 'insurance_purpose_code'),
       codeDefinitionApi.findActiveOptions('new-contract', 'attachment_type_code'),
+      codeDefinitionApi.findActiveOptions('new-contract', 'customer_risk_level_code'),
+      codeDefinitionApi.findActiveOptions('new-contract', 'product_risk_level_code'),
         productDefinitionApi.findActiveProducts(),
       ])
     currencyOptions.value = currencies
     sourceOfFundsOptions.value = sourcesOfFunds
     insurancePurposeOptions.value = insurancePurposes
     attachmentTypeOptions.value = attachmentTypes
+    customerRiskOptions.value = customerRisks
+    productRiskOptions.value = productRisks
     productOptions.value = products
   } catch (e) {
     error.value = e instanceof Error ? e.message : '幣別代碼載入失敗'
@@ -191,6 +199,7 @@ function selectProduct(coverage: CoverageInput, selectedKey: string) {
     form.currencyCode = product.currencyCode
     form.investmentProduct = product.investmentProduct
     form.investmentRisk.applicable = product.investmentProduct
+    form.investmentRisk.productRiskLevel = product.productRiskLevelCode ?? ''
   }
 }
 /** 將完整帳號或卡號送往一次性驗證端點，畫面只保留 Token 與遮罩值。 */
@@ -229,6 +238,7 @@ function addAttachment() {
     fileName: '',
     fileReference: '',
     fileHash: '',
+    fileSizeBytes: null as number | null,
     pageCount: 1,
     issueDate: today,
     expiryDate: null,
@@ -804,22 +814,23 @@ onMounted(loadCodeDefinitionOptions)
               required
           /></label>
           <label
-            >客戶風險等級＊<select v-model="form.investmentRisk.customerRiskLevel">
-              <option>R1</option>
-              <option>R2</option>
-              <option>R3</option>
-              <option>R4</option>
-              <option>R5</option>
-            </select></label
+            >客戶風險等級＊<CodeDefinitionSelect
+              v-model="form.investmentRisk.customerRiskLevel"
+              label="客戶風險等級"
+              :options="customerRiskOptions"
+              placeholder="請選擇客戶風險等級"
+              required
+            /></label
           >
           <label
-            >商品風險等級＊<select v-model="form.investmentRisk.productRiskLevel">
-              <option>R1</option>
-              <option>R2</option>
-              <option>R3</option>
-              <option>R4</option>
-              <option>R5</option>
-            </select></label
+            >商品風險等級＊<CodeDefinitionSelect
+              v-model="form.investmentRisk.productRiskLevel"
+              label="商品風險等級"
+              :options="productRiskOptions"
+              placeholder="由商品定義帶入"
+              required
+              disabled
+            /></label
           >
           <label
             >適合度結果＊<select v-model="form.investmentRisk.suitable">
@@ -901,6 +912,13 @@ onMounted(loadCodeDefinitionOptions)
                 required
             /></label>
             <label>檔案雜湊<input v-model.trim="attachment.fileHash" /></label>
+            <label
+              >檔案大小（Bytes）<input
+                v-model.number="attachment.fileSizeBytes"
+                type="number"
+                min="1"
+                max="10485760"
+            /></label>
             <label>頁數<input v-model.number="attachment.pageCount" type="number" min="1" /></label>
             <label>發證日<input v-model="attachment.issueDate" type="date" /></label>
             <label>到期日<input v-model="attachment.expiryDate" type="date" /></label>

@@ -1,4 +1,4 @@
-package tw.com.insurance.api.security;
+package tw.com.insurance.api.security.controller;
 
 import java.util.Map;
 import org.springframework.http.ResponseEntity;

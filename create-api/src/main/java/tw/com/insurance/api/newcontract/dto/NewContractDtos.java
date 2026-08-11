@@ -141,7 +141,8 @@ public final class NewContractDtos {
 	public record ApplicationAttachmentInput(@NotBlank @Size(max = 32) String attachmentTypeCode,
 			@NotBlank @Size(max = 20) String ownerPartyRole, @Size(max = 100) String documentNoMasked,
 			@NotBlank @Size(max = 255) String fileName, @NotBlank @Size(max = 500) String fileReference,
-			@Size(max = 100) String fileHash, Integer pageCount, LocalDate issueDate, LocalDate expiryDate) {
+			@Size(max = 100) String fileHash, @Min(1) Long fileSizeBytes, Integer pageCount,
+			LocalDate issueDate, LocalDate expiryDate) {
 	}
 	public record CreateApplicationRequest(@NotBlank @Size(max = 32) String applicationNo,
 			@NotNull LocalDate applicationDate, @NotBlank @Size(max = 20) String channelCode,

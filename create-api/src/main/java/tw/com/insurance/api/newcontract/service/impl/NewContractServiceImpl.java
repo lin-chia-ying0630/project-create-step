@@ -1,6 +1,7 @@
 package tw.com.insurance.api.newcontract.service.impl;
 
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQueryResult;
+import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationAttachmentInput;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQueryPage;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.ApplicationQuerySummary;
 import static tw.com.insurance.api.newcontract.dto.NewContractDtos.BeneficiaryDetail;
@@ -45,6 +46,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Period;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -144,6 +146,8 @@ public class NewContractServiceImpl implements NewContractService {
 		if (request.coverages().stream().anyMatch(c -> !List.of("BASE", "RIDER").contains(c.coverageItemType())))
 			throw new BusinessException(NewContractErrorCode.INVALID_COVERAGE_TYPE);
 		ProductDefinitionDto baseProduct = null;
+		LocalDate insuredBirthDate = mapper.findCustomerBirthDate(request.insuredCustomerId());
+		CoverageInput baseCoverage = bases.get(0);
 		for (CoverageInput coverage : request.coverages()) {
 			ProductDefinitionDto product = productDefinitionService.requireActiveProduct(coverage.productCode(),
 					coverage.productVersion());
@@ -151,10 +155,20 @@ public class NewContractServiceImpl implements NewContractService {
 					|| !request.currencyCode().equals(product.currencyCode()))
 				throw new BusinessException(NewContractErrorCode.INVALID_PRODUCT);
 			validateProductAmountLimits(coverage, product);
+			validateProductTerms(coverage, product);
+			validateEntryAge(insuredBirthDate, request.applicationDate(), product);
+			if (!productDefinitionService.supportsPaymentMode(coverage.productCode(), coverage.productVersion(),
+					request.paymentModeCode()))
+				throw new BusinessException(NewContractErrorCode.PRODUCT_PAYMENT_MODE_VIOLATION);
+			if ("RIDER".equals(coverage.coverageItemType())
+					&& !productDefinitionService.supportsRider(baseCoverage.productCode(), baseCoverage.productVersion(),
+							coverage.productCode(), coverage.productVersion()))
+				throw new BusinessException(NewContractErrorCode.PRODUCT_RIDER_VIOLATION);
 			if ("BASE".equals(coverage.coverageItemType()))
 				baseProduct = product;
 		}
 		boolean investmentProduct = baseProduct != null && baseProduct.investmentProduct();
+		request.attachments().forEach(this::validateAttachment);
 		validateBeneficiaries(request.beneficiaries());
 		request.healthDisclosures().forEach(h -> {
 			if ("YES".equals(h.answerCode()) && (h.supplementalDetail() == null || h.supplementalDetail().isBlank()))
@@ -166,6 +180,12 @@ public class NewContractServiceImpl implements NewContractService {
 		if (investmentProduct && (!request.investmentRisk().applicable()
 				|| !request.investmentRisk().suitable() || !request.investmentRisk().disclosureConfirmed()
 				|| !request.investmentRisk().proposalDelivered()))
+			throw new BusinessException(NewContractErrorCode.INVESTMENT_SUITABILITY_REQUIRED);
+		if (investmentProduct && (!codeDefinitionService.isActiveCode("new-contract", "customer_risk_level_code",
+				request.investmentRisk().customerRiskLevel())
+				|| !codeDefinitionService.isActiveCode("new-contract", "product_risk_level_code",
+						request.investmentRisk().productRiskLevel())
+				|| !baseProduct.productRiskLevelCode().equals(request.investmentRisk().productRiskLevel())))
 			throw new BusinessException(NewContractErrorCode.INVESTMENT_SUITABILITY_REQUIRED);
 		BigDecimal sumAssured = request.coverages().stream().map(CoverageInput::sumAssuredAmount)
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -243,7 +263,8 @@ public class NewContractServiceImpl implements NewContractService {
 			request.attachments().forEach(attachment -> mapper.insertAttachment(UUID.randomUUID().toString(),
 					request.applicationNo(), attachment.attachmentTypeCode(), attachment.ownerPartyRole(),
 					attachment.documentNoMasked(), attachment.fileName(), attachment.fileReference(),
-					attachment.fileHash(), attachment.pageCount(), attachment.issueDate(), attachment.expiryDate()));
+					attachment.fileHash(), attachment.fileSizeBytes(), attachment.pageCount(), attachment.issueDate(),
+					attachment.expiryDate()));
 		} catch (DuplicateKeyException exception) {
 			throw new BusinessException(NewContractErrorCode.DUPLICATE_APPLICATION);
 		}
@@ -262,6 +283,42 @@ public class NewContractServiceImpl implements NewContractService {
 				|| (product.minimumPremium() != null
 						&& coverage.premiumAmount().compareTo(product.minimumPremium()) < 0))
 			throw new BusinessException(NewContractErrorCode.PRODUCT_LIMIT_VIOLATION);
+	}
+
+	/** 驗證保險期間與繳費期間符合商品版本限制。 */
+	private void validateProductTerms(CoverageInput coverage, ProductDefinitionDto product) {
+		if (outside(coverage.coverageTermYears(), product.minimumCoverageTermYears(), product.maximumCoverageTermYears())
+				|| outside(coverage.premiumPaymentTermYears(), product.minimumPaymentTermYears(),
+						product.maximumPaymentTermYears()))
+			throw new BusinessException(NewContractErrorCode.PRODUCT_TERM_VIOLATION);
+	}
+
+	/** 以要保日足歲驗證商品版本投保年齡。 */
+	private void validateEntryAge(LocalDate birthDate, LocalDate applicationDate, ProductDefinitionDto product) {
+		if (birthDate == null)
+			return;
+		int age = Period.between(birthDate, applicationDate).getYears();
+		if (outside(age, product.minimumEntryAge(), product.maximumEntryAge()))
+			throw new BusinessException(NewContractErrorCode.INVALID_PRODUCT);
+	}
+
+	/** 附件僅接受安全檔名、受控參照、10MB 以下檔案與選填 SHA-256。 */
+	private void validateAttachment(ApplicationAttachmentInput attachment) {
+		String lowerName = attachment.fileName().toLowerCase(java.util.Locale.ROOT);
+		boolean allowedExtension = lowerName.endsWith(".pdf") || lowerName.endsWith(".jpg")
+				|| lowerName.endsWith(".jpeg") || lowerName.endsWith(".png");
+		boolean invalidReference = attachment.fileReference().contains("..")
+				|| attachment.fileReference().matches("(?i)^https?://.*");
+		boolean invalidHash = attachment.fileHash() != null && !attachment.fileHash().isBlank()
+				&& !attachment.fileHash().matches("(?i)^[0-9a-f]{64}$");
+		boolean invalidSize = attachment.fileSizeBytes() != null && attachment.fileSizeBytes() > 10_485_760L;
+		if (!allowedExtension || invalidReference || invalidHash || invalidSize)
+			throw new BusinessException(NewContractErrorCode.INVALID_ATTACHMENT);
+	}
+
+	/** 判斷數值是否超出可為空白的上下限。 */
+	private boolean outside(Integer value, Integer minimum, Integer maximum) {
+		return value != null && ((minimum != null && value < minimum) || (maximum != null && value > maximum));
 	}
 
 	@Transactional
