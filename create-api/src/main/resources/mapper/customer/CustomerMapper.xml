@@ -50,28 +50,4 @@
           (audit_event_id,customer_id,operation_type,operator_id,request_id,changed_fields,occurred_at)
           VALUES (#{id},#{customerId},'CREATE','local-tester',#{requestId},JSON_ARRAY('CUSTOMER_CORE','IDENTITY','CONTACT','ADDRESS','KYC','CONSENT'),CURRENT_TIMESTAMP(6))
   </insert>
-  <update id="markReviewed">
-    UPDATE customer.customer_master
-       SET reviewer_id=#{reviewerId},reviewed_at=CURRENT_TIMESTAMP(6),
-           updated_by=#{reviewerId},updated_at=CURRENT_TIMESTAMP(6)
-     WHERE customer_id=#{customerId}
-  </update>
-  <select id="countCustomers" resultType="long">
-    SELECT COUNT(*) FROM customer.customer_master
-    <where><if test="query != null and query != ''">customer_id=#{query} OR customer_name=#{query}</if></where>
-  </select>
-  <select id="findCustomerPage" resultType="map">
-    SELECT customer_id,customer_type_code,customer_name,nationality_code,record_status,
-           created_by,created_at,updated_by,updated_at,reviewer_id,reviewed_at
-      FROM customer.customer_master
-    <where><if test="query != null and query != ''">customer_id=#{query} OR customer_name=#{query}</if></where>
-     ORDER BY
-     <choose>
-       <when test="sortField == 'customerTypeCode'">customer_type_code</when>
-       <when test="sortField == 'customerName'">customer_name</when>
-       <otherwise>customer_id</otherwise>
-     </choose>
-     <choose><when test="sortDirection == 'desc'">DESC</when><otherwise>ASC</otherwise></choose>,customer_id ASC
-     LIMIT #{pageSize} OFFSET #{offset}
-  </select>
 </mapper>

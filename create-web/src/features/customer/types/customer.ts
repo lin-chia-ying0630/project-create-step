@@ -1,6 +1,11 @@
 /** 客戶建檔 feature 的 transport contract。 */
+export interface CodeDefinitionOption {
+  code: string
+  description: string
+}
+
 export interface CreateCustomerRequest {
-  customerTypeCode: '1' | '2'
+  customerTypeCode: 'PERSON' | 'ORGANIZATION'
   identityTypeCode: string
   identityNo: string
   customerName: string
@@ -33,24 +38,4 @@ export interface CustomerResult {
   maskedEmail: string
   recordStatus: string
   recordVersion: number
-}
-export interface CustomerSummary {
-  customerId: string
-  customerTypeCode: string
-  customerName: string
-  nationalityCode: string
-  recordStatus: string
-  createdBy: string
-  createdAt: string
-  updatedBy: string
-  updatedAt: string
-  reviewerId: string | null
-  reviewedAt: string | null
-}
-export interface CustomerPage {
-  items: CustomerSummary[]
-  totalItems: number
-  page: number
-  pageSize: number
-  totalPages: number
 }

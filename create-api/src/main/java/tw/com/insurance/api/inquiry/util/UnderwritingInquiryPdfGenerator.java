@@ -71,7 +71,7 @@ public final class UnderwritingInquiryPdfGenerator {
 			addPair(info, "新契約階段", detail.newContractStageDescription(), body, base);
 			addPair(info, "契約狀態", detail.contractStatusDescription(), body, base);
 			addPair(info, "照會日期", TIME.format(detail.issuedAt()), body, base);
-			addPair(info, "號碼性質", "正式保單號碼", body, base);
+			addPair(info, "號碼性質", "預編保單號碼", body, base);
 			document.add(info);
 			addSection(document, "契約關係人與投保資料", heading);
 			PdfPTable parties = new PdfPTable(new float[]{1, 2, 1, 2});

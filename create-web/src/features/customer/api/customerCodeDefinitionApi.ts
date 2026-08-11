@@ -1,9 +1,11 @@
-import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
-import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
+import { get } from '../../../shared/api/apiClient'
+import type { CodeDefinitionOption } from '../types/customer'
+
+const basePath = '/api/v1/new-contract/code-definitions/customer-kyc'
 
 /** 取得新契約客戶 KYC 欄位的資料庫代碼選項。 */
 function findOptions(codeField: string): Promise<CodeDefinitionOption[]> {
-  return codeDefinitionApi.findActiveOptions('customer-kyc', codeField)
+  return get<CodeDefinitionOption[]>(`${basePath}/${codeField}`)
 }
 
 export const customerCodeDefinitionApi = {

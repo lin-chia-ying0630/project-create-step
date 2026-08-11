@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { codeDefinitionApi } from '../../../shared/api/codeDefinitionApi'
-import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
+import { computed, ref } from 'vue'
 import { premiumPaymentApi } from '../api/premiumPaymentApi'
 import type { PremiumDuePreview } from '../types/premiumPayment'
-import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
 const localNow = () => {
   const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
   return d.toISOString().slice(0, 16)
@@ -17,26 +14,9 @@ const applicationNo = ref(''),
   paymentChannelCode = ref('BANK_TRANSFER'),
   receivedAt = ref(localNow()),
   payerRoleCode = ref('APPLICANT'),
-  paymentChannelOptions = ref<CodeDefinitionOption[]>([]),
-  payerRoleOptions = ref<CodeDefinitionOption[]>([]),
-  showRemittanceForm = ref(false),
   message = ref<string | null>(null),
   error = ref<string | null>(null),
   loading = ref(false)
-
-/** 載入送金單使用的動態代碼，避免畫面另行維護代碼中文。 */
-onMounted(async () => {
-  try {
-    ;[paymentChannelOptions.value, payerRoleOptions.value] = await Promise.all([
-      codeDefinitionApi.findActiveOptions('initial-premium', 'payment_channel_code'),
-      codeDefinitionApi.findActiveOptions('initial-premium', 'payer_role_code'),
-    ])
-    paymentChannelCode.value = paymentChannelOptions.value[0]?.code ?? ''
-    payerRoleCode.value = payerRoleOptions.value[0]?.code ?? ''
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '送金單代碼載入失敗'
-  }
-})
 const difference = computed(() => {
   if (!due.value || !receivedAmount.value) return null
   const scale = 10000n
@@ -59,7 +39,6 @@ const differenceLabel = computed(() =>
         ? '短收'
         : '溢收',
 )
-/** 依要保書或正式保單號碼讀取仍為待收狀態的首期保費應收。 */
 async function search() {
   loading.value = true
   error.value = null
@@ -68,21 +47,19 @@ async function search() {
   try {
     due.value = await premiumPaymentApi.getDue(applicationNo.value.trim())
     receivedAmount.value = due.value.calculatedPremiumAmount
-    showRemittanceForm.value = false
   } catch (e) {
     error.value = e instanceof Error ? e.message : '查詢失敗'
   } finally {
     loading.value = false
   }
 }
-/** 將新增送金單送交覆核；正式送金單與銷帳只在覆核核准後建立。 */
-async function createRemittanceSlip() {
+async function reconcile() {
   if (!due.value) return
   loading.value = true
   error.value = null
   message.value = null
   try {
-    const r = await premiumPaymentApi.createRemittanceSlip(
+    const r = await premiumPaymentApi.registerAndReconcile(
       {
         applicationNo: due.value.applicationNo,
         paymentReceiptNo: paymentReceiptNo.value,
@@ -95,10 +72,16 @@ async function createRemittanceSlip() {
       },
       crypto.randomUUID(),
     )
-    message.value = `新增送金單已送覆核，覆核編號：${r.reviewId}`
-    showRemittanceForm.value = false
+    message.value = r.mayUnderwrite
+      ? '首期保險費已收款並完成銷帳，可進入核保。'
+      : `銷帳結果：${r.matchStatusDescription}，案件暫不可承保，請進行差額處理或照會。`
+    due.value = {
+      ...due.value,
+      dueStatus: r.mayUnderwrite ? 'MATCHED' : due.value.dueStatus,
+      dueStatusDescription: r.mayUnderwrite ? '已銷帳' : due.value.dueStatusDescription,
+    }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '新增送金單失敗'
+    error.value = e instanceof Error ? e.message : '首期保險費收款失敗'
   } finally {
     loading.value = false
   }
@@ -110,21 +93,30 @@ async function createRemittanceSlip() {
       <div>
         <p class="eyebrow">INITIAL PREMIUM COLLECTION</p>
         <h2>首期保險費收款與銷帳</h2>
-        <p>依要保書號碼或正式保單號碼查詢應收首期保險費，登錄實際收款資料後執行銷帳。</p>
+        <p>依要保書號碼或預編保單號碼查詢應收首期保險費，登錄實際收款資料後執行銷帳。</p>
       </div>
       <span class="status-chip">新契約收費</span>
     </header>
     <article class="panel">
-      <SingleQueryForm
-        v-model="applicationNo"
-        button-label="查詢應收保險費"
-        description="請輸入完整要保書號碼或正式保單號碼"
-        field-label="要保書／保單號碼"
-        :loading="loading"
-        :max-length="32"
-        @submit="search"
-        @clear="applicationNo = ''"
-      />
+      <div class="panel-title">
+        <h3><b>1</b>查詢待收案件</h3>
+        <small>可輸入要保書號碼或預編保單號碼</small>
+      </div>
+      <div class="search-row">
+        <label
+          >要保書／保單號碼＊<input
+            v-model.trim="applicationNo"
+            maxlength="32"
+            placeholder="例：NC-20260808-001"
+            @keyup.enter="search" /></label
+        ><button
+          class="primary-button"
+          :disabled="!applicationNo.trim() || loading"
+          @click="search"
+        >
+          查詢應收保險費
+        </button>
+      </div>
     </article>
     <article v-if="due" class="panel section-gap">
       <div class="panel-title">
@@ -146,15 +138,10 @@ async function createRemittanceSlip() {
           <small>保費計算版本</small><strong>{{ due.calculationRuleVersion }}</strong>
         </div>
       </div>
-      <div class="form-actions">
-        <button class="primary-button" :disabled="loading" @click="showRemittanceForm = true">
-          新增送金單
-        </button>
-      </div>
     </article>
-    <article v-if="due && showRemittanceForm" class="panel section-gap">
+    <article v-if="due" class="panel section-gap">
       <div class="panel-title">
-        <h3><b>3</b>新增送金單</h3>
+        <h3><b>3</b>登錄繳費資料</h3>
         <small>＊為必填欄位</small>
       </div>
       <div class="field-grid">
@@ -165,11 +152,12 @@ async function createRemittanceSlip() {
             required
             placeholder="收據、繳款單或代收憑證號" /></label
         ><label
-          >繳費管道＊<select v-model="paymentChannelCode" required>
-            <option value="" disabled>請選擇繳費管道</option>
-            <option v-for="option in paymentChannelOptions" :key="option.code" :value="option.code">
-              {{ option.code }}｜{{ option.description }}
-            </option>
+          >繳費管道＊<select v-model="paymentChannelCode">
+            <option value="BANK_TRANSFER">銀行轉帳</option>
+            <option value="CREDIT_CARD">信用卡</option>
+            <option value="CASH">現金</option>
+            <option value="CONVENIENCE_STORE">超商代收</option>
+            <option value="DIRECT_DEBIT">帳戶扣款</option>
           </select></label
         ><label
           >收款交易序號＊<input
@@ -179,11 +167,11 @@ async function createRemittanceSlip() {
             placeholder="銀行交易序號或代收機構回覆碼" /></label
         ><label>收款時間＊<input v-model="receivedAt" type="datetime-local" required /></label
         ><label
-          >繳款人身分＊<select v-model="payerRoleCode" required>
-            <option value="" disabled>請選擇繳款人身分</option>
-            <option v-for="option in payerRoleOptions" :key="option.code" :value="option.code">
-              {{ option.code }}｜{{ option.description }}
-            </option>
+          >繳款人身分＊<select v-model="payerRoleCode">
+            <option value="APPLICANT">要保人</option>
+            <option value="INSURED">被保險人</option>
+            <option value="BENEFICIARY">受益人</option>
+            <option value="OTHER">其他關係人</option>
           </select></label
         ><label
           >實收保險費＊
@@ -217,20 +205,11 @@ async function createRemittanceSlip() {
         <button
           class="primary-button"
           :disabled="
-            loading ||
-            !paymentReceiptNo ||
-            !paymentChannelCode ||
-            !collectionReference ||
-            !payerRoleCode ||
-            !receivedAmount ||
-            !receivedAt
+            loading || !paymentReceiptNo || !collectionReference || !receivedAmount || !receivedAt
           "
-          @click="createRemittanceSlip"
+          @click="reconcile"
         >
-          新增送金單並送覆核
-        </button>
-        <button class="secondary-button" :disabled="loading" @click="showRemittanceForm = false">
-          取消
+          確認收款並執行銷帳
         </button>
       </div>
     </article>
@@ -239,6 +218,9 @@ async function createRemittanceSlip() {
   </section>
 </template>
 <style scoped>
+.payment-page {
+  max-width: 960px;
+}
 .panel-title h3 {
   display: flex;
   align-items: center;

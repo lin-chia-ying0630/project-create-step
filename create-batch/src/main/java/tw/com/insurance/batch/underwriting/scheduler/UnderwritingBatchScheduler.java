@@ -13,8 +13,13 @@ public class UnderwritingBatchScheduler {
 	private final UnderwritingBatchService batchService;
 	private final Clock clock;
 
-	/** 建立使用臺北時區 Clock 的排程器；測試可注入固定 Clock 驗證日界線。 */
-	public UnderwritingBatchScheduler(UnderwritingBatchService batchService, Clock clock) {
+	/** 建立使用臺北時區系統時鐘的正式排程器。 */
+	public UnderwritingBatchScheduler(UnderwritingBatchService batchService) {
+		this(batchService, Clock.system(TAIPEI));
+	}
+
+	/** 建立可注入時鐘的排程器，供確定性測試使用。 */
+	UnderwritingBatchScheduler(UnderwritingBatchService batchService, Clock clock) {
 		this.batchService = batchService;
 		this.clock = clock;
 	}
