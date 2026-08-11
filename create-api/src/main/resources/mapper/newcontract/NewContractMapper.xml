@@ -8,13 +8,10 @@
              requested_effective_date,application_status,submitted_at,source_system,created_by,updated_by)
             VALUES (#{id},#{applicationNo},1,#{applicationDate},CURRENT_TIMESTAMP(6),#{channelCode},#{branchCode},#{agentCode},#{productCode},
               #{productVersion},#{currencyCode},#{sumAssured},#{premium},#{paymentMode},#{effectiveDate},
-			  #{applicationStatus},CURRENT_TIMESTAMP(6),'CREATE_WEB','local-tester','local-tester')
+              'SUBMITTED',CURRENT_TIMESTAMP(6),'CREATE_WEB','local-tester','local-tester')
   </insert>
   <select id="findCustomerVersion" resultType="java.lang.Long">
     SELECT record_version FROM customer.customer_master WHERE customer_id=#{customerId} AND record_status='ACTIVE'
-  </select>
-  <select id="findCustomerBirthDate" resultType="java.time.LocalDate">
-    SELECT birth_date FROM customer.customer_master WHERE customer_id=#{customerId} AND record_status='ACTIVE'
   </select>
   <insert id="nextPolicyNumber">
     INSERT INTO new_contract.policy_number_sequence () VALUES ()
@@ -24,12 +21,12 @@
   </select>
   <update id="reservePolicyNumber">
     UPDATE new_contract.insurance_application
-			   SET policy_no=#{policyNo},policy_no_assigned_at=CURRENT_TIMESTAMP(6),
+               SET reserved_policy_no=#{policyNo},policy_no_reserved_at=CURRENT_TIMESTAMP(6),
                    record_version=record_version+1,updated_by='local-tester',updated_at=CURRENT_TIMESTAMP(6)
-			 WHERE application_no=#{applicationNo} AND policy_no IS NULL
+             WHERE application_no=#{applicationNo} AND reserved_policy_no IS NULL
   </update>
   <select id="findApplicationsByQuery" resultType="map">
-	SELECT a.application_no,a.policy_no,a.policy_no_assigned_at,a.application_status,
+    SELECT a.application_no,a.reserved_policy_no,a.policy_no_reserved_at,a.application_status,
                    a.application_date,a.requested_effective_date,a.channel_code,a.branch_code,a.insurance_agent_code,
                    a.product_code,a.product_version,a.payment_mode_code,a.currency_code,
                    a.sum_assured_amount,a.premium_amount,
@@ -40,38 +37,9 @@
               JOIN customer.customer_master ac ON ac.customer_id=ap.customer_id
               JOIN new_contract.application_party ip ON ip.application_no=a.application_no AND ip.party_role_code='INSURED'
               JOIN customer.customer_master ic ON ic.customer_id=ip.customer_id
-			 WHERE a.application_no=#{query} OR a.policy_no=#{query}
+             WHERE a.application_no=#{query} OR a.reserved_policy_no=#{query}
                 OR ap.customer_id=#{query} OR ip.customer_id=#{query}
              ORDER BY a.application_date DESC,a.created_at DESC
-  </select>
-  <!-- 保單查詢清單允許空條件列出全部；輸入條件時只做完整識別值比對。 -->
-  <sql id="applicationQueryFilter">
-    <if test="query != null and query != ''">
-      WHERE a.application_no=#{query} OR a.policy_no=#{query}
-         OR EXISTS (
-           SELECT 1 FROM new_contract.application_party p
-            WHERE p.application_no=a.application_no AND p.customer_id=#{query}
-         )
-    </if>
-  </sql>
-  <select id="countApplicationQuery" resultType="long">
-    SELECT COUNT(*) FROM new_contract.insurance_application a
-    <include refid="applicationQueryFilter"/>
-  </select>
-  <select id="findApplicationQueryPage" resultType="map">
-    SELECT a.application_no,a.policy_no,a.product_code,a.application_status,a.application_date,
-           a.requested_effective_date,a.created_by,a.created_at,a.updated_by,a.updated_at,
-           a.reviewer_id,a.reviewed_at
-      FROM new_contract.insurance_application a
-    <include refid="applicationQueryFilter"/>
-     ORDER BY
-     <choose>
-       <when test="sortField == 'policyNo'">a.policy_no</when>
-       <when test="sortField == 'productCode'">a.product_code</when>
-       <otherwise>a.application_no</otherwise>
-     </choose>
-     <choose><when test="sortDirection == 'desc'">DESC</when><otherwise>ASC</otherwise></choose>,a.application_no ASC
-     LIMIT #{pageSize} OFFSET #{offset}
   </select>
   <select id="findCoverageDetails" resultType="map">
     SELECT coverage_item_seq,coverage_item_type,product_code,product_version,currency_code,sum_assured_amount,premium_amount,coverage_term_years,premium_payment_term_years,requested_effective_date FROM new_contract.application_coverage WHERE application_no=#{applicationNo} ORDER BY coverage_item_seq
@@ -146,47 +114,13 @@
              calculation_rule_version,due_status,calculated_at)
             VALUES (#{id},#{applicationNo},1,#{currencyCode},#{premium},'ENTRY-V1','PENDING',CURRENT_TIMESTAMP(6))
   </insert>
-  <insert id="insertPremiumAuthorization">
-    INSERT INTO new_contract.initial_premium_authorization
-      (authorization_id,application_no,authorization_type_code,payer_role_code,payer_customer_id,
-       payer_relationship_code,payer_name,institution_code,branch_code,payment_token,masked_number,
-       expiry_month,expiry_year,authorization_date,authorization_version,validation_status,
-       created_by,updated_by,reviewer_id,reviewed_at)
-    VALUES (#{id},#{applicationNo},#{type},#{payerRole},#{payerId},#{relationship},#{payerName},
-      #{institution},#{branch},#{token},#{masked},#{expiryMonth},#{expiryYear},#{authorizationDate},
-      #{version},'S','local-tester','local-tester','local-checker',CURRENT_TIMESTAMP(6))
-  </insert>
-  <insert id="insertCrossSellingConsent">
-    INSERT INTO new_contract.cross_selling_consent
-      (consent_id,application_no,agreed_flag,consent_version,recipient_companies,data_scope_codes,
-       stop_method_acknowledged,confirmed_at,created_by,updated_by,reviewer_id,reviewed_at)
-    VALUES (#{id},#{applicationNo},IF(#{agreed},'Y','N'),#{version},#{recipients},#{scopes},
-      IF(#{stopAcknowledged},'Y','N'),CURRENT_TIMESTAMP(6),'local-tester','local-tester','local-checker',CURRENT_TIMESTAMP(6))
-  </insert>
-  <insert id="insertInvestmentRisk">
-    INSERT INTO new_contract.investment_risk_assessment
-      (assessment_id,application_no,questionnaire_version,customer_risk_level,product_risk_level,risk_score,
-       suitable_flag,allocation_summary,disclosure_confirmed,proposal_delivered,recording_required,
-       recording_reference,created_by,updated_by,reviewer_id,reviewed_at)
-    VALUES (#{id},#{applicationNo},#{version},#{customerRisk},#{productRisk},#{score},IF(#{suitable},'Y','N'),
-      #{allocation},IF(#{disclosure},'Y','N'),IF(#{proposal},'Y','N'),IF(#{recordingRequired},'Y','N'),
-      #{recordingReference},'local-tester','local-tester','local-checker',CURRENT_TIMESTAMP(6))
-  </insert>
-  <insert id="insertAttachment">
-    INSERT INTO new_contract.application_attachment
-      (attachment_id,application_no,attachment_type_code,owner_party_role,document_no_masked,file_name,
-       file_reference,file_hash,file_size_bytes,page_count,issue_date,expiry_date,verification_status,
-       created_by,updated_by,reviewer_id,reviewed_at)
-    VALUES (#{id},#{applicationNo},#{type},#{ownerRole},#{documentNo},#{fileName},#{fileReference},#{fileHash},#{fileSizeBytes},
-      #{pageCount},#{issueDate},#{expiryDate},'S','local-tester','local-tester','local-checker',CURRENT_TIMESTAMP(6))
-  </insert>
   <select id="findPremiumDue" resultType="map">
     SELECT application_no, premium_due_id, currency_code, calculated_premium_amount,
                    calculation_rule_version, due_status
               FROM new_contract.initial_premium_due
              WHERE application_no=(
                SELECT application_no FROM new_contract.insurance_application
-				WHERE application_no=#{applicationNo} OR policy_no=#{applicationNo} LIMIT 1
+                WHERE application_no=#{applicationNo} OR reserved_policy_no=#{applicationNo} LIMIT 1
              ) AND due_status='PENDING'
              ORDER BY application_revision DESC LIMIT 1
   </select>
@@ -211,9 +145,8 @@
     UPDATE new_contract.initial_premium_due SET due_status=#{status} WHERE premium_due_id=#{id}
   </update>
   <update id="updateApplicationMatch">
-	UPDATE new_contract.insurance_application
-			   SET initial_premium_match_status=#{status},
-				   application_status=CASE WHEN #{status}='MATCHED' THEN #{readyStatus} ELSE application_status END,
+    UPDATE new_contract.insurance_application
+               SET initial_premium_match_status=#{status},
                    initial_premium_matched_at=CASE WHEN #{status}='MATCHED' THEN CURRENT_TIMESTAMP(6) ELSE NULL END,
                    record_version=record_version+1,updated_by='local-tester',updated_at=CURRENT_TIMESTAMP(6)
              WHERE application_no=#{applicationNo}
@@ -222,134 +155,47 @@
     SELECT COUNT(*) FROM new_contract.insurance_application WHERE application_no=#{applicationNo}
   </select>
   <select id="resolveApplicationNo" resultType="string">
-	SELECT application_no FROM new_contract.insurance_application WHERE application_no=#{number} OR policy_no=#{number} LIMIT 1
+    SELECT application_no FROM new_contract.insurance_application WHERE application_no=#{number} OR reserved_policy_no=#{number} LIMIT 1
   </select>
   <select id="findReservedPolicyNo" resultType="string">
-	SELECT policy_no FROM new_contract.insurance_application WHERE application_no=#{applicationNo}
+    SELECT reserved_policy_no FROM new_contract.insurance_application WHERE application_no=#{applicationNo}
   </select>
   <insert id="insertBatchRequest">
     INSERT INTO new_contract.underwriting_batch_request
-			(batch_request_id,application_no,requested_business_date,process_status,requested_by,requested_at)
-			VALUES (#{id},#{applicationNo},#{businessDate},'W','local-tester',CURRENT_TIMESTAMP(6))
+            (batch_request_id,application_no,requested_business_date,request_status,requested_by,requested_at)
+            VALUES (#{id},#{applicationNo},#{businessDate},'PENDING','local-tester',CURRENT_TIMESTAMP(6))
   </insert>
   <select id="findLatestExecutions" resultType="map">
-	SELECT batch_execution_id,business_date,process_status AS execution_status,started_at,completed_at,total_count,
+    SELECT batch_execution_id,business_date,execution_status,started_at,completed_at,total_count,
                    approved_count,inquiry_count,failed_count
               FROM new_contract.underwriting_batch_execution ORDER BY started_at DESC LIMIT 20
   </select>
-  <!-- 核保審查清單以新契約受理檔為主，僅領取受理檔與核保案件皆為 NS 的案件。 -->
-  <select id="countUnderwritingReviewCandidates" resultType="long">
-    SELECT COUNT(*)
-      FROM new_contract.insurance_application a
-      JOIN new_contract.underwriting_case u ON u.application_no=a.application_no
-     WHERE a.application_status='NS' AND u.underwriting_status='NS'
-     <if test="query != null and query != ''">
-       AND (a.application_no=#{query} OR a.policy_no=#{query} OR u.underwriting_case_no=#{query})
-     </if>
-  </select>
-  <select id="findUnderwritingReviewCandidates" resultType="map">
-    SELECT a.application_no,a.policy_no,a.product_code,a.application_date,a.requested_effective_date,
-           u.underwriting_case_no,u.underwriting_status,a.created_by,a.created_at,a.updated_by,a.updated_at,
-           br.reviewer_id,br.reviewed_at
-      FROM new_contract.insurance_application a
-      JOIN new_contract.underwriting_case u ON u.application_no=a.application_no
-      LEFT JOIN new_contract.business_review_case br ON br.review_id=(
-        SELECT br2.review_id FROM new_contract.business_review_case br2
-         WHERE br2.business_key=a.application_no AND br2.review_status IN ('A','R')
-         ORDER BY br2.reviewed_at DESC LIMIT 1)
-     WHERE a.application_status='NS' AND u.underwriting_status='NS'
-     <if test="query != null and query != ''">
-       AND (a.application_no=#{query} OR a.policy_no=#{query} OR u.underwriting_case_no=#{query})
-     </if>
-     ORDER BY
-     <choose>
-       <when test="sortField == 'policyNo'">a.policy_no</when>
-       <when test="sortField == 'productCode'">a.product_code</when>
-       <otherwise>a.application_no</otherwise>
-     </choose>
-     <choose><when test="sortDirection == 'desc'">DESC</when><otherwise>ASC</otherwise></choose>,a.application_no ASC
-     LIMIT #{pageSize} OFFSET #{offset}
-  </select>
-  <select id="findUnderwritingReview" resultType="map">
-    SELECT a.application_no,a.policy_no,a.product_code,a.application_date,a.requested_effective_date,
-           a.currency_code,a.sum_assured_amount,a.premium_amount,u.underwriting_case_no,u.underwriting_status,
-           u.underwriting_decision_code,u.contract_status_code,u.record_version,
-           a.created_by,a.created_at,a.updated_by,a.updated_at,br.reviewer_id,br.reviewed_at
-      FROM new_contract.insurance_application a
-      JOIN new_contract.underwriting_case u ON u.application_no=a.application_no
-      LEFT JOIN new_contract.business_review_case br ON br.review_id=(
-        SELECT br2.review_id FROM new_contract.business_review_case br2
-         WHERE br2.business_key=a.application_no AND br2.review_status IN ('A','R')
-         ORDER BY br2.reviewed_at DESC LIMIT 1)
-     WHERE (a.application_no=#{query} OR a.policy_no=#{query} OR u.underwriting_case_no=#{query})
-       AND a.application_status='NS' AND u.underwriting_status='NS'
-     LIMIT 1
-  </select>
-  <update id="updateUnderwritingDecision">
-    UPDATE new_contract.underwriting_case
-       SET underwriting_status=#{stageCode},underwriting_decision_code=#{decisionCode},
-           contract_status_code=#{contractStatusCode},decision_reason_code=#{reasonCode},
-           underwriter_id=#{underwriterId},underwritten_at=CURRENT_TIMESTAMP(6),
-           record_version=record_version+1,updated_by=#{underwriterId},updated_at=CURRENT_TIMESTAMP(6),
-           reviewer_id=#{underwriterId},reviewed_at=CURRENT_TIMESTAMP(6)
-     WHERE underwriting_case_no=#{caseNo} AND record_version=#{version}
-  </update>
-  <update id="updateApplicationUnderwritingStage">
-    UPDATE new_contract.insurance_application
-       SET application_status=#{stageCode},record_version=record_version+1,
-           updated_by=#{reviewerId},updated_at=CURRENT_TIMESTAMP(6),
-           reviewer_id=#{reviewerId},reviewed_at=CURRENT_TIMESTAMP(6)
-     WHERE application_no=#{applicationNo}
-  </update>
-  <insert id="insertUnderwritingDecisionAudit">
-    INSERT INTO new_contract.underwriting_decision_audit
-      (audit_id,underwriting_case_no,application_no,decision_code,stage_code,contract_status_code,
-       reason_code,reason_description,operator_id,occurred_at)
-    VALUES
-      (#{auditId},#{caseNo},#{applicationNo},#{decisionCode},#{stageCode},#{contractStatusCode},
-       #{reasonCode},#{reasonDescription},#{operatorId},CURRENT_TIMESTAMP(6))
-  </insert>
   <select id="findPolicyForReversal" resultType="map">
     SELECT p.policy_no,p.application_no,p.underwriting_case_no,p.policy_status,p.effective_date,
                    p.record_version policy_version,a.application_status,a.record_version application_version,
-                   u.underwriting_status,u.contract_status_code,u.record_version underwriting_version
+                   u.underwriting_status,u.record_version underwriting_version
               FROM main.policy_contract p
               JOIN new_contract.insurance_application a ON a.application_no=p.application_no
               JOIN new_contract.underwriting_case u ON u.underwriting_case_no=p.underwriting_case_no
              WHERE p.policy_no=#{policyNo}
   </select>
-  <select id="countReversiblePolicies" resultType="long">
-    SELECT COUNT(*)
-      FROM main.policy_contract p
-      JOIN new_contract.underwriting_case u ON u.underwriting_case_no=p.underwriting_case_no
-     WHERE u.contract_status_code='01'
-  </select>
-  <!-- 承保撤回候選只列契約狀態 01；排序欄位由 Service 白名單及 XML choose 雙重限制。 -->
-  <select id="findReversiblePolicies" resultType="map">
-    SELECT p.policy_no,p.application_no,p.product_code,u.contract_status_code,p.effective_date,
-           p.created_by,p.created_at,p.updated_by,p.updated_at,p.reviewer_id,p.reviewed_at
-      FROM main.policy_contract p
-      JOIN new_contract.underwriting_case u ON u.underwriting_case_no=p.underwriting_case_no
-      JOIN new_contract.insurance_application a ON a.application_no=p.application_no
-     WHERE u.contract_status_code='01'
-     ORDER BY
-     <choose>
-       <when test="sortField == 'applicationNo'">p.application_no</when>
-       <when test="sortField == 'productCode'">p.product_code</when>
-       <otherwise>p.policy_no</otherwise>
-     </choose>
-     <choose><when test="sortDirection == 'desc'">DESC</when><otherwise>ASC</otherwise></choose>,p.policy_no ASC
-     LIMIT #{pageSize} OFFSET #{offset}
-  </select>
   <select id="countPolicy" resultType="int">
     SELECT COUNT(*) FROM main.policy_contract WHERE policy_no=#{policyNo}
   </select>
-  <update id="clearUnderwritingContractStatus">
-    UPDATE new_contract.underwriting_case
-       SET contract_status_code=NULL,record_version=record_version+1,
-           updated_by=#{reviewerId},updated_at=CURRENT_TIMESTAMP(6),
-           reviewer_id=#{reviewerId},reviewed_at=CURRENT_TIMESTAMP(6)
-     WHERE underwriting_case_no=#{caseNo} AND record_version=#{version} AND contract_status_code='01'
+  <delete id="deletePolicy">
+    DELETE FROM main.policy_contract WHERE policy_no=#{policyNo} AND record_version=#{version}
+  </delete>
+  <update id="resetApplication">
+    UPDATE new_contract.insurance_application SET application_status='SUBMITTED',validation_result_status=NULL,
+              validation_completed_at=NULL,validation_batch_id=NULL,completed_at=NULL,record_version=record_version+1,
+              updated_by='local-tester',updated_at=CURRENT_TIMESTAMP(6)
+            WHERE application_no=#{applicationNo} AND record_version=#{version}
+  </update>
+  <update id="resetUnderwriting">
+    UPDATE new_contract.underwriting_case SET underwriting_status='PENDING',underwriting_decision_code=NULL,
+              underwriter_id=NULL,decision_reason_code=NULL,underwritten_at=NULL,policy_no=NULL,
+              record_version=record_version+1,updated_at=CURRENT_TIMESTAMP(6)
+            WHERE underwriting_case_no=#{caseNo} AND record_version=#{version}
   </update>
   <insert id="insertReversalAudit">
     INSERT INTO new_contract.policy_issuance_reversal_audit

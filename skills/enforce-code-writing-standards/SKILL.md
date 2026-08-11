@@ -17,7 +17,6 @@ description: Enforce readable and consistent Java, Spring, MyBatis XML, Vue, Typ
 6. Vue SFC 使用 `<script setup lang="ts"> → <template> → <style>`，元件 PascalCase、props/emits 明確型別。
 7. TypeScript 禁止 `any` 與無依據 assertion；API、domain、view state 使用不同型別責任。
 8. SCSS 共用 token、mixin 與基礎元件樣式；feature 不重複定義全域 token。
-   相同用途的頁面寬度、查詢列欄寬、輸入欄、下拉選單與按鈕長寬高必須由 shared 樣式／元件統一管理，feature scoped style 不得覆寫。
 9. 所有裝置共用同一份頁面與功能，支援至少 320px viewport；驗證導覽、表單、表格、分頁及主要操作會依空間重排但不消失。
 10. 註解說明原因、契約、副作用與非直覺規則，不逐字翻譯程式。
 11. 執行本 skill 檢查、formatter、type-check、test 及 build；只修本次範圍或明確列出既有債務。

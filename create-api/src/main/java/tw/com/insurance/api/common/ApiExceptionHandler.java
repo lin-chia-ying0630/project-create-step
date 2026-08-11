@@ -13,11 +13,7 @@ public class ApiExceptionHandler {
 	ResponseEntity<ResponseBodyDto<Void>> handleBusiness(BusinessException exception) {
 		HttpStatus status = exception.errorCode().contains("-404")
 				? HttpStatus.NOT_FOUND
-				: exception.errorCode().contains("-409")
-						? HttpStatus.CONFLICT
-						: exception.errorCode().contains("-422")
-								? HttpStatus.UNPROCESSABLE_ENTITY
-								: HttpStatus.BAD_REQUEST;
+				: exception.errorCode().contains("-409") ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
 		return ResponseEntity.status(status)
 				.body(ResponseBodyDto.failure(exception.errorCode(), exception.getMessage()));
 	}

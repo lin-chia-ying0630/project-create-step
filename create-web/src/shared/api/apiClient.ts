@@ -11,10 +11,7 @@ export class ApiError extends Error {
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}${path}`, {
-    ...init,
-    credentials: 'same-origin',
-  })
+  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}${path}`, init)
   const body = (await response.json()) as ResponseBodyDto<T>
   if (!response.ok || !body.success || body.data === null) {
     throw new ApiError(

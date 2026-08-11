@@ -23,10 +23,4 @@ public final class UnderwritingInquiryDtos {
 	}
 	public record InquiryPdfDocument(String inquiryNo, String fileName, String contentType, String base64Content) {
 	}
-	public record InquirySummary(String inquiryNo, String applicationNo, String policyNo, String inquiryStatus,
-			String inquiryStatusDescription, LocalDateTime issuedAt, String createdBy, LocalDateTime createdAt,
-			String updatedBy, LocalDateTime updatedAt, String reviewerId, LocalDateTime reviewedAt) {
-	}
-	public record InquiryPage(List<InquirySummary> items, long totalItems, int page, int pageSize, int totalPages) {
-	}
 }

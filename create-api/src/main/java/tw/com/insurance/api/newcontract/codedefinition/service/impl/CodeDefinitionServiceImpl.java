@@ -3,7 +3,6 @@ package tw.com.insurance.api.newcontract.codedefinition.service.impl;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import tw.com.insurance.api.newcontract.codedefinition.dto.CodeDefinitionDto;
-import tw.com.insurance.api.newcontract.codedefinition.dto.CodeDefinitionTableDto;
 import tw.com.insurance.api.newcontract.codedefinition.persistence.CodeDefinitionMapper;
 import tw.com.insurance.api.newcontract.codedefinition.service.CodeDefinitionService;
 
@@ -14,11 +13,6 @@ public class CodeDefinitionServiceImpl implements CodeDefinitionService {
 
 	public CodeDefinitionServiceImpl(CodeDefinitionMapper mapper) {
 		this.mapper = mapper;
-	}
-
-	@Override
-	public List<CodeDefinitionTableDto> findActiveTables() {
-		return mapper.findActiveTables();
 	}
 
 	@Override

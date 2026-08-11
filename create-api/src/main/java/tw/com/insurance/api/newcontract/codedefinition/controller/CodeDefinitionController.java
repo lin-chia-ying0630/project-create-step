@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import tw.com.insurance.api.common.ResponseBodyDto;
 import tw.com.insurance.api.newcontract.codedefinition.dto.CodeDefinitionDto;
-import tw.com.insurance.api.newcontract.codedefinition.dto.CodeDefinitionTableDto;
 import tw.com.insurance.api.newcontract.codedefinition.service.CodeDefinitionService;
 
 /** 提供前端取得資料庫維護的動態代碼與繁體中文說明。 */
@@ -22,12 +21,6 @@ public class CodeDefinitionController {
 
 	public CodeDefinitionController(CodeDefinitionService service) {
 		this.service = service;
-	}
-
-	/** 查詢目前可供使用者選擇的代碼表。 */
-	@GetMapping("/tables")
-	ResponseBodyDto<List<CodeDefinitionTableDto>> findActiveTables() {
-		return ResponseBodyDto.success("代碼表清單查詢成功", service.findActiveTables());
 	}
 
 	/** 依群組及欄位查詢目前啟用的代碼選項。 */
