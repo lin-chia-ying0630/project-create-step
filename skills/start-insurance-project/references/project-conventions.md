@@ -108,6 +108,9 @@ ResponseBodyDto<T>
 - Log 可包含 requestId、error code、business key 的遮罩值與耗時，不包含 Authorization、完整個資、SQL 參數、snapshot 或 response body。
 - Docker image 固定版本或 digest，使用 non-root／least privilege、read-only filesystem、`no-new-privileges`、capability drop 與 health check。
 - Compose port、service dependency、環境變數與 README 保持一致；資料庫只綁定 loopback 的本機 port。
+- 託管平台的資料庫連線由 Secret Group／Database Addon 注入，應用程式使用穩定 alias 讀取 JDBC URL、帳號及密碼；正式 secret 不得出現在 Git、Dockerfile、image layer、啟動參數或 log。
+- 本機與雲端共用 datasource 契約：平台 JDBC URL 優先、本機 `DB_URL` 次之；Flyway 預設沿用 datasource 帳號，只有明確權限隔離需求才使用獨立 migration 帳號。
+- Hikari 最大連線數必須低於資料庫方案上限，並保留管理與 migration 所需連線；服務 health check 必須實際涵蓋 datasource，不只確認 HTTP process 存活。
 
 ## 驗證順序
 

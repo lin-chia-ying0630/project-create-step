@@ -108,6 +108,8 @@ Entity 不得直接成為 API request 或 response。OpenAPI 作為可生成的 
 - 使用真實資料庫行為驗證 constraint、DECIMAL、日期、enum mapping、lock 與 affected rows。
 - 驗證 success、validation error、domain error、unauthorized、forbidden 與 unexpected error。
 - 若有 UI，驗證 loading、empty、error、success、permission denied 及繁中顯示。
+- 部署到 Northflank 等託管平台時，以平台 Secret Group／Addon 注入 JDBC URL、帳號與密碼；Spring Boot 設定只保存環境變數契約與安全的本機 fallback，不在 Git、image、部署描述或 log 保存正式 secret。
+- 雲端資料庫與本機 Docker 必須共用同一份 datasource 設定入口；明確定義環境變數優先順序、Flyway 帳號 fallback、連線池上限、內部 endpoint 及 health check，並以實際部署環境驗證連線。
 
 ## 產出內容
 

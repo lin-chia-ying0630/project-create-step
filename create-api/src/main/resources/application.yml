@@ -1,18 +1,29 @@
 spring:
   application.name: create-api
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3308/new_contract?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${DB_USER:insurance}
-    password: ${DB_PASSWORD:insurance-local-only}
+    # Northflank MySQL Addon 以 MYSQL_JDBC_URI 注入完整 JDBC URL；本機 Docker 則沿用 DB_URL。
+    # 兩者都未提供時才使用本機開發預設值，正式環境不得使用預設帳密。
+    url: ${MYSQL_JDBC_URI:${DB_URL:jdbc:mysql://localhost:3308/new_contract?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}}
+    username: ${MYSQL_USERNAME:${DB_USER:insurance}}
+    password: ${MYSQL_PASSWORD:${DB_PASSWORD:insurance-local-only}}
+    hikari:
+      # 連線池大小可依 Northflank Addon 方案的連線上限調整，避免單一服務耗盡資料庫連線。
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:8}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
+      max-lifetime: ${DB_MAX_LIFETIME_MS:1700000}
   flyway:
     enabled: true
-    user: ${DB_MIGRATION_USER:${DB_USER:insurance}}
-    password: ${DB_MIGRATION_PASSWORD:${DB_PASSWORD:insurance-local-only}}
+    # 未指定獨立 migration 帳號時，沿用 Addon 的應用程式帳號執行同一 schema 的 migration。
+    user: ${DB_MIGRATION_USER:${MYSQL_USERNAME:${DB_USER:insurance}}}
+    password: ${DB_MIGRATION_PASSWORD:${MYSQL_PASSWORD:${DB_PASSWORD:insurance-local-only}}}
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
   configuration.map-underscore-to-camel-case: true
-management.endpoints.web.exposure.include: health,info
-server.port: ${SERVER_PORT:8080}
+management:
+  endpoints.web.exposure.include: health,info
+  endpoint.health.probes.enabled: true
+server.port: ${SERVER_PORT:${PORT:8080}}
 app.pii-encryption-key: ${PII_ENCRYPTION_KEY}
 sso:
   issuer: ${SSO_ISSUER:http://192.168.1.104:8083}

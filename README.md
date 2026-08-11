@@ -277,6 +277,24 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 
 本機啟動前複製 `.env.example` 為 `.env`，將 `PII_ENCRYPTION_KEY` 換成至少 24 字元的隨機密鑰；`.env` 已排除版本控制。測試入口為 `http://localhost:5173`，API 為 `http://localhost:8082`，MySQL 為 `127.0.0.1:3308`。
 
+### Northflank MySQL 連線
+
+`create-api` 可直接連線 Northflank MySQL Addon，且不需要把資料庫密碼寫入 image、Git 或部署命令。先在 Northflank 建立 MySQL Addon，再以 Secret Group 連結該 Addon，並把 Addon 輸出的 secret 設為下列 alias 後套用至 Spring Boot Service：
+
+| Spring Boot 環境變數 | Northflank Addon secret | 必填 | 用途 |
+|---|---|---:|---|
+| `MYSQL_JDBC_URI` | JDBC URI | 是 | MySQL JDBC 連線字串；優先於本機 `DB_URL`。 |
+| `MYSQL_USERNAME` | Username | 是 | 應用程式與預設 Flyway 帳號。 |
+| `MYSQL_PASSWORD` | Password | 是 | 應用程式與預設 Flyway 密碼。 |
+| `PII_ENCRYPTION_KEY` | 自訂 Secret | 是 | 至少 24 字元的個資加密密鑰，不得使用本機範例值。 |
+| `DB_MIGRATION_USER` | 自訂或 Addon 帳號 | 否 | 只有需要分離 DDL 權限時設定。 |
+| `DB_MIGRATION_PASSWORD` | 自訂或 Addon 密碼 | 否 | 與獨立 migration 帳號成對設定。 |
+| `DB_POOL_MAX_SIZE` | 自訂值 | 否 | Hikari 最大連線數，預設 `8`，須低於 Addon 方案連線上限。 |
+
+Northflank Service 的容器連接埠維持 `8080`；若平台注入 `PORT`，Spring Boot 也會自動採用。部署完成後以 `/actuator/health` 驗證應用程式及資料庫健康狀態。應用程式優先順序為 `MYSQL_JDBC_URI`、`DB_URL`、本機預設 URL，因此既有 Docker Compose 不需修改。
+
+正式環境只應連線 Addon 的內部 endpoint。只有從本機或外部工具維護資料庫時才使用公開 endpoint，並依 Northflank 要求啟用 TLS；不得把公開連線資訊保存於 repository。
+
 本機畫面包含：
 
 | 功能 | API | 說明 |
