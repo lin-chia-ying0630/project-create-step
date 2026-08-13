@@ -259,6 +259,28 @@ docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作
 
 本機啟動前複製 `.env.example` 為 `.env`，將 `PII_ENCRYPTION_KEY` 換成至少 24 字元的隨機密鑰；`.env` 已排除版本控制。測試入口為 `http://localhost:5173`，API 為 `http://localhost:8082`，MySQL 為 `127.0.0.1:3308`。
 
+### 網站資料庫 migration
+
+網站目前以 Flyway V17 為升級起點，V18～V37 保留原始內容與 checksum；不得直接修改這些已曾發布的 migration。V38 會清除 V30 建立的 `LOCAL_TEST_DATA / TEST-NC-*` 本機測試案件，V39 則保留目前 `main` 分支後端仍在使用的 `request_status`、`execution_status`、`PERSON` 與 `ORGANIZATION` 契約。
+
+執行 Flyway 前，migration 帳號必須已可存取 `new_contract`、`main` 與 `customer` schema。若 `main` 尚未建立，V2 會回報 `ERROR 1049 Unknown database 'main'`；若 migration 帳號不能執行既有權限設定，V8 會回報 `ERROR 1410 You are not allowed to create a user with GRANT`。託管平台應由管理者先建立 schema 與授權，不得使用一般應用程式帳號臨時執行管理員 SQL。
+
+部署前先備份資料庫並確認 V17 歷程全部成功；部署後執行：
+
+```sql
+SELECT installed_rank, version, description, success
+  FROM new_contract.flyway_schema_history
+ ORDER BY installed_rank DESC
+ LIMIT 5;
+
+SELECT COUNT(*) AS local_test_case_count
+  FROM new_contract.insurance_application
+ WHERE source_system = 'LOCAL_TEST_DATA'
+   AND application_no LIKE 'TEST-NC-%';
+```
+
+驗收結果必須為最新版本 V39 且 `success = 1`、`local_test_case_count = 0`，並確認 `/actuator/health` 回傳 `UP`。若歷程存在失敗版本，先查明最底層 `SQL State`、`Error Code` 與失敗 statement；不得直接以 Flyway repair 掩蓋部分完成的 MySQL DDL。
+
 本機畫面包含：
 
 | 功能 | API | 說明 |
