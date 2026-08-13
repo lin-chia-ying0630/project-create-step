@@ -2,8 +2,43 @@ openapi: 3.1.0
 info:
   title: 保險系統 API
   version: 0.1.0
-  description: 新契約、客戶、首期保費、核保批次與承保撤回 API。
+  description: 新契約、客戶、首期保費、新契約批次承保作業、承保撤回與 Maker-Checker 覆核 API。
 paths:
+  /api/v1/reviews:
+    get:
+      summary: 分頁查詢覆核案件
+      parameters:
+        - {name: status, in: query, description: P待覆核、A核准、R退回, schema: {type: string, enum: [P, A, R], default: P}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: pageSize, in: query, description: 每頁筆數，可選 10、20、50、100, schema: {type: integer, enum: [10, 20, 50, 100], default: 10}}
+        - {name: sort, in: query, schema: {type: string, enum: ['reviewId,asc', 'reviewId,desc', 'operationType,asc', 'operationType,desc', 'businessKey,asc', 'businessKey,desc'], default: 'reviewId,asc'}}
+        - {name: query, in: query, description: 完整覆核編號、客戶 ID、要保書號碼、正式保單號碼或業務鍵, schema: {type: string, maxLength: 200}}
+      responses:
+        '200': {description: 覆核案件查詢成功}
+  /api/v1/reviews/{reviewId}:
+    get:
+      summary: 查詢覆核案件與加密 payload 解密後明細
+      parameters:
+        - {name: reviewId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: 覆核明細查詢成功}
+        '404': {description: 查無覆核案件}
+  /api/v1/reviews/{reviewId}/approve:
+    post:
+      summary: 核准覆核案件並於同一交易套用正式異動
+      parameters:
+        - {name: reviewId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: 覆核核准完成}
+        '409': {description: 案件已處理}
+        '422': {description: 建立人不得覆核自己的案件}
+  /api/v1/reviews/{reviewId}/reject:
+    post:
+      summary: 退回覆核案件並釋放待審鎖
+      parameters:
+        - {name: reviewId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: 覆核退回完成}
   /api/postal-codes/{postalCode}:
     get:
       summary: 依 3 或 6 碼郵遞區號查詢 POS 代碼定義中的縣市與行政區
@@ -14,10 +49,18 @@ paths:
         '400': {description: 郵遞區號格式錯誤}
         '404': {description: 查無郵遞區號前三碼}
   /api/v1/customers:
-    post:
-      summary: 建立自然人或公司行號客戶
+    get:
+      summary: 分頁查詢不含敏感個資的客戶摘要
+      parameters:
+        - {name: page, in: query, schema: {type: integer, default: 1}}
+        - {name: pageSize, in: query, schema: {type: integer, enum: [10, 20, 50, 100], default: 10}}
+        - {name: sort, in: query, schema: {type: string, default: 'customerId,asc'}}
       responses:
-        '200': {description: 客戶建立成功}
+        '200': {description: 客戶摘要清單查詢成功}
+    post:
+      summary: 送出自然人或公司行號客戶建立覆核案件
+      responses:
+        '200': {description: 客戶建立已送覆核}
         '400': {description: 輸入或身分證檢核失敗}
         '409': {description: 身分識別資料重複}
   /api/v1/new-contract/code-definitions/{codeGroup}/{codeField}:
@@ -27,23 +70,43 @@ paths:
         - {name: codeGroup, in: path, required: true, schema: {type: string, pattern: '^[a-z0-9-]{1,64}$'}}
         - {name: codeField, in: path, required: true, schema: {type: string, pattern: '^[a-z0-9_]{1,64}$'}}
       responses:
-        '200': {description: 代碼對照查詢成功}
+        '200': {description: 代碼對照查詢成功；中文及英文說明分欄，職業代碼另含來源分類與版本}
         '400': {description: 群組或欄位格式錯誤}
+  /api/v1/new-contract/code-definitions/tables:
+    get:
+      summary: 查詢目前生效且可供下拉選擇的代碼表
+      responses:
+        '200': {description: 代碼表清單查詢成功}
+  /api/v1/new-contract/product-definitions/active:
+    get:
+      summary: 查詢目前已完成上架且生效的保險商品定義
+      description: 保單登打以商品定義判斷主約或附約、傳統型壽險或投資型保險、幣別及投保金額限制，不接受前端自行指定商品類型。
+      responses:
+        '200': {description: 回傳有效商品、版本、中文名稱、類型、保障項目類型、幣別及投保限制}
   /api/v1/new-contract/applications:
     post:
-      summary: 建立新契約要保案件及首期應繳
+      summary: 送出保單登打覆核案件
       responses:
-        '200': {description: 要保案件建立成功}
+        '200': {description: 保單登打已送覆核}
+        '400': {description: 要保書、付款授權、投資適合度或附件欄位驗證失敗}
+        '422': {description: 付款工具未驗證或投資型商品適合度未完成}
+  /api/v1/new-contract/payment-instruments/validate:
+    post:
+      summary: 一次性驗證銀行帳號或信用卡號並回傳 Token 與遮罩值
+      description: 完整號碼不得寫入 log、要保書、覆核 payload 或正式業務資料；信用卡執行 Luhn 與有效年月檢核，銀行帳號依金融機構代碼及格式檢核。
+      responses:
+        '200': {description: 格式驗證成功，只回傳 paymentToken、maskedNumber、validationStatus 與 institutionCode}
+        '400': {description: 銀行帳號、信用卡號、有效年月或金融機構代碼格式無效}
   /api/v1/new-contract/applications/{applicationNo}/initial-premium:
     get:
-      summary: 依要保書號碼或預編保單號碼查詢首期應繳
+      summary: 依要保書號碼或正式保單號碼查詢首期應繳
       parameters:
         - {name: applicationNo, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
         '200': {description: 查詢成功}
   /api/v1/new-contract/applications/{applicationNo}/policy-number:
     post:
-      summary: 為已送件要保案件編發預編保單號碼
+      summary: 查詢案件建立時配置的固定保單號碼
       parameters:
         - {name: applicationNo, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
@@ -51,17 +114,35 @@ paths:
         '404': {description: 查無要保案件}
   /api/v1/new-contract/applications/query/{query}:
     get:
-      summary: 依要保人 ID、被保險人 ID、要保書號碼或預編保單號碼查詢保單資料
+      summary: 依要保人 ID、被保險人 ID、要保書號碼或正式保單號碼查詢保單資料
       parameters:
         - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
         '200': {description: 保單資料查詢成功}
         '404': {description: 查無資料}
+  /api/v1/new-contract/applications/query:
+    get:
+      summary: 初次進入即分頁查詢保單摘要
+      parameters:
+        - {name: query, in: query, description: 完整客戶 ID、要保書號碼或正式保單號碼, schema: {type: string, maxLength: 36}}
+        - {name: page, in: query, schema: {type: integer, default: 1}}
+        - {name: pageSize, in: query, schema: {type: integer, enum: [10, 20, 50, 100], default: 10}}
+        - {name: sort, in: query, schema: {type: string, default: 'applicationNo,asc'}}
+      responses:
+        '200': {description: 保單摘要清單查詢成功}
   /api/v1/new-contract/initial-premium-payments/reconcile:
     post:
-      summary: 登錄首期保險費收款並執行銷帳
+      deprecated: true
+      summary: 舊版首期保費收款與銷帳路徑
       responses:
-        '200': {description: 收款與銷帳完成}
+        '200': {description: 首期保費資料已送覆核}
+  /api/v1/new-contract/remittance-slips:
+    post:
+      summary: 新增送金單並送交覆核，核准後建立送金單及執行銷帳
+      responses:
+        '200': {description: 新增送金單已送覆核}
+        '400': {description: 送金單欄位或動態代碼無效}
+        '409': {description: 同案件已有待審送金單}
   /api/v1/new-contract/remittance-slips/match:
     post:
       deprecated: true
@@ -70,22 +151,66 @@ paths:
         '200': {description: 收款與銷帳完成}
   /api/v1/new-contract/underwriting-batch/requests:
     post:
-      summary: 依要保書號碼或預編保單號碼排入晚上九點核保批次
+      summary: 將指定保單與執行日送出新契約批次承保作業覆核案件
+      description: 覆核核准後建立 W 等待排程；每日 21:00（Asia/Taipei）只領取要保案件 PW、執行日等於當日且排程狀態 W 的案件。executionDate 不得早於臺北當日。
       responses:
-        '200': {description: 排程成功}
+        '200': {description: 新契約批次承保作業已送覆核}
+        '400': {description: 執行日早於臺北當日或欄位驗證失敗}
   /api/v1/new-contract/underwriting-batch/executions:
     get:
-      summary: 查詢最近核保批次執行紀錄
+      summary: 查詢最近新契約批次承保作業執行紀錄
       responses:
         '200': {description: 查詢成功}
+  /api/v1/new-contract/underwriting-reviews/{query}:
+    get:
+      summary: 依要保書號碼、正式保單號碼或核保案件號碼查詢核保審查案件
+      parameters:
+        - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
+      responses:
+        '200': {description: 核保審查案件查詢成功}
+        '404': {description: 查無核保案件}
+  /api/v1/new-contract/underwriting-reviews:
+    get:
+      summary: 分頁查詢待核保審查清單
+      description: 以新契約受理檔為主，僅回傳受理檔與核保案件階段皆為 NS 照會結束／待核保審查的案件。
+      parameters:
+        - {name: query, in: query, description: 要保書號碼、正式保單號碼或核保案件號碼完整值；空白表示全部, schema: {type: string, maxLength: 32, default: ''}}
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: pageSize, in: query, description: 每頁筆數，可選 10、20、50、100, schema: {type: integer, enum: [10, 20, 50, 100], default: 10}}
+        - {name: sort, in: query, schema: {type: string, enum: ['applicationNo,asc', 'applicationNo,desc', 'policyNo,asc', 'policyNo,desc', 'productCode,asc', 'productCode,desc'], default: 'applicationNo,asc'}}
+      responses:
+        '200': {description: 待核保審查清單查詢成功}
+  /api/v1/new-contract/underwriting-reviews/outcomes:
+    get:
+      summary: 查詢核保審查完整結果選項與後續狀態映射
+      description: 包含 SA標準、RA加費、EA除外、CA條件、PA部分承保，以及 PO延期、DC拒保、CN取消。
+      responses:
+        '200': {description: 核保結果選項查詢成功}
+  /api/v1/new-contract/underwriting-reviews/decisions:
+    post:
+      summary: 修改核保結果並送交 Maker-Checker 覆核
+      description: 承保類結果 SA/RA/EA/CA/PA 更新為 AS/01；不承保類結果更新 DC為RS/13、PO為DS/14、CN為CS/15，並追加核保決行稽核。26十天猶豫期變更屬新契約狀態但不是核保結果。
+      responses:
+        '200': {description: 核保結果修改已送覆核}
+        '400': {description: 核保結果或欄位驗證失敗}
+        '409': {description: 同案件已有待審異動或版本衝突}
   /api/v1/new-contract/underwriting-inquiries/{query}:
     get:
-      summary: 依照會單號、要保書號碼或預編保單號碼查詢核保照會結果
+      summary: 依照會單號、要保書號碼或正式保單號碼查詢核保照會結果
       description: 回傳照會、要保書、必填保單號碼、遮蔽後要保人與被保險人資料、投保資料、核保結果與未通過檢核項目。
       parameters:
         - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
         '200': {description: 核保照會單查詢成功}
+  /api/v1/new-contract/underwriting-inquiries:
+    get:
+      summary: 分頁查詢核保照會單摘要
+      parameters:
+        - {name: page, in: query, schema: {type: integer, default: 1}}
+        - {name: pageSize, in: query, schema: {type: integer, enum: [10, 20, 50, 100], default: 10}}
+        - {name: sort, in: query, schema: {type: string, default: 'inquiryNo,asc'}}
+      responses:
+        '200': {description: 核保照會單清單查詢成功}
         '404': {description: 查無核保照會單}
   /api/v1/new-contract/underwriting-inquiries/{query}/pdf:
     get:
@@ -102,10 +227,18 @@ paths:
       responses:
         '200': {description: 查詢成功}
   /api/v1/new-contract/policy-reversals:
-    post:
-      summary: 刪除未生效正式保單、回復未承保並寫入稽核快照
+    get:
+      summary: 分頁查詢契約狀態 01 的承保撤回候選
+      parameters:
+        - {name: page, in: query, schema: {type: integer, default: 1}}
+        - {name: pageSize, in: query, schema: {type: integer, enum: [10, 20, 50, 100], default: 10}}
+        - {name: sort, in: query, schema: {type: string, default: 'policyNo,asc'}}
       responses:
-        '200': {description: 撤回成功}
+        '200': {description: 可承保撤回保單查詢成功}
+    post:
+      summary: 送出承保撤回覆核案件
+      responses:
+        '200': {description: 承保撤回已送覆核}
 components:
   schemas:
     ResponseBodyDto:

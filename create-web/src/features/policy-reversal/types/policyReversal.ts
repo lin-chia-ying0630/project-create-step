@@ -32,3 +32,23 @@ export interface PolicyReversalResult {
   applicationStatus: string
   underwritingStatus: string
 }
+export interface PolicyReversalSummary {
+  policyNo: string
+  applicationNo: string
+  productCode: string
+  contractStatusCode: string
+  effectiveDate: string
+  createdBy: string
+  createdAt: string
+  updatedBy: string
+  updatedAt: string
+  reviewerId: string | null
+  reviewedAt: string | null
+}
+export interface PolicyReversalPage {
+  items: PolicyReversalSummary[]
+  totalItems: number
+  page: number
+  pageSize: number
+  totalPages: number
+}

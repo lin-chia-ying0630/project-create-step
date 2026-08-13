@@ -2,14 +2,14 @@ import { get, request } from '../../../shared/api/apiClient'
 import type {
   UnderwritingBatchExecutionSummary,
   UnderwritingBatchRequest,
-  UnderwritingBatchRequestResult,
 } from '../types/underwritingBatch'
+import type { ReviewSubmissionResult } from '../../review/types/review'
 
 export const underwritingBatchApi = {
   enqueue(
     command: UnderwritingBatchRequest,
     idempotencyKey: string,
-  ): Promise<UnderwritingBatchRequestResult> {
+  ): Promise<ReviewSubmissionResult> {
     return request('/api/v1/new-contract/underwriting-batch/requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },

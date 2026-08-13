@@ -3,6 +3,8 @@ package tw.com.insurance.api.inquiry.service.impl;
 import static tw.com.insurance.api.inquiry.dto.UnderwritingInquiryDtos.InquiryDetail;
 import static tw.com.insurance.api.inquiry.dto.UnderwritingInquiryDtos.InquiryItem;
 import static tw.com.insurance.api.inquiry.dto.UnderwritingInquiryDtos.InquiryPdfDocument;
+import static tw.com.insurance.api.inquiry.dto.UnderwritingInquiryDtos.InquiryPage;
+import static tw.com.insurance.api.inquiry.dto.UnderwritingInquiryDtos.InquirySummary;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
@@ -11,8 +13,10 @@ import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import tw.com.insurance.api.common.BusinessException;
+import tw.com.insurance.api.common.util.PageSortRequest;
 import tw.com.insurance.api.inquiry.persistence.UnderwritingInquiryMapper;
 import tw.com.insurance.api.inquiry.service.UnderwritingInquiryService;
 import tw.com.insurance.api.inquiry.domain.UnderwritingInquiryErrorCode;
@@ -58,19 +62,41 @@ public class UnderwritingInquiryServiceImpl implements UnderwritingInquiryServic
 		return new InquiryPdfDocument(detail.inquiryNo(), "核保照會單-" + detail.inquiryNo() + ".pdf", "application/pdf",
 				Base64.getEncoder().encodeToString(content));
 	}
+
+	/** 初次進入即以十筆分頁列出照會單摘要，明細及 PDF 維持點選後載入。 */
+	@Override
+	public InquiryPage findPage(int page, int pageSize, String sort) {
+		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
+				Set.of("inquiryNo", "applicationNo", "policyNo"), "inquiryNo");
+		long totalItems = mapper.countInquiries();
+		List<InquirySummary> items = mapper.findInquiryPage(query.offset(), query.pageSize(), query.sortField(),
+				query.sortDirection()).stream()
+				.map(row -> new InquirySummary(text(row, "inquiry_no"), text(row, "application_no"),
+						nullableText(row, "policy_no"), text(row, "inquiry_status"),
+						inquiryDescription(text(row, "inquiry_status")), dateTime(row.get("issued_at")),
+						text(row, "created_by"), dateTime(row.get("created_at")), text(row, "updated_by"),
+						dateTime(row.get("updated_at")), nullableText(row, "reviewer_id"),
+						dateTime(row.get("reviewed_at"))))
+				.toList();
+		return new InquiryPage(items, totalItems, query.page(), query.pageSize(), query.totalPages(totalItems));
+	}
 	private static String uwDescription(String code) {
 		return switch (code) {
-			case "INQUIRY" -> "照會中";
-			case "APPROVED" -> "核保通過";
+			case "UW" -> "等待照會回覆";
+			case "US" -> "照會完成";
+			case "AS" -> "承保完成";
+			case "NS" -> "照會結束／待核保審查";
 			case "DECLINED" -> "拒保";
 			default -> code;
 		};
 	}
 	private static String inquiryDescription(String code) {
 		return switch (code) {
-			case "OPEN" -> "待回覆";
-			case "RESOLVED" -> "已回覆";
-			case "CLOSED" -> "已結案";
+			case "UP" -> "照會受理";
+			case "UW" -> "等待照會回覆";
+			case "US" -> "照會完成";
+			case "UN" -> "照會取消";
+			case "UD" -> "照會撤回";
 			default -> code;
 		};
 	}
