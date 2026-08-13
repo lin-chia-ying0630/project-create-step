@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -50,7 +49,6 @@ public class SsoSecurityConfig {
 	}
 
 	@Bean
-	@ConditionalOnProperty(name = "sso.mode", havingValue = "sso")
 	NimbusJwtDecoder jwtDecoder(@Value("${sso.jwk-set-uri}") String jwkSetUri, @Value("${sso.issuer}") String issuer,
 			@Value("${sso.audience}") String audience) {
 		NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
