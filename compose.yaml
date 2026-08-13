@@ -24,7 +24,7 @@ services:
       DB_MIGRATION_USER: insurance
       DB_MIGRATION_PASSWORD: insurance-local-only
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY}
-      SSO_ENABLED: ${SSO_ENABLED:-false}
+      AUTH_MODE: ${AUTH_MODE:-demo}
       SSO_ISSUER: ${SSO_ISSUER:-http://192.168.1.104:8083}
       SSO_JWK_SET_URI: ${SSO_JWK_SET_URI:-http://host.docker.internal:8083/.well-known/jwks.json}
       SSO_AUDIENCE: NEW_CONTRACT
