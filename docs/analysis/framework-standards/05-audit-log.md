@@ -24,6 +24,23 @@
 
 ## 2. 稽核事件資料結構
 
+### 畫面稽核欄位契約
+
+所有業務清單及明細畫面固定顯示 `createdBy`、`createdAt`、`updatedBy`、`updatedAt`、`reviewerId`、`reviewedAt`。六個欄位由查詢 API 回傳；尚未覆核時保留欄位並顯示「尚未覆核」，不得隱藏，也不得由前端以登入人或目前時間推測。敏感資料查詢仍須另外寫入 `QUERY_PII` 稽核事件。
+
+所有正式業務表 DDL 必須直接包含下列欄位：
+
+```sql
+created_by VARCHAR(100) NOT NULL COMMENT '新增人員',
+created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '建立時間',
+updated_by VARCHAR(100) NOT NULL COMMENT '最後修改人員',
+updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '最後修改時間',
+reviewer_id VARCHAR(100) NULL COMMENT '最後覆核人員；尚未覆核為 NULL',
+reviewed_at TIMESTAMP(6) NULL COMMENT '最後覆核時間；尚未覆核為 NULL'
+```
+
+覆核核准套用正式異動時，修改與覆核欄位、正式資料及成功稽核必須在同一交易更新。資料表保存目前責任欄位，append-only audit event 保存完整歷程，兩者不可互相取代。
+
 稽核事件寫入各模組定義的 append-only `business_audit_event`（邏輯名稱）。保全模組可依已確認 schema 映射為 `change_review_audit`，其他模組不得直接沿用該表名：
 
 ```java

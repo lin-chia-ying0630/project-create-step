@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tw.com.insurance.batch.underwriting.persistence.UnderwritingBatchMapper">
+  <!-- 每次排程啟動先建立執行主檔；即使當日零件也保留可追溯紀錄。 -->
+  <insert id="insertExecution">
+    INSERT INTO new_contract.underwriting_batch_execution
+	  (batch_execution_id, business_date, trigger_type, process_status, started_at)
+	VALUES (#{executionId}, #{executionDate}, #{triggerType}, 'P', CURRENT_TIMESTAMP(6))
+  </insert>
+
+	<!-- 業務條件為 PW 待發單與指定執行日；W 表示排程尚未領件。 -->
+  <update id="claimPendingRequests">
+	UPDATE new_contract.underwriting_batch_request r
+	JOIN new_contract.insurance_application a ON a.application_no = r.application_no
+	   SET r.process_status = 'P', r.claimed_by_execution_id = #{executionId}
+	 WHERE a.application_status = 'PW'
+	   AND r.requested_business_date = #{executionDate}
+	   AND r.process_status = 'W'
+	   AND r.claimed_by_execution_id IS NULL
+  </update>
+
+  <!-- 只讀取已由本 executionId 原子領取的案件，並組合基本資料、當事人及首期保費銷帳狀態。 -->
+  <select id="findClaimedCandidates" resultType="map">
+    SELECT r.batch_request_id,
+           a.application_no,
+           a.application_id,
+           a.application_revision,
+           a.application_date,
+           a.requested_effective_date,
+           a.application_status,
+           a.product_code,
+           a.product_version,
+           a.currency_code,
+           a.sum_assured_amount,
+           a.premium_amount,
+		   a.policy_no,
+           a.initial_premium_match_status,
+           MAX(u.underwriting_case_no) AS underwriting_case_no,
+           MAX(CASE WHEN p.party_role_code = 'APPLICANT' THEN p.customer_id END) AS applicant_customer_id,
+           MAX(CASE WHEN p.party_role_code = 'INSURED' THEN p.customer_id END) AS insured_customer_id
+      FROM new_contract.underwriting_batch_request r
+      JOIN new_contract.insurance_application a ON a.application_no = r.application_no
+      LEFT JOIN new_contract.application_party p ON p.application_no = a.application_no
+      LEFT JOIN new_contract.underwriting_case u ON u.application_no = a.application_no
+	 WHERE r.claimed_by_execution_id = #{executionId}
+	   AND r.process_status = 'P'
+     GROUP BY r.batch_request_id, a.application_no, a.application_id, a.application_revision,
+              a.application_date, a.requested_effective_date, a.application_status, a.product_code,
+              a.product_version, a.currency_code, a.sum_assured_amount, a.premium_amount,
+			  a.policy_no, a.initial_premium_match_status
+     ORDER BY r.requested_at, r.batch_request_id
+  </select>
+
+  <!-- 規則通過寫 APPROVED；任何基本條件或首期保費條件未通過則寫 INQUIRY。 -->
+  <insert id="upsertUnderwritingCase">
+    INSERT INTO new_contract.underwriting_case
+      (underwriting_case_no, application_no, underwriting_status, underwriting_decision_code,
+       underwriter_id, decision_reason_code, underwritten_at, policy_no)
+    VALUES (#{caseNo}, #{applicationNo}, #{status}, #{decisionCode}, 'SCHEDULED-BATCH',
+            #{reasonCode}, CURRENT_TIMESTAMP(6), #{policyNo})
+    ON DUPLICATE KEY UPDATE
+      underwriting_status = VALUES(underwriting_status),
+      underwriting_decision_code = VALUES(underwriting_decision_code),
+      underwriter_id = VALUES(underwriter_id),
+      decision_reason_code = VALUES(decision_reason_code),
+      underwritten_at = VALUES(underwritten_at),
+      policy_no = COALESCE(policy_no, VALUES(policy_no)),
+      record_version = record_version + 1,
+      updated_at = CURRENT_TIMESTAMP(6)
+  </insert>
+
+	<!-- 只允許結束本次已領取的 P 案件，避免覆蓋其他執行緒已處理的結果。 -->
+  <update id="completeRequest">
+    UPDATE new_contract.underwriting_batch_request
+	   SET process_status = #{status}, result_code = #{resultCode}, completed_at = CURRENT_TIMESTAMP(6)
+	 WHERE batch_request_id = #{requestId} AND process_status = 'P'
+  </update>
+
+  <update id="updateApplicationValidation">
+	UPDATE new_contract.insurance_application
+	   SET application_status = #{applicationStatus},
+	       validation_result_status = #{status},
+           validation_completed_at = CURRENT_TIMESTAMP(6),
+           validation_batch_id = #{executionId},
+           record_version = record_version + 1,
+           updated_by = 'SCHEDULED-BATCH',
+           updated_at = CURRENT_TIMESTAMP(6)
+	 WHERE application_no = #{applicationNo}
+  </update>
+
+	<!-- 與 AS、PS、BS 狀態更新同一交易建立正式保單；唯一鍵保證重跑不會重複發單。 -->
+	<insert id="insertPolicyContract">
+	INSERT INTO main.policy_contract
+	  (policy_contract_id, policy_no, source_application_id, application_no, underwriting_case_no,
+	   product_code, product_version, policy_status, currency_code, sum_assured_amount,
+	   premium_amount, effective_date, contract_date)
+	SELECT #{policyContractId}, #{policyNo}, a.application_id, a.application_no, #{caseNo},
+	       a.product_code, a.product_version, '01', a.currency_code, a.sum_assured_amount,
+	       a.premium_amount, a.requested_effective_date, CURRENT_DATE
+	  FROM new_contract.insurance_application a
+	 WHERE a.application_no = #{applicationNo} AND a.application_status = 'PW'
+	</insert>
+
+	<insert id="insertPolicyParties">
+	INSERT INTO main.policy_party
+	  (policy_party_id, policy_no, party_role_code, party_seq, customer_id,
+	   relationship_to_insured_code, customer_snapshot_reference)
+	SELECT UUID(), #{policyNo}, party_role_code, party_seq, customer_id,
+	       relationship_to_insured_code, customer_snapshot_reference
+	  FROM new_contract.application_party WHERE application_no = #{applicationNo}
+	</insert>
+
+	<insert id="insertPolicyCoverages">
+	INSERT INTO main.policy_coverage
+	  (policy_coverage_id, policy_no, coverage_item_seq, coverage_item_type, product_code,
+	   product_version, insured_customer_id, currency_code, sum_assured_amount, premium_amount,
+	   effective_date, end_date, coverage_status)
+	SELECT UUID(), #{policyNo}, coverage_item_seq, coverage_item_type, product_code,
+	       product_version, insured_customer_id, currency_code, sum_assured_amount, premium_amount,
+	       requested_effective_date, requested_end_date, 'ACTIVE'
+	  FROM new_contract.application_coverage WHERE application_no = #{applicationNo}
+	</insert>
+
+	<insert id="insertPolicyBeneficiaries">
+	INSERT INTO main.policy_beneficiary
+	  (policy_beneficiary_id, policy_no, beneficiary_type_code, beneficiary_seq,
+	   beneficiary_customer_id, beneficiary_designation_code, priority_no,
+	   allocation_percentage, relationship_to_insured_code)
+	SELECT UUID(), #{policyNo}, beneficiary_type_code, beneficiary_seq,
+	       beneficiary_customer_id, beneficiary_designation_code, priority_no,
+	       allocation_percentage, relationship_to_insured_code
+	  FROM new_contract.application_beneficiary WHERE application_no = #{applicationNo}
+	</insert>
+
+  <!-- 稽核僅保存業務鍵與結果，不保存客戶個資、健康告知及付款資料。 -->
+  <insert id="insertAudit">
+    INSERT INTO new_contract.business_audit_event
+      (audit_event_id, operation_type, operator_id, request_id, application_no,
+       underwriting_case_no, result_code, occurred_at)
+    VALUES (#{auditId}, 'UNDERWRITING_BATCH', 'SCHEDULED-BATCH', #{executionId}, #{applicationNo},
+            #{caseNo}, #{resultCode}, CURRENT_TIMESTAMP(6))
+  </insert>
+
+  <update id="completeExecution">
+	UPDATE new_contract.underwriting_batch_execution
+	   SET process_status = #{executionStatus}, completed_at = CURRENT_TIMESTAMP(6),
+           total_count = #{totalCount}, approved_count = #{approvedCount},
+           inquiry_count = #{inquiryCount}, failed_count = #{failedCount}
+	 WHERE batch_execution_id = #{executionId} AND process_status = 'P'
+  </update>
+</mapper>

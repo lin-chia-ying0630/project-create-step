@@ -5,6 +5,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 public final class CustomerDtos {
 	private CustomerDtos() {
@@ -24,5 +26,11 @@ public final class CustomerDtos {
 	public record CustomerResult(String customerId, String customerTypeCode, String identityTypeCode,
 			String maskedIdentityNo, String customerName, String genderCode, LocalDate birthDate,
 			String maskedMobilePhone, String maskedEmail, String recordStatus, long recordVersion) {
+	}
+	public record CustomerSummary(String customerId, String customerTypeCode, String customerName,
+			String nationalityCode, String recordStatus, String createdBy, LocalDateTime createdAt, String updatedBy,
+			LocalDateTime updatedAt, String reviewerId, LocalDateTime reviewedAt) {
+	}
+	public record CustomerPage(List<CustomerSummary> items, long totalItems, int page, int pageSize, int totalPages) {
 	}
 }

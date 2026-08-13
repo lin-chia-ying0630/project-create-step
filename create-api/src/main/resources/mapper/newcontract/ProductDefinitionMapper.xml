@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tw.com.insurance.api.newcontract.productdefinition.persistence.ProductDefinitionMapper">
+  <sql id="activeProductColumns">
+    product_code AS productCode,
+    product_version AS productVersion,
+    product_name_zh_tw AS productName,
+    product_type_code AS productTypeCode,
+    CASE product_type_code WHEN 'I' THEN '投資型保險' ELSE '傳統型壽險' END AS productTypeDescription,
+    coverage_item_type AS coverageItemType,
+    currency_code AS currencyCode,
+    product_risk_level_code AS productRiskLevelCode,
+    minimum_entry_age AS minimumEntryAge,
+    maximum_entry_age AS maximumEntryAge,
+    minimum_sum_assured AS minimumSumAssured,
+    maximum_sum_assured AS maximumSumAssured,
+    minimum_premium AS minimumPremium,
+    minimum_coverage_term_years AS minimumCoverageTermYears,
+    maximum_coverage_term_years AS maximumCoverageTermYears,
+    minimum_payment_term_years AS minimumPaymentTermYears,
+    maximum_payment_term_years AS maximumPaymentTermYears,
+    effective_from AS effectiveFrom,
+    effective_to AS effectiveTo,
+    CASE WHEN product_type_code = 'I' THEN TRUE ELSE FALSE END AS investmentProduct
+    ,created_by AS createdBy, created_at AS createdAt, updated_by AS updatedBy, updated_at AS updatedAt,
+    reviewer_id AS reviewerId, reviewed_at AS reviewedAt
+  </sql>
+
+  <select id="findActiveProducts" resultType="tw.com.insurance.api.newcontract.productdefinition.dto.ProductDefinitionDto">
+    SELECT <include refid="activeProductColumns"/>
+      FROM new_contract.insurance_product_definition
+     WHERE product_status = 'S'
+       AND effective_from &lt;= CURRENT_DATE
+       AND (effective_to IS NULL OR effective_to &gt;= CURRENT_DATE)
+     ORDER BY product_type_code, product_code, product_version
+  </select>
+
+  <select id="findActiveProduct" resultType="tw.com.insurance.api.newcontract.productdefinition.dto.ProductDefinitionDto">
+    SELECT <include refid="activeProductColumns"/>
+      FROM new_contract.insurance_product_definition
+     WHERE product_code = #{productCode}
+       AND product_version = #{productVersion}
+       AND product_status = 'S'
+       AND effective_from &lt;= CURRENT_DATE
+       AND (effective_to IS NULL OR effective_to &gt;= CURRENT_DATE)
+  </select>
+  <select id="findProduct" resultType="tw.com.insurance.api.newcontract.productdefinition.dto.ProductDefinitionDto">
+    SELECT <include refid="activeProductColumns"/> FROM new_contract.insurance_product_definition
+     WHERE product_code=#{productCode} AND product_version=#{productVersion}
+  </select>
+
+  <select id="supportsPaymentMode" resultType="boolean">
+    SELECT EXISTS(
+      SELECT 1 FROM new_contract.insurance_product_payment_mode
+       WHERE product_code=#{productCode} AND product_version=#{productVersion}
+         AND payment_mode_code=#{paymentModeCode}
+    )
+  </select>
+
+  <select id="supportsRider" resultType="boolean">
+    SELECT EXISTS(
+      SELECT 1 FROM new_contract.insurance_product_rider_rule
+       WHERE base_product_code=#{baseProductCode} AND base_product_version=#{baseProductVersion}
+         AND rider_product_code=#{riderProductCode} AND rider_product_version=#{riderProductVersion}
+    )
+  </select>
+
+  <insert id="upsertProduct">
+    INSERT INTO new_contract.insurance_product_definition
+      (product_code,product_version,product_name_zh_tw,product_name_en,product_type_code,coverage_item_type,
+       currency_code,product_risk_level_code,minimum_entry_age,maximum_entry_age,minimum_sum_assured,
+       maximum_sum_assured,minimum_premium,minimum_coverage_term_years,maximum_coverage_term_years,
+       minimum_payment_term_years,maximum_payment_term_years,effective_from,effective_to,product_status,
+       created_by,updated_by,reviewer_id,reviewed_at)
+    VALUES
+      (#{request.productCode},#{request.productVersion},#{request.productName},#{request.productNameEn},
+       #{request.productTypeCode},#{request.coverageItemType},#{request.currencyCode},#{request.productRiskLevelCode},
+       #{request.minimumEntryAge},#{request.maximumEntryAge},#{request.minimumSumAssured},
+       #{request.maximumSumAssured},#{request.minimumPremium},#{request.minimumCoverageTermYears},
+       #{request.maximumCoverageTermYears},#{request.minimumPaymentTermYears},#{request.maximumPaymentTermYears},
+       #{request.effectiveFrom},#{request.effectiveTo},#{request.productStatus},#{reviewerId},#{reviewerId},
+       #{reviewerId},CURRENT_TIMESTAMP(6))
+    ON DUPLICATE KEY UPDATE product_name_zh_tw=VALUES(product_name_zh_tw),product_name_en=VALUES(product_name_en),
+      product_type_code=VALUES(product_type_code),coverage_item_type=VALUES(coverage_item_type),
+      currency_code=VALUES(currency_code),product_risk_level_code=VALUES(product_risk_level_code),
+      minimum_entry_age=VALUES(minimum_entry_age),maximum_entry_age=VALUES(maximum_entry_age),
+      minimum_sum_assured=VALUES(minimum_sum_assured),maximum_sum_assured=VALUES(maximum_sum_assured),
+      minimum_premium=VALUES(minimum_premium),minimum_coverage_term_years=VALUES(minimum_coverage_term_years),
+      maximum_coverage_term_years=VALUES(maximum_coverage_term_years),minimum_payment_term_years=VALUES(minimum_payment_term_years),
+      maximum_payment_term_years=VALUES(maximum_payment_term_years),effective_from=VALUES(effective_from),
+      effective_to=VALUES(effective_to),product_status=VALUES(product_status),updated_by=#{reviewerId},
+      updated_at=CURRENT_TIMESTAMP(6),reviewer_id=#{reviewerId},reviewed_at=CURRENT_TIMESTAMP(6)
+  </insert>
+  <delete id="deletePaymentModes">
+    DELETE FROM new_contract.insurance_product_payment_mode WHERE product_code=#{productCode} AND product_version=#{productVersion}
+  </delete>
+  <insert id="insertPaymentMode">
+    INSERT INTO new_contract.insurance_product_payment_mode
+      (product_code,product_version,payment_mode_code,created_by,updated_by,reviewer_id,reviewed_at)
+    VALUES (#{productCode},#{productVersion},#{paymentModeCode},#{reviewerId},#{reviewerId},#{reviewerId},CURRENT_TIMESTAMP(6))
+  </insert>
+  <delete id="deleteRiderRules">
+    DELETE FROM new_contract.insurance_product_rider_rule WHERE base_product_code=#{productCode} AND base_product_version=#{productVersion}
+  </delete>
+  <insert id="insertRiderRule">
+    INSERT INTO new_contract.insurance_product_rider_rule
+      (base_product_code,base_product_version,rider_product_code,rider_product_version,created_by,updated_by,reviewer_id,reviewed_at)
+    VALUES (#{baseProductCode},#{baseProductVersion},#{riderProductCode},#{riderProductVersion},#{reviewerId},#{reviewerId},#{reviewerId},CURRENT_TIMESTAMP(6))
+  </insert>
+</mapper>

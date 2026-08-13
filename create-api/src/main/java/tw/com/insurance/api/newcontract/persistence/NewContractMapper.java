@@ -16,12 +16,17 @@ public interface NewContractMapper {
 			@Param("productCode") String productCode, @Param("productVersion") String productVersion,
 			@Param("currencyCode") String currencyCode, @Param("sumAssured") BigDecimal sumAssured,
 			@Param("premium") BigDecimal premium, @Param("paymentMode") String paymentMode,
-			@Param("effectiveDate") LocalDate effectiveDate);
+			@Param("effectiveDate") LocalDate effectiveDate, @Param("applicationStatus") String applicationStatus);
 	Long findCustomerVersion(String customerId);
+	LocalDate findCustomerBirthDate(String customerId);
 	int nextPolicyNumber();
 	long lastInsertId();
 	int reservePolicyNumber(@Param("applicationNo") String applicationNo, @Param("policyNo") String policyNo);
 	List<Map<String, Object>> findApplicationsByQuery(String query);
+	long countApplicationQuery(@Param("query") String query);
+	List<Map<String, Object>> findApplicationQueryPage(@Param("query") String query, @Param("offset") int offset,
+			@Param("pageSize") int pageSize, @Param("sortField") String sortField,
+			@Param("sortDirection") String sortDirection);
 	List<Map<String, Object>> findCoverageDetails(String applicationNo);
 	List<Map<String, Object>> findBeneficiaryDetails(String applicationNo);
 	List<Map<String, Object>> findHealthDisclosureDetails(String applicationNo);
@@ -55,6 +60,31 @@ public interface NewContractMapper {
 			@Param("type") String type, @Param("reference") String reference);
 	int insertPremiumDue(@Param("id") String id, @Param("applicationNo") String applicationNo,
 			@Param("currencyCode") String currencyCode, @Param("premium") BigDecimal premium);
+	int insertPremiumAuthorization(@Param("id") String id, @Param("applicationNo") String applicationNo,
+			@Param("type") String type, @Param("payerRole") String payerRole, @Param("payerId") String payerId,
+			@Param("relationship") String relationship, @Param("payerName") String payerName,
+			@Param("institution") String institution, @Param("branch") String branch,
+			@Param("token") String token, @Param("masked") String masked, @Param("expiryMonth") String expiryMonth,
+			@Param("expiryYear") String expiryYear, @Param("authorizationDate") LocalDate authorizationDate,
+			@Param("version") String version);
+	int insertCrossSellingConsent(@Param("id") String id, @Param("applicationNo") String applicationNo,
+			@Param("agreed") boolean agreed, @Param("version") String version,
+			@Param("recipients") String recipients, @Param("scopes") String scopes,
+			@Param("stopAcknowledged") boolean stopAcknowledged);
+	int insertInvestmentRisk(@Param("id") String id, @Param("applicationNo") String applicationNo,
+			@Param("version") String version, @Param("customerRisk") String customerRisk,
+			@Param("productRisk") String productRisk, @Param("score") Integer score,
+			@Param("suitable") boolean suitable, @Param("allocation") String allocation,
+			@Param("disclosure") boolean disclosure, @Param("proposal") boolean proposal,
+			@Param("recordingRequired") boolean recordingRequired,
+			@Param("recordingReference") String recordingReference);
+	int insertAttachment(@Param("id") String id, @Param("applicationNo") String applicationNo,
+			@Param("type") String type, @Param("ownerRole") String ownerRole,
+			@Param("documentNo") String documentNo, @Param("fileName") String fileName,
+			@Param("fileReference") String fileReference, @Param("fileHash") String fileHash,
+			@Param("fileSizeBytes") Long fileSizeBytes,
+			@Param("pageCount") Integer pageCount, @Param("issueDate") LocalDate issueDate,
+			@Param("expiryDate") LocalDate expiryDate);
 
 	Map<String, Object> findPremiumDue(String applicationNo);
 
@@ -71,7 +101,8 @@ public interface NewContractMapper {
 
 	int updateRemittanceStatus(@Param("id") String id, @Param("status") String status);
 	int updateDueStatus(@Param("id") String id, @Param("status") String status);
-	int updateApplicationMatch(@Param("applicationNo") String applicationNo, @Param("status") String status);
+	int updateApplicationMatch(@Param("applicationNo") String applicationNo, @Param("status") String status,
+			@Param("readyStatus") String readyStatus);
 
 	int countApplication(String applicationNo);
 	String resolveApplicationNo(String number);
@@ -79,12 +110,30 @@ public interface NewContractMapper {
 	int insertBatchRequest(@Param("id") String id, @Param("applicationNo") String applicationNo,
 			@Param("businessDate") LocalDate businessDate);
 	List<Map<String, Object>> findLatestExecutions();
+	long countUnderwritingReviewCandidates(@Param("query") String query);
+	List<Map<String, Object>> findUnderwritingReviewCandidates(@Param("query") String query, @Param("offset") int offset,
+			@Param("pageSize") int pageSize, @Param("sortField") String sortField,
+			@Param("sortDirection") String sortDirection);
+	Map<String, Object> findUnderwritingReview(String query);
+	int updateUnderwritingDecision(@Param("caseNo") String caseNo, @Param("version") long version,
+			@Param("stageCode") String stageCode, @Param("decisionCode") String decisionCode,
+			@Param("contractStatusCode") String contractStatusCode, @Param("reasonCode") String reasonCode,
+			@Param("underwriterId") String underwriterId);
+	int updateApplicationUnderwritingStage(@Param("applicationNo") String applicationNo,
+			@Param("stageCode") String stageCode, @Param("reviewerId") String reviewerId);
+	int insertUnderwritingDecisionAudit(@Param("auditId") String auditId, @Param("caseNo") String caseNo,
+			@Param("applicationNo") String applicationNo, @Param("decisionCode") String decisionCode,
+			@Param("stageCode") String stageCode, @Param("contractStatusCode") String contractStatusCode,
+			@Param("reasonCode") String reasonCode, @Param("reasonDescription") String reasonDescription,
+			@Param("operatorId") String operatorId);
 
 	Map<String, Object> findPolicyForReversal(String policyNo);
+	long countReversiblePolicies();
+	List<Map<String, Object>> findReversiblePolicies(@Param("offset") int offset, @Param("pageSize") int pageSize,
+			@Param("sortField") String sortField, @Param("sortDirection") String sortDirection);
 	int countPolicy(String policyNo);
-	int deletePolicy(@Param("policyNo") String policyNo, @Param("version") long version);
-	int resetApplication(@Param("applicationNo") String applicationNo, @Param("version") long version);
-	int resetUnderwriting(@Param("caseNo") String caseNo, @Param("version") long version);
+	int clearUnderwritingContractStatus(@Param("caseNo") String caseNo, @Param("version") long version,
+			@Param("reviewerId") String reviewerId);
 	int insertReversalAudit(@Param("auditId") String auditId, @Param("policyNo") String policyNo,
 			@Param("applicationNo") String applicationNo, @Param("caseNo") String caseNo,
 			@Param("reasonCode") String reasonCode, @Param("reasonDescription") String reasonDescription,
