@@ -332,7 +332,9 @@ Northflank Service 的容器連接埠維持 `8080`；若平台注入 `PORT`，Sp
 
 ## SSO 授權邊界
 
-`create-api` 的 `/api/**` 只接受 `SSO_ACCESS_TOKEN` HttpOnly Cookie 中的 RS256 JWT。後端會透過 `SSO_JWK_SET_URI` 驗證簽章，並檢查 `SSO_ISSUER`、有效期限及 `aud=NEW_CONTRACT`；未通過一律回傳 `401`。前端啟動及換頁會呼叫 `/api/auth/me`，未登入就返回同一主機的統一入口 `5174`。本機 Compose 已設定 `host.docker.internal` 讀取入口 JWKS。
+公開測試站預設 `SSO_ENABLED=false`，後端會提供不含個資的固定 `demo-user` 測試身分，讓所有 Controller 仍維持同一份 JWT principal 契約。此模式只供 Demo／開發環境使用，不代表公司 SSO 已完成。
+
+正式環境必須設定 `SSO_ENABLED=true`，此時 `create-api` 的 `/api/**` 只接受 `SSO_ACCESS_TOKEN` HttpOnly Cookie 中的 RS256 JWT。後端會透過 `SSO_JWK_SET_URI` 驗證簽章，並檢查 `SSO_ISSUER`、有效期限及 `aud=NEW_CONTRACT`；未通過一律回傳 `401`。前端啟動及換頁會呼叫 `/api/auth/me`，未登入時依 `VITE_PORTAL_URL` 返回統一入口；未設定才使用同一主機的 `5174`。本機 Compose 已設定 `host.docker.internal` 讀取入口 JWKS。
 
 ## 新契約 Maker-Checker 覆核
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -16,6 +17,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import tw.com.insurance.api.common.ResponseBodyDto;
 
@@ -23,7 +25,16 @@ import tw.com.insurance.api.common.ResponseBodyDto;
 @Configuration
 public class SsoSecurityConfig {
 	@Bean
-	SecurityFilterChain ssoSecurityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
+	SecurityFilterChain ssoSecurityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
+			@Value("${sso.enabled:false}") boolean ssoEnabled, @Value("${sso.audience}") String audience)
+			throws Exception {
+		if (!ssoEnabled) {
+			return http.csrf(csrf -> csrf.disable())
+					.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+					.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+					.addFilterBefore(new DemoAuthenticationFilter(audience), AnonymousAuthenticationFilter.class)
+					.build();
+		}
 		return http.csrf(csrf -> csrf.disable())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -39,6 +50,7 @@ public class SsoSecurityConfig {
 	}
 
 	@Bean
+	@ConditionalOnProperty(name = "sso.enabled", havingValue = "true")
 	NimbusJwtDecoder jwtDecoder(@Value("${sso.jwk-set-uri}") String jwkSetUri, @Value("${sso.issuer}") String issuer,
 			@Value("${sso.audience}") String audience) {
 		NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();

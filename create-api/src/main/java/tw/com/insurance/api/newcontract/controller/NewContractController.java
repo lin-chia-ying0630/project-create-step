@@ -78,13 +78,10 @@ public class NewContractController {
 
 	/** 初次進入即以十筆分頁列出保單，並支援完整識別值查詢與白名單排序。 */
 	@GetMapping("/applications/query")
-	ResponseBodyDto<ApplicationQueryPage> queryApplications(
-			@RequestParam(defaultValue = "") String query,
-			@RequestParam(defaultValue = "1") int page,
-			@RequestParam(defaultValue = "10") int pageSize,
+	ResponseBodyDto<ApplicationQueryPage> queryApplications(@RequestParam(defaultValue = "") String query,
+			@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int pageSize,
 			@RequestParam(defaultValue = "applicationNo,asc") String sort) {
-		return ResponseBodyDto.success("保單資料清單查詢成功",
-				service.queryApplications(query, page, pageSize, sort));
+		return ResponseBodyDto.success("保單資料清單查詢成功", service.queryApplications(query, page, pageSize, sort));
 	}
 
 	@GetMapping("/applications/{applicationNo}/initial-premium")
@@ -113,8 +110,8 @@ public class NewContractController {
 	/** 列出新契約受理檔中 NS 照會結束、等待核保審查的案件。 */
 	@GetMapping("/underwriting-reviews")
 	ResponseBodyDto<UnderwritingReviewPage> findUnderwritingReviewCandidates(
-			@RequestParam(defaultValue = "") String query,
-			@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "10") int pageSize,
+			@RequestParam(defaultValue = "") String query, @RequestParam(defaultValue = "1") int page,
+			@RequestParam(defaultValue = "10") int pageSize,
 			@RequestParam(defaultValue = "applicationNo,asc") String sort) {
 		return ResponseBodyDto.success("待核保審查清單查詢成功",
 				service.findUnderwritingReviewCandidates(query, page, pageSize, sort));
@@ -133,8 +130,8 @@ public class NewContractController {
 	@PostMapping("/underwriting-reviews/decisions")
 	ResponseBodyDto<ReviewSubmissionResult> decideUnderwriting(@Valid @RequestBody UnderwritingDecisionRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		return ResponseBodyDto.success("核保結果修改已送覆核", reviewService.submit(
-				ReviewOperationType.UNDERWRITING_DECISION, request.applicationNo(), request, jwt.getSubject()));
+		return ResponseBodyDto.success("核保結果修改已送覆核", reviewService.submit(ReviewOperationType.UNDERWRITING_DECISION,
+				request.applicationNo(), request, jwt.getSubject()));
 	}
 	@GetMapping("/policy-reversals/{policyNo}/preview")
 	ResponseBodyDto<PolicyReversalPreview> preview(@PathVariable @NotBlank String policyNo) {
@@ -142,10 +139,8 @@ public class NewContractController {
 	}
 	/** 初次進入承保撤回即列出契約狀態 01 的候選保單。 */
 	@GetMapping("/policy-reversals")
-	ResponseBodyDto<PolicyReversalPage> findReversiblePolicies(
-			@RequestParam(defaultValue = "1") int page,
-			@RequestParam(defaultValue = "10") int pageSize,
-			@RequestParam(defaultValue = "policyNo,asc") String sort) {
+	ResponseBodyDto<PolicyReversalPage> findReversiblePolicies(@RequestParam(defaultValue = "1") int page,
+			@RequestParam(defaultValue = "10") int pageSize, @RequestParam(defaultValue = "policyNo,asc") String sort) {
 		return ResponseBodyDto.success("可承保撤回保單查詢成功", service.findReversiblePolicies(page, pageSize, sort));
 	}
 	@PostMapping("/policy-reversals")

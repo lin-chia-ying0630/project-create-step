@@ -69,8 +69,8 @@ public class UnderwritingInquiryServiceImpl implements UnderwritingInquiryServic
 		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
 				Set.of("inquiryNo", "applicationNo", "policyNo"), "inquiryNo");
 		long totalItems = mapper.countInquiries();
-		List<InquirySummary> items = mapper.findInquiryPage(query.offset(), query.pageSize(), query.sortField(),
-				query.sortDirection()).stream()
+		List<InquirySummary> items = mapper
+				.findInquiryPage(query.offset(), query.pageSize(), query.sortField(), query.sortDirection()).stream()
 				.map(row -> new InquirySummary(text(row, "inquiry_no"), text(row, "application_no"),
 						nullableText(row, "policy_no"), text(row, "inquiry_status"),
 						inquiryDescription(text(row, "inquiry_status")), dateTime(row.get("issued_at")),

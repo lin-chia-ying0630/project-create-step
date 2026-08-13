@@ -9,8 +9,7 @@ import tw.com.insurance.api.common.BusinessException;
 class ReviewDecisionPolicyTests {
 	@Test
 	void validate_givenDifferentReviewerAndPendingStatus_allowsDecision() {
-		assertThatCode(() -> ReviewDecisionPolicy.validate("P", "maker-01", "reviewer-02"))
-				.doesNotThrowAnyException();
+		assertThatCode(() -> ReviewDecisionPolicy.validate("P", "maker-01", "reviewer-02")).doesNotThrowAnyException();
 	}
 
 	@Test

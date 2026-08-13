@@ -32,18 +32,16 @@ class ProductDefinitionServiceImplTest {
 	void shouldRejectUnknownOrInactiveProduct() {
 		when(mapper.findActiveProduct("UNKNOWN", "1.0")).thenReturn(null);
 
-		assertThatThrownBy(() -> service.requireActiveProduct("UNKNOWN", "1.0"))
-				.isInstanceOf(BusinessException.class);
+		assertThatThrownBy(() -> service.requireActiveProduct("UNKNOWN", "1.0")).isInstanceOf(BusinessException.class);
 	}
 
 	/** 建立不含真實商品或客戶資料的測試商品。 */
 	private ProductDefinitionDto product(String code, boolean investmentProduct) {
 		LocalDateTime auditTime = LocalDateTime.of(2026, 1, 1, 9, 0);
 		return new ProductDefinitionDto(code, "1.0", "測試商品", investmentProduct ? "I" : "L",
-				investmentProduct ? "投資型保險" : "傳統型壽險", "BASE", "TWD",
-				investmentProduct ? "R3" : null, 0, 70,
+				investmentProduct ? "投資型保險" : "傳統型壽險", "BASE", "TWD", investmentProduct ? "R3" : null, 0, 70,
 				new BigDecimal("100000"), new BigDecimal("10000000"), new BigDecimal("1000"), 1, 99, 1, 30,
-				LocalDate.of(2026, 1, 1), null, investmentProduct,
-				"test-maker", auditTime, "test-maker", auditTime, "test-checker", auditTime);
+				LocalDate.of(2026, 1, 1), null, investmentProduct, "test-maker", auditTime, "test-maker", auditTime,
+				"test-checker", auditTime);
 	}
 }

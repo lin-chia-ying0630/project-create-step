@@ -96,9 +96,10 @@ public class NewContractServiceImpl implements NewContractService {
 		String number = request.instrumentNumber().replaceAll("[\\s-]", "");
 		boolean bank = "B".equals(request.instrumentTypeCode());
 		boolean card = "C".equals(request.instrumentTypeCode());
-		boolean valid = bank ? number.matches("\\d{6,20}") && request.bankCode() != null
-				&& request.bankCode().matches("\\d{3}") : card && number.matches("\\d{13,19}")
-				&& luhn(number) && validExpiry(request.expiryMonth(), request.expiryYear());
+		boolean valid = bank
+				? number.matches("\\d{6,20}") && request.bankCode() != null && request.bankCode().matches("\\d{3}")
+				: card && number.matches("\\d{13,19}") && luhn(number)
+						&& validExpiry(request.expiryMonth(), request.expiryYear());
 		if (!valid)
 			throw new BusinessException(NewContractErrorCode.INVALID_PAYMENT_INSTRUMENT);
 		String tokenSource = HexFormat.of().formatHex(piiKey) + ":" + request.instrumentTypeCode() + ":" + number;
@@ -161,8 +162,8 @@ public class NewContractServiceImpl implements NewContractService {
 					request.paymentModeCode()))
 				throw new BusinessException(NewContractErrorCode.PRODUCT_PAYMENT_MODE_VIOLATION);
 			if ("RIDER".equals(coverage.coverageItemType())
-					&& !productDefinitionService.supportsRider(baseCoverage.productCode(), baseCoverage.productVersion(),
-							coverage.productCode(), coverage.productVersion()))
+					&& !productDefinitionService.supportsRider(baseCoverage.productCode(),
+							baseCoverage.productVersion(), coverage.productCode(), coverage.productVersion()))
 				throw new BusinessException(NewContractErrorCode.PRODUCT_RIDER_VIOLATION);
 			if ("BASE".equals(coverage.coverageItemType()))
 				baseProduct = product;
@@ -177,9 +178,8 @@ public class NewContractServiceImpl implements NewContractService {
 		if (!request.initialPremiumAuthorization().paymentToken().startsWith("PAY-")
 				|| request.initialPremiumAuthorization().maskedNumber().length() < 4)
 			throw new BusinessException(NewContractErrorCode.PAYMENT_INSTRUMENT_NOT_VALIDATED);
-		if (investmentProduct && (!request.investmentRisk().applicable()
-				|| !request.investmentRisk().suitable() || !request.investmentRisk().disclosureConfirmed()
-				|| !request.investmentRisk().proposalDelivered()))
+		if (investmentProduct && (!request.investmentRisk().applicable() || !request.investmentRisk().suitable()
+				|| !request.investmentRisk().disclosureConfirmed() || !request.investmentRisk().proposalDelivered()))
 			throw new BusinessException(NewContractErrorCode.INVESTMENT_SUITABILITY_REQUIRED);
 		if (investmentProduct && (!codeDefinitionService.isActiveCode("new-contract", "customer_risk_level_code",
 				request.investmentRisk().customerRiskLevel())
@@ -249,29 +249,29 @@ public class NewContractServiceImpl implements NewContractService {
 					authorization.authorizationDate(), authorization.authorizationVersion());
 			if (request.crossSellingConsent().applicable()) {
 				var consent = request.crossSellingConsent();
-				mapper.insertCrossSellingConsent(UUID.randomUUID().toString(), request.applicationNo(), consent.agreed(),
-						consent.consentVersion(), consent.recipientCompanies(), consent.dataScopeCodes(),
-						consent.stopMethodAcknowledged());
+				mapper.insertCrossSellingConsent(UUID.randomUUID().toString(), request.applicationNo(),
+						consent.agreed(), consent.consentVersion(), consent.recipientCompanies(),
+						consent.dataScopeCodes(), consent.stopMethodAcknowledged());
 			}
 			if (investmentProduct) {
 				var risk = request.investmentRisk();
 				mapper.insertInvestmentRisk(UUID.randomUUID().toString(), request.applicationNo(),
-						risk.questionnaireVersion(), risk.customerRiskLevel(), risk.productRiskLevel(), risk.riskScore(),
-						risk.suitable(), risk.allocationSummary(), risk.disclosureConfirmed(), risk.proposalDelivered(),
-						risk.recordingRequired(), risk.recordingReference());
+						risk.questionnaireVersion(), risk.customerRiskLevel(), risk.productRiskLevel(),
+						risk.riskScore(), risk.suitable(), risk.allocationSummary(), risk.disclosureConfirmed(),
+						risk.proposalDelivered(), risk.recordingRequired(), risk.recordingReference());
 			}
-			request.attachments().forEach(attachment -> mapper.insertAttachment(UUID.randomUUID().toString(),
-					request.applicationNo(), attachment.attachmentTypeCode(), attachment.ownerPartyRole(),
-					attachment.documentNoMasked(), attachment.fileName(), attachment.fileReference(),
-					attachment.fileHash(), attachment.fileSizeBytes(), attachment.pageCount(), attachment.issueDate(),
-					attachment.expiryDate()));
+			request.attachments()
+					.forEach(attachment -> mapper.insertAttachment(UUID.randomUUID().toString(),
+							request.applicationNo(), attachment.attachmentTypeCode(), attachment.ownerPartyRole(),
+							attachment.documentNoMasked(), attachment.fileName(), attachment.fileReference(),
+							attachment.fileHash(), attachment.fileSizeBytes(), attachment.pageCount(),
+							attachment.issueDate(), attachment.expiryDate()));
 		} catch (DuplicateKeyException exception) {
 			throw new BusinessException(NewContractErrorCode.DUPLICATE_APPLICATION);
 		}
 		reservePolicyNumber(request.applicationNo());
 		return new CreateApplicationResult(applicationId, request.applicationNo(),
-				NewContractApplicationStatus.APPLICATION_ACCEPTED.code(), dueId, premium,
-				request.currencyCode());
+				NewContractApplicationStatus.APPLICATION_ACCEPTED.code(), dueId, premium, request.currencyCode());
 	}
 
 	/** 驗證登打金額落在商品定義的承保範圍，避免前端提示被繞過。 */
@@ -287,7 +287,8 @@ public class NewContractServiceImpl implements NewContractService {
 
 	/** 驗證保險期間與繳費期間符合商品版本限制。 */
 	private void validateProductTerms(CoverageInput coverage, ProductDefinitionDto product) {
-		if (outside(coverage.coverageTermYears(), product.minimumCoverageTermYears(), product.maximumCoverageTermYears())
+		if (outside(coverage.coverageTermYears(), product.minimumCoverageTermYears(),
+				product.maximumCoverageTermYears())
 				|| outside(coverage.premiumPaymentTermYears(), product.minimumPaymentTermYears(),
 						product.maximumPaymentTermYears()))
 			throw new BusinessException(NewContractErrorCode.PRODUCT_TERM_VIOLATION);
@@ -359,8 +360,7 @@ public class NewContractServiceImpl implements NewContractService {
 		String exactQuery = query == null || query.isBlank() ? null : query.trim();
 		long totalItems = mapper.countApplicationQuery(exactQuery);
 		List<ApplicationQuerySummary> items = mapper.findApplicationQueryPage(exactQuery, pageQuery.offset(),
-				pageQuery.pageSize(), pageQuery.sortField(), pageQuery.sortDirection()).stream()
-				.map(row -> {
+				pageQuery.pageSize(), pageQuery.sortField(), pageQuery.sortDirection()).stream().map(row -> {
 					NewContractApplicationStatus status = NewContractApplicationStatus
 							.fromCode(text(row, "application_status"));
 					return new ApplicationQuerySummary(text(row, "application_no"), text(row, "policy_no"),
@@ -614,13 +614,15 @@ public class NewContractServiceImpl implements NewContractService {
 	/** 以新契約受理檔為清單主體，只提供 NS 照會結束且待審查的案件。 */
 	@Override
 	@Transactional(readOnly = true)
-	public UnderwritingReviewPage findUnderwritingReviewCandidates(String queryValue, int page, int pageSize, String sort) {
+	public UnderwritingReviewPage findUnderwritingReviewCandidates(String queryValue, int page, int pageSize,
+			String sort) {
 		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
 				Set.of("applicationNo", "policyNo", "productCode"), "applicationNo");
 		String exactQuery = queryValue == null || queryValue.isBlank() ? null : queryValue.trim();
 		long totalItems = mapper.countUnderwritingReviewCandidates(exactQuery);
 		List<UnderwritingReviewSummary> items = mapper
-				.findUnderwritingReviewCandidates(exactQuery, query.offset(), query.pageSize(), query.sortField(), query.sortDirection())
+				.findUnderwritingReviewCandidates(exactQuery, query.offset(), query.pageSize(), query.sortField(),
+						query.sortDirection())
 				.stream()
 				.map(row -> new UnderwritingReviewSummary(text(row, "application_no"), text(row, "policy_no"),
 						text(row, "underwriting_case_no"), text(row, "product_code"),
@@ -714,8 +716,9 @@ public class NewContractServiceImpl implements NewContractService {
 		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
 				Set.of("policyNo", "applicationNo", "productCode"), "policyNo");
 		long totalItems = mapper.countReversiblePolicies();
-		List<PolicyReversalSummary> items = mapper.findReversiblePolicies(query.offset(), query.pageSize(),
-				query.sortField(), query.sortDirection()).stream()
+		List<PolicyReversalSummary> items = mapper
+				.findReversiblePolicies(query.offset(), query.pageSize(), query.sortField(), query.sortDirection())
+				.stream()
 				.map(row -> new PolicyReversalSummary(text(row, "policy_no"), text(row, "application_no"),
 						text(row, "product_code"), text(row, "contract_status_code"),
 						localDate(row.get("effective_date")), text(row, "created_by"),
@@ -741,8 +744,8 @@ public class NewContractServiceImpl implements NewContractService {
 				+ "\",\"applicationStatus\":\"" + preview.applicationStatus() + "\",\"underwritingStatus\":\""
 				+ preview.underwritingStatus() + "\"}";
 		String after = "{\"policyDeleted\":false,\"contractStatusCode\":null}";
-		if (mapper.clearUnderwritingContractStatus(preview.underwritingCaseNo(),
-				request.expectedUnderwritingVersion(), reviewerId) != 1)
+		if (mapper.clearUnderwritingContractStatus(preview.underwritingCaseNo(), request.expectedUnderwritingVersion(),
+				reviewerId) != 1)
 			throw new BusinessException(NewContractErrorCode.CONCURRENT_MODIFICATION);
 		mapper.insertReversalAudit(auditId, request.policyNo(), preview.applicationNo(), preview.underwritingCaseNo(),
 				request.reasonCode(), request.reasonDescription(), requestId, before, after, hash(before), hash(after));

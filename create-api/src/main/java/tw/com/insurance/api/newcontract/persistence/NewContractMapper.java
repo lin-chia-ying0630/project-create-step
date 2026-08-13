@@ -63,14 +63,13 @@ public interface NewContractMapper {
 	int insertPremiumAuthorization(@Param("id") String id, @Param("applicationNo") String applicationNo,
 			@Param("type") String type, @Param("payerRole") String payerRole, @Param("payerId") String payerId,
 			@Param("relationship") String relationship, @Param("payerName") String payerName,
-			@Param("institution") String institution, @Param("branch") String branch,
-			@Param("token") String token, @Param("masked") String masked, @Param("expiryMonth") String expiryMonth,
+			@Param("institution") String institution, @Param("branch") String branch, @Param("token") String token,
+			@Param("masked") String masked, @Param("expiryMonth") String expiryMonth,
 			@Param("expiryYear") String expiryYear, @Param("authorizationDate") LocalDate authorizationDate,
 			@Param("version") String version);
 	int insertCrossSellingConsent(@Param("id") String id, @Param("applicationNo") String applicationNo,
-			@Param("agreed") boolean agreed, @Param("version") String version,
-			@Param("recipients") String recipients, @Param("scopes") String scopes,
-			@Param("stopAcknowledged") boolean stopAcknowledged);
+			@Param("agreed") boolean agreed, @Param("version") String version, @Param("recipients") String recipients,
+			@Param("scopes") String scopes, @Param("stopAcknowledged") boolean stopAcknowledged);
 	int insertInvestmentRisk(@Param("id") String id, @Param("applicationNo") String applicationNo,
 			@Param("version") String version, @Param("customerRisk") String customerRisk,
 			@Param("productRisk") String productRisk, @Param("score") Integer score,
@@ -79,10 +78,9 @@ public interface NewContractMapper {
 			@Param("recordingRequired") boolean recordingRequired,
 			@Param("recordingReference") String recordingReference);
 	int insertAttachment(@Param("id") String id, @Param("applicationNo") String applicationNo,
-			@Param("type") String type, @Param("ownerRole") String ownerRole,
-			@Param("documentNo") String documentNo, @Param("fileName") String fileName,
-			@Param("fileReference") String fileReference, @Param("fileHash") String fileHash,
-			@Param("fileSizeBytes") Long fileSizeBytes,
+			@Param("type") String type, @Param("ownerRole") String ownerRole, @Param("documentNo") String documentNo,
+			@Param("fileName") String fileName, @Param("fileReference") String fileReference,
+			@Param("fileHash") String fileHash, @Param("fileSizeBytes") Long fileSizeBytes,
 			@Param("pageCount") Integer pageCount, @Param("issueDate") LocalDate issueDate,
 			@Param("expiryDate") LocalDate expiryDate);
 
@@ -111,8 +109,8 @@ public interface NewContractMapper {
 			@Param("businessDate") LocalDate businessDate);
 	List<Map<String, Object>> findLatestExecutions();
 	long countUnderwritingReviewCandidates(@Param("query") String query);
-	List<Map<String, Object>> findUnderwritingReviewCandidates(@Param("query") String query, @Param("offset") int offset,
-			@Param("pageSize") int pageSize, @Param("sortField") String sortField,
+	List<Map<String, Object>> findUnderwritingReviewCandidates(@Param("query") String query,
+			@Param("offset") int offset, @Param("pageSize") int pageSize, @Param("sortField") String sortField,
 			@Param("sortDirection") String sortDirection);
 	Map<String, Object> findUnderwritingReview(String query);
 	int updateUnderwritingDecision(@Param("caseNo") String caseNo, @Param("version") long version,

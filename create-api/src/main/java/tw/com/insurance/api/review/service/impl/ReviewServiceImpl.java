@@ -93,8 +93,7 @@ public class ReviewServiceImpl implements ReviewService {
 		String exactQuery = query == null || query.isBlank() ? null : query.trim();
 		long total = mapper.countByStatus(statusCode, exactQuery);
 		List<ReviewSummary> items = mapper.findPage(statusCode, pageQuery.offset(), pageQuery.pageSize(),
-				pageQuery.sortField(), pageQuery.sortDirection(), exactQuery).stream()
-				.map(this::toSummary).toList();
+				pageQuery.sortField(), pageQuery.sortDirection(), exactQuery).stream().map(this::toSummary).toList();
 		return new ReviewPageResult(items, total, pageQuery.page(), pageQuery.pageSize(), pageQuery.totalPages(total));
 	}
 
@@ -115,7 +114,8 @@ public class ReviewServiceImpl implements ReviewService {
 	public ReviewDetail approve(String reviewId, ReviewDecisionRequest request, String reviewerId, String requestId) {
 		Map<String, Object> row = lockPending(reviewId, reviewerId);
 		ReviewOperationType operationType = ReviewOperationType.valueOf(text(row, "operation_type"));
-		JsonNode result = execute(operationType, decrypt((byte[]) row.get("payload_ciphertext")), reviewerId, requestId);
+		JsonNode result = execute(operationType, decrypt((byte[]) row.get("payload_ciphertext")), reviewerId,
+				requestId);
 		if (mapper.approve(reviewId, reviewerId, request.comment(), writeJson(result),
 				longNumber(row, "record_version")) != 1) {
 			throw new BusinessException(ReviewErrorCode.ALREADY_DECIDED);
@@ -152,16 +152,14 @@ public class ReviewServiceImpl implements ReviewService {
 	private JsonNode execute(ReviewOperationType operationType, byte[] payload, String reviewerId, String requestId) {
 		try {
 			Object result = switch (operationType) {
-				case CUSTOMER_CREATE ->
-					customerService.create(objectMapper.readValue(payload, CreateCustomerRequest.class), requestId,
-							reviewerId);
+				case CUSTOMER_CREATE -> customerService
+						.create(objectMapper.readValue(payload, CreateCustomerRequest.class), requestId, reviewerId);
 				case APPLICATION_CREATE -> newContractService
 						.createApplication(objectMapper.readValue(payload, CreateApplicationRequest.class));
 				case POLICY_NUMBER_RESERVE -> newContractService
 						.reservePolicyNumber(objectMapper.readTree(payload).path("applicationNo").asText());
-				case POLICY_REVERSAL ->
-					newContractService.reverse(objectMapper.readValue(payload, PolicyReversalRequest.class), requestId,
-							reviewerId);
+				case POLICY_REVERSAL -> newContractService
+						.reverse(objectMapper.readValue(payload, PolicyReversalRequest.class), requestId, reviewerId);
 				case UNDERWRITING_BATCH_ENQUEUE ->
 					newContractService.enqueue(objectMapper.readValue(payload, UnderwritingBatchRequest.class));
 				case UNDERWRITING_DECISION -> newContractService.decideUnderwriting(
