@@ -16,11 +16,9 @@ class NorthflankDatasourceConfigurationTests {
 	/** Northflank 注入的 JDBC URI、帳密與 PORT 必須優先於本機 fallback。 */
 	@Test
 	void shouldResolveNorthflankAddonSecretsBeforeLocalFallback() throws IOException {
-		StandardEnvironment environment = environmentWith(Map.of(
-				"MYSQL_JDBC_URI", "jdbc:mysql://mysql.internal:3306/new_contract?sslMode=REQUIRED",
-				"MYSQL_USERNAME", "northflank-app",
-				"MYSQL_PASSWORD", "northflank-secret",
-				"PORT", "9090"));
+		StandardEnvironment environment = environmentWith(
+				Map.of("MYSQL_JDBC_URI", "jdbc:mysql://mysql.internal:3306/new_contract?sslMode=REQUIRED",
+						"MYSQL_USERNAME", "northflank-app", "MYSQL_PASSWORD", "northflank-secret", "PORT", "9090"));
 
 		assertThat(environment.getProperty("spring.datasource.url"))
 				.isEqualTo("jdbc:mysql://mysql.internal:3306/new_contract?sslMode=REQUIRED");
@@ -34,13 +32,10 @@ class NorthflankDatasourceConfigurationTests {
 	/** 既有 Docker Compose 提供 DB_URL 時仍須維持原本的本機連線方式。 */
 	@Test
 	void shouldKeepDockerDatasourceFallback() throws IOException {
-		StandardEnvironment environment = environmentWith(Map.of(
-				"DB_URL", "jdbc:mysql://mysql:3306/new_contract",
-				"DB_USER", "insurance",
-				"DB_PASSWORD", "local-only"));
+		StandardEnvironment environment = environmentWith(Map.of("DB_URL", "jdbc:mysql://mysql:3306/new_contract",
+				"DB_USER", "insurance", "DB_PASSWORD", "local-only"));
 
-		assertThat(environment.getProperty("spring.datasource.url"))
-				.isEqualTo("jdbc:mysql://mysql:3306/new_contract");
+		assertThat(environment.getProperty("spring.datasource.url")).isEqualTo("jdbc:mysql://mysql:3306/new_contract");
 		assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("insurance");
 		assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("local-only");
 	}

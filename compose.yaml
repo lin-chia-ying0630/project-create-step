@@ -18,12 +18,13 @@ services:
   api:
     build: ./create-api
     environment:
-      DB_URL: jdbc:mysql://a5f8451aa850accf:4c63d482d844aa634334776c76e718@primary.a-linlin--kkj9gmg9xdcp.addon.code.run:3306/c9bac2668501
-      DB_USER: a5f8451aa850accf 
-      DB_PASSWORD: 4c63d482d844aa634334776c76e718
-      DB_MIGRATION_USER: root
-      DB_MIGRATION_PASSWORD: root-local-only
+      DB_URL: jdbc:mysql://mysql:3306/new_contract?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USER: insurance
+      DB_PASSWORD: insurance-local-only
+      DB_MIGRATION_USER: insurance
+      DB_MIGRATION_PASSWORD: insurance-local-only
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY}
+      SSO_ENABLED: ${SSO_ENABLED:-false}
       SSO_ISSUER: ${SSO_ISSUER:-http://192.168.1.104:8083}
       SSO_JWK_SET_URI: ${SSO_JWK_SET_URI:-http://host.docker.internal:8083/.well-known/jwks.json}
       SSO_AUDIENCE: NEW_CONTRACT

@@ -114,7 +114,8 @@ router.beforeEach(async () => {
     headers: { Accept: 'application/json' },
   })
   if (response.ok) return true
-  const portalUrl = `${window.location.protocol}//${window.location.hostname}:5174/`
+  const portalUrl =
+    import.meta.env.VITE_PORTAL_URL?.trim() || `${window.location.protocol}//${window.location.hostname}:5174/`
   window.location.replace(portalUrl)
   return false
 })

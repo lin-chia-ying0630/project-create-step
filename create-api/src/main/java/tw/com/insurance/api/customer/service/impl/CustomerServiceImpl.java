@@ -108,8 +108,10 @@ public class CustomerServiceImpl implements CustomerService {
 				Set.of("customerId", "customerTypeCode", "customerName"), "customerId");
 		String exactQuery = queryText == null ? "" : queryText.trim();
 		long totalItems = mapper.countCustomers(exactQuery);
-		List<CustomerSummary> items = mapper.findCustomerPage(exactQuery, query.offset(), query.pageSize(), query.sortField(),
-				query.sortDirection()).stream()
+		List<CustomerSummary> items = mapper
+				.findCustomerPage(exactQuery, query.offset(), query.pageSize(), query.sortField(),
+						query.sortDirection())
+				.stream()
 				.map(row -> new CustomerSummary(text(row, "customer_id"), text(row, "customer_type_code"),
 						text(row, "customer_name"), text(row, "nationality_code"), text(row, "record_status"),
 						text(row, "created_by"), time(row, "created_at"), text(row, "updated_by"),
@@ -129,7 +131,8 @@ public class CustomerServiceImpl implements CustomerService {
 		Object value = row.get(key);
 		if (value == null)
 			return null;
-		return value instanceof java.sql.Timestamp timestamp ? timestamp.toLocalDateTime()
+		return value instanceof java.sql.Timestamp timestamp
+				? timestamp.toLocalDateTime()
 				: (java.time.LocalDateTime) value;
 	}
 	/** 驗證 KYC 動態代碼均來自新契約自己的有效代碼設定。 */

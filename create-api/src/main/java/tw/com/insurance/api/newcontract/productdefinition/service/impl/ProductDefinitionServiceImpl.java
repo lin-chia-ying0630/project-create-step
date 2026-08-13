@@ -48,8 +48,8 @@ public class ProductDefinitionServiceImpl implements ProductDefinitionService {
 		validateChange(request);
 		mapper.upsertProduct(request, reviewerId);
 		mapper.deletePaymentModes(request.productCode(), request.productVersion());
-		request.paymentModeCodes().stream().distinct()
-				.forEach(code -> mapper.insertPaymentMode(request.productCode(), request.productVersion(), code, reviewerId));
+		request.paymentModeCodes().stream().distinct().forEach(
+				code -> mapper.insertPaymentMode(request.productCode(), request.productVersion(), code, reviewerId));
 		mapper.deleteRiderRules(request.productCode(), request.productVersion());
 		if ("BASE".equals(request.coverageItemType()))
 			request.compatibleRiders().forEach(rider -> mapper.insertRiderRule(request.productCode(),

@@ -4,9 +4,7 @@ import java.util.Arrays;
 
 /** 覆核案件的固定單碼狀態；P 待覆核、A 核准、R 退回。 */
 public enum ReviewStatus {
-	PENDING("P", "待覆核／處理中"),
-	APPROVED("A", "覆核核准"),
-	REJECTED("R", "覆核退回");
+	PENDING("P", "待覆核／處理中"), APPROVED("A", "覆核核准"), REJECTED("R", "覆核退回");
 
 	private final String code;
 	private final String description;
