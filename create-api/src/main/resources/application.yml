@@ -27,7 +27,7 @@ management:
 server.port: ${SERVER_PORT:${PORT:8080}}
 app.pii-encryption-key: ${PII_ENCRYPTION_KEY}
 sso:
-  enabled: ${SSO_ENABLED:false}
+  mode: ${AUTH_MODE:demo}
   issuer: ${SSO_ISSUER:http://192.168.1.104:8083}
   jwk-set-uri: ${SSO_JWK_SET_URI:http://localhost:8083/.well-known/jwks.json}
   audience: ${SSO_AUDIENCE:NEW_CONTRACT}

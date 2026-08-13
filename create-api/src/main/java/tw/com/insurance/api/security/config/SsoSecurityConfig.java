@@ -26,9 +26,9 @@ import tw.com.insurance.api.common.ResponseBodyDto;
 public class SsoSecurityConfig {
 	@Bean
 	SecurityFilterChain ssoSecurityFilterChain(HttpSecurity http, ObjectMapper objectMapper,
-			@Value("${sso.enabled:false}") boolean ssoEnabled, @Value("${sso.audience}") String audience)
+			@Value("${sso.mode:demo}") String authenticationMode, @Value("${sso.audience}") String audience)
 			throws Exception {
-		if (!ssoEnabled) {
+		if (!"sso".equalsIgnoreCase(authenticationMode)) {
 			return http.csrf(csrf -> csrf.disable())
 					.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 					.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
@@ -50,7 +50,7 @@ public class SsoSecurityConfig {
 	}
 
 	@Bean
-	@ConditionalOnProperty(name = "sso.enabled", havingValue = "true")
+	@ConditionalOnProperty(name = "sso.mode", havingValue = "sso")
 	NimbusJwtDecoder jwtDecoder(@Value("${sso.jwk-set-uri}") String jwkSetUri, @Value("${sso.issuer}") String issuer,
 			@Value("${sso.audience}") String audience) {
 		NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
