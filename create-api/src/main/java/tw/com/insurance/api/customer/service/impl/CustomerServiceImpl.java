@@ -108,8 +108,6 @@ public class CustomerServiceImpl implements CustomerService {
 				Set.of("customerId", "customerTypeCode", "customerName"), "customerId");
 		String exactQuery = queryText == null ? "" : queryText.trim();
 		long totalItems = mapper.countCustomers(exactQuery);
-		if (totalItems == 0)
-			return new CustomerPage(List.of(), 0, query.page(), query.pageSize(), 0);
 		List<CustomerSummary> items = mapper
 				.findCustomerPage(exactQuery, query.offset(), query.pageSize(), query.sortField(),
 						query.sortDirection())

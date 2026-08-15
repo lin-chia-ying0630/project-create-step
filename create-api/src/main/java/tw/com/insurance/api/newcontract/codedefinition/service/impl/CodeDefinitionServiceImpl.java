@@ -34,8 +34,6 @@ public class CodeDefinitionServiceImpl implements CodeDefinitionService {
 		PageSortRequest pageQuery = PageSortRequest.of(page, pageSize, "code,asc", java.util.Set.of("code"), "code");
 		String normalizedQuery = query == null || query.isBlank() ? null : query.trim();
 		long totalItems = mapper.countActiveOptions(codeGroup, codeField, normalizedQuery);
-		if (totalItems == 0)
-			return new PageResult<>(List.of(), 0, pageQuery.page(), pageQuery.pageSize(), 0);
 		List<CodeDefinitionDto> items = mapper.findActiveOptionPage(codeGroup, codeField, pageQuery.offset(),
 				pageQuery.pageSize(), normalizedQuery);
 		return new PageResult<>(items, totalItems, pageQuery.page(), pageQuery.pageSize(),

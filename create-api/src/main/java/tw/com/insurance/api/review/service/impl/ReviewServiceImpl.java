@@ -96,9 +96,6 @@ public class ReviewServiceImpl implements ReviewService {
 		String exactQuery = query == null || query.isBlank() ? null : query.trim();
 		String operationTypeCode = normalizeOperationType(operationType);
 		long total = mapper.countByStatus(statusCode, exactQuery, operationTypeCode);
-		if (total == 0) {
-			return new ReviewPageResult(List.of(), 0, pageQuery.page(), pageQuery.pageSize(), 0);
-		}
 		List<ReviewSummary> items = mapper.findPage(statusCode, pageQuery.offset(), pageQuery.pageSize(),
 				pageQuery.sortField(), pageQuery.sortDirection(), exactQuery, operationTypeCode).stream()
 				.map(this::toSummary).toList();
