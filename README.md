@@ -1,12 +1,14 @@
 # Insurance System SA Skills
 
+> 不確定該從哪個流程開始時，先讀 [`WORKFLOWS.md`](WORKFLOWS.md)；建立新專案及搬移文件時讀 [`專案第一步.md`](專案第一步.md)。
+
 這個 repository 維護一套供 GitHub Copilot／Codex 使用的保險系統 SA（System Analyst）規範與 Skills。預設使用繁體中文，技術基準為 Spring Boot 3、Java 17、Maven Wrapper、MyBatis、MySQL、Flyway、Docker Compose、Vue 3、TypeScript、Pinia 與 Vite。
 
-同一目錄已拆成三個可獨立建置的交付包：`create-api`（同步 API 與 Flyway）、`create-batch`（批次與對帳）及 `create-web`（Vue 3 前端）。責任與開發 Gate 見 `docs/analysis/framework-standards/00-development-readiness.md`。
+文件以 `<backend-module>`、`<batch-module>`、`<frontend-module>` 表示目標專案實際採用的後端、批次與前端模組；套用 Skill 時必須先從 repository 找到真實名稱，不得把佔位符建立成目錄。模組責任與開發 Gate 見 `docs/analysis/framework-standards/00-development-readiness.md`。
 
-規格參考既有 `pos-project` 的分層、`ResponseBodyDto<T>`、OpenAPI、繁中 metadata、MyBatis/Flyway、Docker health check 及前端驗證習慣；建立新專案時重新確認相容的 patch 版本與供應鏈安全性。
+跨層契約、`ResponseBodyDto<T>`、OpenAPI、繁中 metadata、MyBatis／Flyway、Docker health check 及前端驗證方式，以 `skills/start-insurance-project/`、`skills/enforce-mybatis-three-layer/` 與 `skills/enforce-code-writing-standards/` 為建立及檢查入口；建立新專案時仍須依實際 repository 重新確認版本、模組與供應鏈安全性。
 
-後端採 package-by-feature 三層架構，SQL 統一放在 `create-api/src/main/resources/mapper/<feature>/*Mapper.xml`；Java Mapper 只保留 method contract。固定代碼、繁中說明與固定錯誤訊息集中於領域 enum，不得在各層重複硬編碼。
+後端採 package-by-feature 三層架構，SQL 統一放在 `<backend-module>/src/main/resources/mapper/<feature>/*Mapper.xml`；Java Mapper 只保留 method contract。固定代碼、繁中說明與固定錯誤訊息集中於領域 enum，不得在各層重複硬編碼。
 
 ## 規範分工
 
@@ -28,11 +30,17 @@
 ├── AGENTS.md
 ├── README.md
 ├── compose.yaml
-├── create-api/
-├── create-batch/
-├── create-web/
+├── <backend-module>/
+├── <batch-module>/
+├── <frontend-module>/
 ├── .github/
 │   └── copilot-instructions.md
+├── docs/
+│   └── analysis/
+│       ├── framework-standards/
+│       │   ├── 00-development-readiness.md
+│       │   └── 01-exception-handling.md ～ 07-testing-strategy.md
+│       └── <domain>/<feature>/
 └── skills/
     ├── start-insurance-project/
     │   ├── SKILL.md
@@ -51,7 +59,17 @@
     │   ├── SKILL.md
     │   ├── agents/openai.yaml
     │   ├── references/writing-standards.md
-    │   └── scripts/check_writing_standards.py
+    │   ├── references/skill-workflow-standards.md
+    │   ├── scripts/check_writing_standards.py
+    │   ├── scripts/check_workflow_consistency.py
+    │   ├── scripts/check_skill_portability.py
+    │   ├── scripts/test_check_workflow_consistency.py
+    │   └── scripts/test_check_skill_portability.py
+    ├── implement-full-stack-feature/
+    ├── fix-full-stack-bug/
+    ├── review-generated-code/
+    ├── release-with-pr/
+    ├── diagnose-deployment/
     ├── design-pattern-guide/
     │   ├── SKILL.md
     │   ├── agents/openai.yaml
@@ -77,7 +95,7 @@
 前端程式依 feature 放置：
 
 ```text
-create-web/src/
+<frontend-module>/src/
 ├── features/<feature>/
 │   ├── api/
 │   ├── types/
@@ -95,9 +113,9 @@ create-web/src/
 
 完整銀行帳號或信用卡號只送至 `/api/v1/new-contract/payment-instruments/validate` 做格式檢核與不可逆代碼化；正式要保資料與覆核內容僅保存 Token、遮罩值及驗證狀態，不保存完整號碼、CVV、PIN，也不得輸出至 log。附件資料只保存受控 DMS／物件儲存參照及完整性 metadata，檔案內容不直接存入業務 JSON。
 
-前端導覽由 `create-web/src/router/index.ts` 集中管理，使用 Vue Router history mode。路由名稱、URL、頁面標題及側邊選單項目共用同一份定義；Nginx 以 `try_files ... /index.html` 支援直接開啟及重新整理深層網址。
+前端導覽由 `<frontend-module>/src/router/index.ts` 集中管理，使用 Vue Router history mode。路由名稱、URL、頁面標題及側邊選單項目共用同一份定義；Nginx 以 `try_files ... /index.html` 支援直接開啟及重新整理深層網址。
 
-新契約系統提供 `/code-definitions` 的唯讀「Code Definitions 代碼定義」頁面，依代碼群組與欄位查詢資料庫目前生效的動態代碼及繁體中文說明；畫面不另行維護代碼對照。
+要保系統提供 `/code-definitions` 的唯讀「Code Definitions 代碼定義」頁面，依代碼群組與欄位查詢資料庫目前生效的動態代碼及繁體中文說明；畫面不另行維護代碼對照。
 
 `customer-kyc / occupation_code` 採用衛生福利部 TW Core IG 的「臺灣壽險公會傷害保險個人職業分類表」CodeSystem `2023-06-01`，保存 1,324 筆 8 碼代碼、繁體中文名稱、大分類、中分類、工作性質及來源版本。來源未提供英文名稱，因此英文欄位維持 `NULL`，不得自行翻譯；客戶職業選單以「代碼｜繁體中文」顯示。
 
@@ -105,7 +123,7 @@ create-web/src/
 
 客戶類型主檔只保存一碼：`1｜自然人（PERSON）`、`2｜公司（ORGANIZATION）`，英文識別與中文說明由 `new_contract.code_definition` 管理。國家 `TW` 與幣別 `TWD` 等正式標準代碼不縮碼，但輸入畫面必須使用代碼定義下拉選單顯示中文。
 
-全域視覺樣式集中於 `create-web/src/shared/styles/style.scss`，統一維護色彩、斷點、頁面寬度、查詢列比例、頁籤高度、選單、表單控制項與按鈕的長寬高及狀態訊息；feature-specific 樣式只保留業務專屬版面，不得覆寫共用控制項尺寸或重新定義第二份全域設計 token。登打分頁、客戶類型及覆核分類等卡片式選擇一律使用 `SectionTabNavigator.vue`。
+全域視覺樣式集中於 `<frontend-module>/src/shared/styles/style.scss`，統一維護色彩、斷點、頁面寬度、查詢列比例、頁籤高度、選單、表單控制項與按鈕的長寬高及狀態訊息；feature-specific 樣式只保留業務專屬版面，不得覆寫共用控制項尺寸或重新定義第二份全域設計 token。登打分頁、客戶類型及覆核分類等卡片式選擇一律使用 `SectionTabNavigator.vue`。
 
 按鈕依動作語意固定使用共用樣式：查詢、送出及排入作業使用青綠實心 `primary-button`；重新整理、查看、清除、取消及頁面導覽使用不填色的青綠外框 `secondary-button`；承保撤回固定使用藍色實心 `reversal-button`；刪除等不可逆危險動作才使用紅色 `danger-button`。feature scoped 樣式不得覆蓋這些語意顏色。
 
@@ -113,7 +131,7 @@ create-web/src/
 
 前端採裝置無關的 Responsive Web Design：所有裝置使用同一份 route、Vue component、DOM、API 與業務功能，只依 viewport 可用空間自動重排。禁止 user-agent／裝置型號分支或手機專用頁。頁面至少支援 320px viewport，不得產生整頁水平捲動；空間不足時表單改為單欄，導覽、頁籤與寬表格只在自身容器內橫向捲動。交付前以 320×568、390×844 與桌面 viewport 驗證相同功能。
 
-瀏覽器渲染入口由 `create-web/index.html` 統一設定繁中語系、UTF-8、device-width viewport、初始縮放、theme color 與 `viewport-fit=cover`。共用 layout 使用 dynamic viewport height 與 safe-area inset 適應瀏覽器可用區域，同時保留使用者縮放能力。
+瀏覽器渲染入口由 `<frontend-module>/index.html` 統一設定繁中語系、UTF-8、device-width viewport、初始縮放、theme color 與 `viewport-fit=cover`。共用 layout 使用 dynamic viewport height 與 safe-area inset 適應瀏覽器可用區域，同時保留使用者縮放能力。
 
 ## 核心 SA 流程
 
@@ -165,6 +183,22 @@ docs/analysis/<domain>/<feature>/
 | `svn-review` | 唯讀比對 SVN revision、branch、mergeinfo、release scope 與跨層風險。 |
 
 專項 Skill 只在需要時插入核心流程，不要求每次全部執行。
+
+## 可執行交付流程
+
+下列 orchestrator Skills 將既有單一能力組成可驗證流程；細部規則仍由被路由的專項 Skill 與 `AGENTS.md` 管理，避免重複維護。
+
+流程與技術 Skill 只保存可跨功能重複使用的步驟及契約。`<feature>`、`<resource>`、`<Feature>` 等為待替換佔位符；專案中不存在的 Store、類別、API、資料表、錯誤碼或畫面不得因範例而建立。只有兩個以上實際功能具相同責任時才提取共用元件，無法共用的業務邏輯留在所屬 feature 或由正式需求定義。
+
+| Skill | 使用情境 | 主要完成條件 |
+|---|---|---|
+| `implement-full-stack-feature` | 使用者明確要求新增或完成資料庫到 UI 的保險功能。 | 跨層契約一致，測試、架構掃描與建置有可重現證據。 |
+| `fix-full-stack-bug` | 已要求修復跨資料庫、API、狀態或畫面的可重現缺陷。 | 根因有證據、最小修復完成，原案例與鄰近行為通過回歸。 |
+| `review-generated-code` | 唯讀審查 AI 產生程式、diff、commit、branch 或 PR。 | findings 具檔案行號、觸發條件、後果與最小修正方向。 |
+| `release-with-pr` | 明確要求 commit、push 或建立以 `main` 為目標的 PR。 | 範圍、驗證、branch、commit、push、PR 與 CI 狀態皆可追溯。 |
+| `diagnose-deployment` | Docker、Northflank、Flyway、health、API 或部署後 UI 異常。 | Git、image、設定、DB、服務與瀏覽器證據指向第一個失敗邊界。 |
+
+推薦依任務使用單一入口：功能開發使用 `implement-full-stack-feature`；缺陷先以 `fix-full-stack-bug` 證明根因；交付前以 `review-generated-code` 做唯讀檢查；只有收到發布授權後才使用 `release-with-pr`。部署異常獨立使用 `diagnose-deployment`，確認需修改程式後再路由到修復流程。
 
 ## 保險業務建模能力
 
@@ -256,12 +290,23 @@ python3 /Users/linjiaying/.codex/skills/.system/skill-creator/scripts/quick_vali
 
 若執行環境缺少 `PyYAML`，先回報環境限制；不得宣稱官方驗證器已通過。
 
-## 三包建置與啟動
+修改 Workflow、README 或 Skills 後，另執行一致性檢查，避免路由、目錄、frontmatter、`agents/openai.yaml`、文件連結或禁止條款漂移：
 
 ```bash
-cd create-api && ./mvnw test
-cd create-batch && ./mvnw test
-cd create-web && npm ci && npm run build && npm audit --audit-level=high
+python3 skills/enforce-code-writing-standards/scripts/check_workflow_consistency.py .
+python3 skills/enforce-code-writing-standards/scripts/check_skill_portability.py .
+python3 -m unittest skills/enforce-code-writing-standards/scripts/test_check_workflow_consistency.py
+python3 -m unittest skills/enforce-code-writing-standards/scripts/test_check_skill_portability.py
+```
+
+## 三包建置與啟動
+
+下列指令為跨專案範本；執行前先將 module 佔位符替換為目標 repository 的實際路徑，未採用的模組直接省略。
+
+```bash
+cd <backend-module> && ./mvnw test
+cd <batch-module> && ./mvnw test
+cd <frontend-module> && npm ci && npm run build && npm audit --audit-level=high
 docker compose up --build mysql api web
 ```
 
@@ -271,9 +316,9 @@ docker compose up --build mysql api web
 docker compose --profile batch run --rm batch --spring.batch.job.name=<已實作的Job名稱>
 ```
 
-第一條業務規格已建立為「新契約批次承保作業」：`create-api` 的 Flyway 建立 `new_contract` 要保、核保、照會、規則結果、稽核與 outbox，並以 `main.policy_contract` 作正式保單寫入邊界；`create-batch` 執行基本檢核，有問題建立照會，全部通過才承保。完整規格見 `docs/analysis/new-contract/underwriting/00-requirements.md`。
+第一條業務規格已建立為「批次承保作業」：`<backend-module>` 的 Flyway 建立 `new_contract` 要保、核保、照會、規則結果、稽核與 outbox，並以 `main.policy_contract` 作正式保單寫入邊界；`<batch-module>` 執行基本檢核，有問題建立照會，全部通過才承保。完整規格見 `docs/analysis/new-contract/underwriting/00-requirements.md`。
 
-目前已完成本機開發用的客戶建立、保單登打、首期保險費收款與銷帳、新契約批次承保作業排程與紀錄查詢、核保照會單查詢與 PDF，以及未生效保單承保撤回 API／畫面。客戶身分證、聯絡方式與地址採 AES-GCM 加密，身分證另存不可逆雜湊供查重；姓名只有 `customer.customer_master` 是可維護來源，送件資料只保存 `customer_id` 與不可變快照參考。
+目前已完成本機開發用的客戶建立、保單登打、首期保險費收款與銷帳、批次承保作業排程與紀錄查詢、核保照會單查詢與 PDF，以及未生效保單承保撤回 API／畫面。客戶身分證、聯絡方式與地址採 AES-GCM 加密，身分證另存不可逆雜湊供查重；姓名只有 `customer.customer_master` 是可維護來源，送件資料只保存 `customer_id` 與不可變快照參考。
 
 本機啟動前複製 `.env.example` 為 `.env`，將 `PII_ENCRYPTION_KEY` 換成至少 24 字元的隨機密鑰；`.env` 已排除版本控制。測試入口為 `http://localhost:5173`，API 為 `http://localhost:8082`，MySQL 為 `127.0.0.1:3308`。
 
@@ -300,7 +345,7 @@ SELECT COUNT(*) AS local_test_case_count
 驗收結果必須為最新版本 V39 且 `success = 1`、`local_test_case_count = 0`，並確認 `/actuator/health` 回傳 `UP`。若歷程存在失敗版本，先查明最底層 `SQL State`、`Error Code` 與失敗 statement；不得直接以 Flyway repair 掩蓋部分完成的 MySQL DDL。
 ### Northflank MySQL 連線
 
-`create-api` 可直接連線 Northflank MySQL Addon，且不需要把資料庫密碼寫入 image、Git 或部署命令。先在 Northflank 建立 MySQL Addon，再以 Secret Group 連結該 Addon，並把 Addon 輸出的 secret 設為下列 alias 後套用至 Spring Boot Service：
+`<backend-module>` 可直接連線 Northflank MySQL Addon，且不需要把資料庫密碼寫入 image、Git 或部署命令。先在 Northflank 建立 MySQL Addon，再以 Secret Group 連結該 Addon，並把 Addon 輸出的 secret 設為下列 alias 後套用至 Spring Boot Service：
 
 | Spring Boot 環境變數 | Northflank Addon secret | 必填 | 用途 |
 |---|---|---:|---|
@@ -324,25 +369,29 @@ Northflank Service 的容器連接埠維持 `8080`；若平台注入 `PORT`，Sp
 | 保單登打 | `POST /api/v1/new-contract/applications` | 建立要保案件與首期應繳。 |
 | 首期保險費收款與銷帳 | `GET .../initial-premium`、`POST .../remittance-slips` | 查詢應收後由「新增送金單」登錄繳費憑證及實收金額並送覆核；核准後才建立送金單、比對應收與實收並決定是否完成銷帳。舊路徑 `POST .../initial-premium-payments/reconcile` 與 `POST .../remittance-slips/match` 暫保留相容。 |
 | 核保照會單 | `GET .../underwriting-inquiries/{query}`、`GET .../{query}/pdf` | 依照會單號或要保書號碼顯示核保未通過項目，並產生繁體中文 PDF。測試資料為 `DEMO-INQ-001`。 |
-| 新契約批次承保作業 | `POST .../underwriting-batch/requests`、`GET .../executions` | 排入每日 21:00 批次並查詢執行紀錄。 |
-| 核保審查作業 | `GET .../underwriting-reviews`、`GET .../{query}`、`POST .../decisions` | 先列出新契約受理檔中 `NS` 照會結束／待核保審查案件；點選後以彈跳視窗檢視資料並將核保結果送覆核。 |
+| 批次承保作業 | `POST .../underwriting-batch/requests`、`GET .../executions` | 排入每日 21:00 批次並查詢執行紀錄。 |
+| 核保審查作業 | `GET .../underwriting-reviews`、`GET .../{query}`、`POST .../decisions` | 先列出要保作業受理檔中 `NS` 照會結束／待核保審查案件；點選後以彈跳視窗檢視資料並將核保結果送覆核。 |
 | 承保撤回 | `GET .../preview`、`POST .../policy-reversals` | 僅允許未生效案件，使用版本及確認 token 防止誤刪。 |
 
 上述仍是開發基線，不包含正式商品費率、外部身分驗證、AML／PEP 名單服務、IAM 權限、HSM/KMS 密鑰管理與完整批次物化，因此不可直接上線。
 
 ## SSO 授權邊界
 
-公開測試站預設 `AUTH_MODE=demo`，後端會提供不含個資的固定 `demo-user` 測試身分，讓所有 Controller 仍維持同一份 JWT principal 契約。此模式只供 Demo／開發環境使用，不代表公司 SSO 已完成。
+公開測試站設定 `AUTH_MODE=demo` 時會提供不含個資的固定 `demo-user` 測試身分，讓所有 Controller 仍維持同一份 JWT principal 契約。應用程式在未設定時安全預設為 `AUTH_MODE=sso`，未知模式會拒絕啟動，不再自動降級成 Demo；Demo 模式只供展示／開發環境使用，不代表公司 SSO 已完成。
 
-正式環境必須設定 `AUTH_MODE=sso`，此時 `create-api` 的 `/api/**` 只接受 `SSO_ACCESS_TOKEN` HttpOnly Cookie 中的 RS256 JWT。後端會透過 `SSO_JWK_SET_URI` 驗證簽章，並檢查 `SSO_ISSUER`、有效期限及 `aud=NEW_CONTRACT`；未通過一律回傳 `401`。前端啟動及換頁會呼叫 `/api/auth/me`，未登入時依 `VITE_PORTAL_URL` 返回統一入口；未設定才使用同一主機的 `5174`。本機 Compose 已設定 `host.docker.internal` 讀取入口 JWKS。
+正式環境必須設定 `AUTH_MODE=sso`，此時 `<backend-module>` 的 `/api/**` 只接受 `SSO_ACCESS_TOKEN` HttpOnly Cookie 中的 RS256 JWT。後端會透過 `SSO_JWK_SET_URI` 驗證簽章，並檢查 `SSO_ISSUER`、有效期限及 `aud=NEW_CONTRACT`；未通過一律回傳 `401`。前端啟動及換頁會呼叫 `/api/auth/me`，未登入時依 `VITE_PORTAL_URL` 返回統一入口；未設定才使用同一主機的 `5174`。本機 Compose 已設定 `host.docker.internal` 讀取入口 JWKS。
 
-## 新契約 Maker-Checker 覆核
+## 要保作業 Maker-Checker 覆核
 
-所有會修改正式資料的操作先建立 `business_review_case`，核准前不呼叫原業務 Service。覆核工作台 `/reviews` 統一處理客戶建立、保單登打、承保撤回、新契約批次承保作業及首期保費資料；保單號碼編發也視為保單登打類別的資料異動。
+所有會修改正式資料的操作先建立 `business_review_case`，核准前不呼叫原業務 Service。覆核工作台 `/reviews` 統一處理客戶建立、保單登打、承保撤回、批次承保作業及首期保費資料；保單號碼編發也視為保單登打類別的資料異動。
 
-新契約批次承保作業畫面以「要保書號碼或正式保單號碼＋執行日」送覆核；核准後寫入 `underwriting_batch_request.requested_business_date`，排程請求狀態先記為 `W`（等待）。排程器每日 21:00（Asia/Taipei）啟動，只原子領取要保案件狀態為 `PW`、排程請求狀態為 `W`，且 `requested_business_date = 當日臺北日期` 的案件；領件後排程狀態改為 `P`（處理中）。案件必須已有要保人與被保險人、基本金額及日期有效、已於案件建立時固定正式保單號碼，且首期保險費已銷帳；全部通過時狀態改為 `S`（完成）並寫入正式保單主檔，任一條件未通過則改為 `R`（照會／退件）。過去的執行日不得新增，以免留下不會再被排程領取的資料。
+批次承保作業畫面以「要保書號碼或正式保單號碼＋執行日」送覆核；核准後寫入 `underwriting_batch_request.requested_business_date`，排程請求狀態先記為 `W`（等待）。排程器每日 21:00（Asia/Taipei）啟動，只原子領取要保案件狀態為 `PW`、排程請求狀態為 `W`，且 `requested_business_date = 當日臺北日期` 的案件；領件後排程狀態改為 `P`（處理中）。案件必須已有要保人與被保險人、基本金額及日期有效、已於案件建立時固定正式保單號碼，且首期保險費已銷帳；全部通過時狀態改為 `S`（完成）並寫入正式保單主檔，任一條件未通過則改為 `R`（照會／退件）。過去的執行日不得新增，以免留下不會再被排程領取的資料。
 
-新契約契約狀態包含：受理時資料庫值為 `NULL`，承保並生效後為 `01`（有效），人工核保負向決行為 `13`（拒保）、`14`（延期）或 `15`（取消），保單送達後十天猶豫期內的變更為 `26`（猶豫期變更）。`NS` 固定表示新契約受理檔的「照會結束／待核保審查」，核保審查清單只列出受理檔與核保案件皆為 `NS` 的資料；`DC` 拒絕承保映射為階段 `RS`／契約狀態 `13`，`PO` 延期承保映射為 `DS`／`14`，`CN` 取消申請映射為 `CS`／`15`。`26` 屬新契約狀態，但不是核保結果，因此不列入核保審查結果選單。
+要保作業契約狀態包含：受理時資料庫值為 `NULL`，承保並生效後為 `01`（有效），人工核保負向決行為 `13`（拒保）、`14`（延期）或 `15`（取消），保單送達後十天猶豫期內的變更為 `26`（猶豫期變更）。`NS` 固定表示要保作業受理檔的「照會結束／待核保審查」，核保審查清單只列出受理檔與核保案件皆為 `NS` 的資料；`DC` 拒絕承保映射為階段 `RS`／契約狀態 `13`，`PO` 延期承保映射為 `DS`／`14`，`CN` 取消申請映射為 `CS`／`15`。`26` 屬要保作業狀態，但不是核保結果，因此不列入核保審查結果選單。
+
+要保流程階段的 API 與前端型別統一使用 `newContractStageCode`、`newContractStageNameEn`、`newContractStageDescriptionZhTw`。資料庫代碼定義統一放在 `new-contract / new_contract_stage_code`；每個階段提供兩碼代碼、完整英文名稱及繁體中文說明。既有 v1 的 `applicationStatus`、`applicationStatusDescription`、`newContractStage`、`newContractStageDescription`、`currentStageCode`、`currentStageDescription`、`stageCode` 與 `stageDescription` 僅作棄用期相容輸出，新程式不得再引用。
+
+要保流程階段不是獨立業務 Entity，不依階段建立 13 個資料模型；`insurance_application`、`underwriting_case`、`underwriting_inquiry`、`initial_premium_due` 等具有獨立資料表與生命週期的業務檔案，才各自建立 persistence Entity／Row Model。API Response DTO 與前端型別不得直接使用資料庫 Entity。
 
 核保審查結果並非只有不承保。畫面依後端正式對照分成兩組：`SA` 標準承保、`RA` 加費承保、`EA` 除外承保、`CA` 條件承保與 `PA` 部分承保會往下進入承保流程，核保階段為 `AS`、契約狀態為 `01`；`PO` 延期、`DC` 拒保與 `CN` 取消不會進入承保流程。畫面不自行保存代碼表，而是由 `/underwriting-reviews/outcomes` 取得完整選項及繁中說明。
 
@@ -350,7 +399,7 @@ Northflank Service 的容器連接埠維持 `8080`；若平台注入 `PORT`，Sp
 
 所有正式業務表 DDL、查詢 API、業務清單與明細固定包含新增人員／時間、最後修改人員／時間、覆核人員／時間；欄位為 `created_by／created_at／updated_by／updated_at／reviewer_id／reviewed_at`，尚未覆核時後兩欄為 `NULL` 且畫面顯示「尚未覆核」。
 
-審核及業務查詢清單的操作欄固定置於第一欄；其後前三個資料欄位使用共用可排序表頭，預設第一個資料欄位升冪。每筆資料固定顯示為一列且欄位不換行，欄位超過可用寬度時只在表格容器顯示水平捲軸。共用分頁元件預設每頁 10 筆，可選 10／20／50／100 筆；切換頁碼、筆數或排序都由後端重新查詢，不得對分頁後的前端資料再次排序。此契約套用於覆核工作台、核保審查、保單資料查詢、客戶建立、承保撤回及核保照會單查詢。覆核工作台可用完整覆核編號、客戶 ID、要保書號碼、正式保單號碼或業務鍵查詢待覆核案件；客戶 ID 透過新契約關係人檔關聯，不解密或掃描覆核 payload。
+審核及業務查詢清單的操作欄固定置於第一欄；其後前三個資料欄位使用共用可排序表頭，預設第一個資料欄位升冪。每筆資料固定顯示為一列且欄位不換行，欄位超過可用寬度時只在表格容器顯示水平捲軸。共用分頁元件預設每頁 10 筆，可選 10／20／50／100 筆；切換頁碼、筆數或排序都由後端重新查詢，不得對分頁後的前端資料再次排序。此契約套用於覆核工作台、核保審查、保單資料查詢、客戶建立、承保撤回及核保照會單查詢。覆核工作台可用完整覆核編號、客戶 ID、要保書號碼、正式保單號碼或業務鍵查詢待覆核案件；客戶 ID 透過要保作業關係人檔關聯，不解密或掃描覆核 payload。
 
 具有查詢條件與結果清單的頁面統一使用 `QueryListPanels.vue`：查詢 Panel 與清單 Panel 固定為同層的兩個區塊，兩區都不得放在 Panel 外或互相包覆。
 
@@ -366,13 +415,13 @@ Northflank Service 的容器連接埠維持 `8080`；若平台注入 `PORT`，Sp
 
 V30 建立 `TEST-NC-0001`～`TEST-NC-0100` 與對應的 `TEST-UW-0001`～`TEST-UW-0100` 虛構案件，平均分布於 `AP／PW／NP／NW／NR／UW／US／NS／AS／RS／DS／CS／PS`，每個階段至少 7 筆，僅供本機及整合測試。
 
-資料庫 migration 以英文 table／column 識別字維持跨系統契約，並以繁中 `COMMENT` 定義業務名稱。本次首期保費、送金單、銷帳、新契約批次承保作業排程與批次執行表的表名及全部欄位，已由 V21 補齊繁中 metadata；既有 migration 不回改 checksum，後續名稱調整以新的 forward-only migration 更新。
+資料庫 migration 以英文 table／column 識別字維持跨系統契約，並以繁中 `COMMENT` 定義業務名稱。本次首期保費、送金單、銷帳、批次承保作業排程與批次執行表的表名及全部欄位，已由 V21 補齊繁中 metadata；既有 migration 不回改 checksum，後續名稱調整以新的 forward-only migration 更新。
 
 | 邊界 | 責任 |
 |---|---|
 | Controller | 從已驗證 JWT 取得送審人，只呼叫 `ReviewService.submit`。 |
 | `ReviewService` | 加密 payload、建立待審唯一鎖、強制 Maker 與 Checker 不同人，核准時在同一交易套用異動與稽核。 |
-| 原業務 Service | 只負責核准後的客戶、新契約、收費、批次或撤回正式異動。 |
+| 原業務 Service | 只負責核准後的客戶、要保作業、收費、批次或撤回正式異動。 |
 | Interceptor／Filter | 適合補 requestId、登入身分與 HTTP context，不負責覆核決策。 |
 | AOP | 可集中無敏感內容的 use-case 稽核樣板，不攔截 DTO 全文，也不取代顯式覆核 workflow。 |
 

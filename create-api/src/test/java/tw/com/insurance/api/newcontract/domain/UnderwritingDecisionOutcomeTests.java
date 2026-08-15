@@ -10,7 +10,9 @@ class UnderwritingDecisionOutcomeTests {
 	void acceptedOutcomesContinueAsActiveContract() {
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("SA").insurable()).isTrue();
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("RA").contractStatusCode()).isEqualTo("01");
-		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("EA").stageCode()).isEqualTo("AS");
+		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("EA").newContractStageCode()).isEqualTo("AS");
+		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("EA").newContractStageNameEn())
+				.isEqualTo("Underwriting Accepted");
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("CA").insurable()).isTrue();
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("PA").insurable()).isTrue();
 	}
@@ -18,7 +20,7 @@ class UnderwritingDecisionOutcomeTests {
 	@Test
 	void nonAcceptedOutcomesStopBeforeIssuance() {
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("DC").contractStatusCode()).isEqualTo("13");
-		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("DC").stageCode()).isEqualTo("RS");
+		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("DC").newContractStageCode()).isEqualTo("RS");
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("PO").contractStatusCode()).isEqualTo("14");
 		assertThat(UnderwritingDecisionOutcome.fromDecisionCode("CN").contractStatusCode()).isEqualTo("15");
 	}

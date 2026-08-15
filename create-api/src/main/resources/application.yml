@@ -27,7 +27,8 @@ management:
 server.port: ${SERVER_PORT:${PORT:8080}}
 app.pii-encryption-key: ${PII_ENCRYPTION_KEY}
 sso:
-  mode: ${AUTH_MODE:demo}
+  # 正式安全預設為 SSO；沒有 SSO 的公開測試站可明確設定 AUTH_MODE=demo。
+  mode: ${AUTH_MODE:sso}
   issuer: ${SSO_ISSUER:http://192.168.1.104:8083}
   jwk-set-uri: ${SSO_JWK_SET_URI:http://localhost:8083/.well-known/jwks.json}
   audience: ${SSO_AUDIENCE:NEW_CONTRACT}

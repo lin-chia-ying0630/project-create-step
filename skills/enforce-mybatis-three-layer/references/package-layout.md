@@ -3,7 +3,7 @@
 ## 標準目錄
 
 ```text
-tw/com/insurance/api/
+<java-package-root>/
 ├── common/
 │   ├── ApiExceptionHandler.java
 │   ├── BusinessException.java
@@ -31,7 +31,7 @@ tw/com/insurance/api/
 
 | 類型 | 可依賴 | 不可負責 |
 |---|---|---|
-| Controller | Service interface、Request/Response DTO、共用回應 | SQL、交易、核保／保費規則 |
+| Controller | Service interface、Request/Response DTO、共用回應 | SQL、交易、業務規則 |
 | Service interface | application/domain DTO | Spring Controller、Mapper implementation |
 | Service implementation | Service interface、Domain、Mapper | HTTP response 格式、SQL 字串 |
 | Mapper | persistence model、明確 query parameter | 業務流程、HTTP、`ResponseBodyDto` |
@@ -40,9 +40,9 @@ tw/com/insurance/api/
 固定代碼 enum 範例：
 
 ```java
-public enum ApplicationStatus {
-    SUBMITTED("SUBMITTED", "已送件，待核保"),
-    UNDERWRITING("UNDERWRITING", "核保中");
+public enum FeatureStatus {
+    PENDING("P", "待處理"),
+    COMPLETED("C", "已完成");
 
     private final String code;
     private final String description;
@@ -58,7 +58,7 @@ public enum ApplicationStatus {
 3. Request／Response DTO。
 4. Service interface 與 implementation。
 5. Controller 與 OpenAPI。
-6. 前端 type、typed API client、store／view。
+6. 前端 type、typed API client 與 view；只有跨 route 狀態確有需要時才建立 Store。
 7. Mapper real-MySQL test、Service test、API contract test 與 UI 驗證。
 
 ## 重構舊目錄

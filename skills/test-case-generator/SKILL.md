@@ -35,7 +35,7 @@ description: Generate traceable JUnit, integration, SIT, and UAT test cases from
 | 範圍 | 最低指令覆蓋率 |
 |---|---|
 | 保費計算 Service | 90% |
-| 業務驗證 Service（InsuranceBusinessValidator 等） | 85% |
+| 業務驗證 Service | 85% |
 | 一般 Service | 70% |
 | Controller | 由 API 整合測試涵蓋，不另設 unit 門檻 |
 
@@ -51,7 +51,7 @@ CI JaCoCo `check` goal 強制執行；低於門檻時 build 失敗，不得以�
 
 ### 測試資料規則
 
-- 所有測試資料使用完全虛構內容：身分證號 `A123456789`、姓名「測試要保人」、保單號碼 `TEST-0000001`。
+- 所有測試資料使用完全虛構且可辨識的內容，例如業務鍵 `TEST-ENTITY-0001`；只建立案例真正需要的欄位。
 - **禁止複製正式環境個資、保單資料或財務資料**進測試或 fixture。
 - Testcontainers 每次測試後 `@Transactional` rollback，不保存持久資料。
 

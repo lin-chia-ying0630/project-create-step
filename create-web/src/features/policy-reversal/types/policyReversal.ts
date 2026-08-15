@@ -4,7 +4,9 @@ export interface PolicyReversalPreview {
   applicationNo: string
   underwritingCaseNo: string
   policyStatus: string
-  applicationStatus: string
+  newContractStageCode: string
+  newContractStageNameEn: string
+  newContractStageDescriptionZhTw: string
   underwritingStatus: string
   effectiveDate: string
   policyVersion: number
@@ -29,7 +31,9 @@ export interface PolicyReversalResult {
   reversalAuditId: string
   policyNo: string
   applicationNo: string
-  applicationStatus: string
+  newContractStageCode: string
+  newContractStageNameEn: string
+  newContractStageDescriptionZhTw: string
   underwritingStatus: string
 }
 export interface PolicyReversalSummary {

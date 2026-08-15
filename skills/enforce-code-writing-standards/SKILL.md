@@ -5,7 +5,7 @@ description: Enforce readable and consistent Java, Spring, MyBatis XML, Vue, Typ
 
 # 強制程式撰寫標準
 
-每次程式變更都同時改善可讀性、可測試性與一致性，不以編譯成功取代品質檢查。先讀 [references/writing-standards.md](references/writing-standards.md)，再依語言套用適用規則。
+每次程式變更都同時改善可讀性、可測試性與一致性，不以編譯成功取代品質檢查。程式與技術文件先讀 [references/writing-standards.md](references/writing-standards.md)；建立或修改 Skill／Workflow 時另讀 [references/skill-workflow-standards.md](references/skill-workflow-standards.md)。
 
 ## 工作流程
 
@@ -21,6 +21,8 @@ description: Enforce readable and consistent Java, Spring, MyBatis XML, Vue, Typ
 9. 所有裝置共用同一份頁面與功能，支援至少 320px viewport；驗證導覽、表單、表格、分頁及主要操作會依空間重排但不消失。
 10. 註解說明原因、契約、副作用與非直覺規則，不逐字翻譯程式。
 11. 執行本 skill 檢查、formatter、type-check、test 及 build；只修本次範圍或明確列出既有債務。
+12. 修改根目錄 Workflow、README 或任何 Skill 後，執行 Workflow／Skill 一致性檢查，確認路由、metadata、連結、禁止條款及實際目錄同步。
+13. 準備把 Skills 搬到其他專案時，執行可搬移性掃描；Skill 內不得保留來源 repository 名稱、固定 module、機器絕對路徑、來源 schema 或舊 package root。
 
 ## 不可違反
 
@@ -36,6 +38,10 @@ description: Enforce readable and consistent Java, Spring, MyBatis XML, Vue, Typ
 
 ```bash
 python3 skills/enforce-code-writing-standards/scripts/check_writing_standards.py .
+python3 skills/enforce-code-writing-standards/scripts/check_workflow_consistency.py .
+python3 skills/enforce-code-writing-standards/scripts/check_skill_portability.py .
+python3 -m unittest skills/enforce-code-writing-standards/scripts/test_check_workflow_consistency.py
+python3 -m unittest skills/enforce-code-writing-standards/scripts/test_check_skill_portability.py
 ```
 
 檢查結果分為 ERROR 與 WARNING。ERROR 必須在交付前清除；既有 WARNING 若超出本次範圍，須列出檔案與後續處理方式。

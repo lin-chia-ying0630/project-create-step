@@ -43,7 +43,7 @@
 
 當基本資料、保費銷帳、健康告知與職業風險規則開始獨立演進時，將每條規則實作相同 contract，由 pipeline 收集 `ValidationIssue`。規則不得自行承保、建立照會或更新資料庫；use case 根據彙總結果執行狀態交易。
 
-### 新契約狀態
+### 要保作業狀態
 
 狀態 code 與繁中 description 放固定 enum；合法轉換集中於 transition policy。狀態寫入仍由 application service 在 transaction 內完成，避免 enum 執行 Mapper I/O。
 

@@ -2,6 +2,7 @@ package tw.com.insurance.api.newcontract.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -58,33 +59,70 @@ public final class NewContractDtos {
 	public record UnderwritingReviewPreview(String applicationNo, String policyNo, String underwritingCaseNo,
 			String productCode, LocalDate applicationDate, LocalDate requestedEffectiveDate, String currencyCode,
 			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal sumAssuredAmount,
-			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal premiumAmount, String currentStageCode,
-			String currentStageDescription, String currentDecisionCode, String currentContractStatusCode,
+			@JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal premiumAmount, String newContractStageCode,
+			String newContractStageNameEn, String newContractStageDescriptionZhTw, String currentDecisionCode, String currentContractStatusCode,
 			String currentContractStatusDescription, String createdBy, LocalDateTime createdAt, String updatedBy,
 			LocalDateTime updatedAt, String reviewerId, LocalDateTime reviewedAt, long recordVersion) {
+		@Deprecated
+		@JsonProperty("currentStageCode")
+		public String currentStageCode() {
+			return newContractStageCode;
+		}
+		@Deprecated
+		@JsonProperty("currentStageDescription")
+		public String currentStageDescription() {
+			return newContractStageDescriptionZhTw;
+		}
 	}
 	/** 新契約受理檔中已完成照會、等待人工核保審查的清單資料。 */
 	public record UnderwritingReviewSummary(String applicationNo, String policyNo, String underwritingCaseNo,
-			String productCode, LocalDate applicationDate, LocalDate requestedEffectiveDate, String currentStageCode,
-			String currentStageDescription, String createdBy, LocalDateTime createdAt, String updatedBy,
+			String productCode, LocalDate applicationDate, LocalDate requestedEffectiveDate, String newContractStageCode,
+			String newContractStageNameEn, String newContractStageDescriptionZhTw, String createdBy, LocalDateTime createdAt, String updatedBy,
 			LocalDateTime updatedAt, String reviewerId, LocalDateTime reviewedAt) {
+		@Deprecated
+		@JsonProperty("currentStageCode")
+		public String currentStageCode() {
+			return newContractStageCode;
+		}
+		@Deprecated
+		@JsonProperty("currentStageDescription")
+		public String currentStageDescription() {
+			return newContractStageDescriptionZhTw;
+		}
 	}
 	/** 核保審查候選案件的標準分頁結果。 */
 	public record UnderwritingReviewPage(List<UnderwritingReviewSummary> items, long totalItems, int page, int pageSize,
 			int totalPages) {
 	}
 	/** 核保審查畫面使用的固定結果選項，由後端 enum 提供唯一代碼與狀態映射。 */
-	public record UnderwritingOutcomeOption(String decisionCode, String decisionDescription, String stageCode,
-			String stageDescription, String contractStatusCode, String contractStatusDescription, boolean insurable) {
+	public record UnderwritingOutcomeOption(String decisionCode, String decisionDescription, String newContractStageCode,
+			String newContractStageNameEn, String newContractStageDescriptionZhTw, String contractStatusCode,
+			String contractStatusDescription, boolean insurable) {
+		@Deprecated
+		@JsonProperty("stageCode")
+		public String stageCode() {
+			return newContractStageCode;
+		}
+		@Deprecated
+		@JsonProperty("stageDescription")
+		public String stageDescription() {
+			return newContractStageDescriptionZhTw;
+		}
 	}
 	public record UnderwritingDecisionResult(String applicationNo, String underwritingCaseNo, String decisionCode,
-			String decisionDescription, String stageCode, String stageDescription, String contractStatusCode,
-			String contractStatusDescription) {
+			String decisionDescription, String newContractStageCode, String newContractStageNameEn,
+			String newContractStageDescriptionZhTw, String contractStatusCode, String contractStatusDescription) {
 	}
 	public record PolicyReversalPreview(String policyNo, String applicationNo, String underwritingCaseNo,
-			String policyStatus, String applicationStatus, String underwritingStatus, LocalDate effectiveDate,
+			String policyStatus, String newContractStageCode, String newContractStageNameEn,
+			String newContractStageDescriptionZhTw, String underwritingStatus, LocalDate effectiveDate,
 			long policyVersion, long applicationVersion, long underwritingVersion, Map<String, Integer> deleteCounts,
 			List<String> blockers, String confirmToken) {
+		@Deprecated
+		@JsonProperty("applicationStatus")
+		public String applicationStatus() {
+			return newContractStageCode;
+		}
 	}
 	public record PolicyReversalSummary(String policyNo, String applicationNo, String productCode,
 			String contractStatusCode, LocalDate effectiveDate, String createdBy, LocalDateTime createdAt,
@@ -164,9 +202,15 @@ public final class NewContractDtos {
 			@NotNull @Valid InvestmentRiskInput investmentRisk,
 			@NotNull @Size(min = 1, max = 30) List<@Valid ApplicationAttachmentInput> attachments) {
 	}
-	public record CreateApplicationResult(String applicationId, String applicationNo, String applicationStatus,
+	public record CreateApplicationResult(String applicationId, String applicationNo, String newContractStageCode,
+			String newContractStageNameEn, String newContractStageDescriptionZhTw,
 			String premiumDueId, @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal calculatedPremiumAmount,
 			String currencyCode) {
+		@Deprecated
+		@JsonProperty("applicationStatus")
+		public String applicationStatus() {
+			return newContractStageCode;
+		}
 	}
 	public record PolicyNumberReservationResult(String applicationNo, String policyNo, String policyNumberStatus,
 			LocalDateTime reservedAt) {
@@ -198,8 +242,8 @@ public final class NewContractDtos {
 			String calculationRuleVersion, String dueStatus, LocalDateTime calculatedAt) {
 	}
 	public record ApplicationQueryResult(String applicationNo, String policyNo, String policyNumberStatus,
-			String applicationStatus, String applicationStatusDescription, LocalDate applicationDate,
-			String newContractStage, String newContractStageDescription, String contractStatus,
+			String newContractStageCode, String newContractStageNameEn, String newContractStageDescriptionZhTw,
+			LocalDate applicationDate, String contractStatus,
 			String contractStatusDescription, LocalDate requestedEffectiveDate, String channelCode, String branchCode,
 			String insuranceAgentCode, String productCode, String productVersion, String paymentModeCode,
 			String currencyCode, @JsonFormat(shape = JsonFormat.Shape.STRING) BigDecimal sumAssuredAmount,
@@ -209,16 +253,48 @@ public final class NewContractDtos {
 			List<DeclarationDetail> declarations, List<SignatureDetail> signatures,
 			List<CustomerContactDetail> customerContacts, List<CustomerAddressDetail> customerAddresses,
 			List<PremiumDueDetail> premiumDues) {
+		@Deprecated
+		@JsonProperty("applicationStatus")
+		public String applicationStatus() {
+			return newContractStageCode;
+		}
+		@Deprecated
+		@JsonProperty("applicationStatusDescription")
+		public String applicationStatusDescription() {
+			return newContractStageDescriptionZhTw;
+		}
+		@Deprecated
+		@JsonProperty("newContractStage")
+		public String newContractStage() {
+			return newContractStageCode;
+		}
+		@Deprecated
+		@JsonProperty("newContractStageDescription")
+		public String newContractStageDescription() {
+			return newContractStageDescriptionZhTw;
+		}
 	}
 	public record ApplicationQuerySummary(String applicationNo, String policyNo, String productCode,
-			String applicationStatus, String applicationStatusDescription, LocalDate applicationDate,
+			String newContractStageCode, String newContractStageNameEn, String newContractStageDescriptionZhTw,
+			LocalDate applicationDate,
 			LocalDate requestedEffectiveDate, String createdBy, LocalDateTime createdAt, String updatedBy,
 			LocalDateTime updatedAt, String reviewerId, LocalDateTime reviewedAt) {
+		@Deprecated
+		@JsonProperty("applicationStatus")
+		public String applicationStatus() {
+			return newContractStageCode;
+		}
+		@Deprecated
+		@JsonProperty("applicationStatusDescription")
+		public String applicationStatusDescription() {
+			return newContractStageDescriptionZhTw;
+		}
 	}
 	public record ApplicationQueryPage(List<ApplicationQuerySummary> items, long totalItems, int page, int pageSize,
 			int totalPages) {
 	}
 	public record PolicyReversalResult(String reversalAuditId, String policyNo, String applicationNo,
-			String applicationStatus, String underwritingStatus) {
+			String newContractStageCode, String newContractStageNameEn, String newContractStageDescriptionZhTw,
+			String underwritingStatus) {
 	}
 }

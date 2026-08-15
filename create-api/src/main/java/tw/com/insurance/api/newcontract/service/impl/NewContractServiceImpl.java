@@ -197,7 +197,8 @@ public class NewContractServiceImpl implements NewContractService {
 			mapper.insertApplication(applicationId, request.applicationNo(), request.applicationDate(),
 					request.channelCode(), request.branchCode(), request.insuranceAgentCode(), base.productCode(),
 					base.productVersion(), request.currencyCode(), sumAssured, premium, request.paymentModeCode(),
-					request.requestedEffectiveDate(), NewContractApplicationStatus.APPLICATION_ACCEPTED.code());
+					request.requestedEffectiveDate(),
+					NewContractApplicationStatus.APPLICATION_ACCEPTED.newContractStageCode());
 			mapper.insertParty(UUID.randomUUID().toString(), request.applicationNo(), "APPLICANT",
 					request.applicantCustomerId(), request.applicantRelationshipToInsuredCode(),
 					snapshot(request.applicantCustomerId(), applicantVersion));
@@ -270,8 +271,10 @@ public class NewContractServiceImpl implements NewContractService {
 			throw new BusinessException(NewContractErrorCode.DUPLICATE_APPLICATION);
 		}
 		reservePolicyNumber(request.applicationNo());
+		var acceptedStage = NewContractApplicationStatus.APPLICATION_ACCEPTED;
 		return new CreateApplicationResult(applicationId, request.applicationNo(),
-				NewContractApplicationStatus.APPLICATION_ACCEPTED.code(), dueId, premium, request.currencyCode());
+				acceptedStage.newContractStageCode(), acceptedStage.newContractStageNameEn(),
+				acceptedStage.newContractStageDescriptionZhTw(), dueId, premium, request.currencyCode());
 	}
 
 	/** 驗證登打金額落在商品定義的承保範圍，避免前端提示被繞過。 */
@@ -364,7 +367,8 @@ public class NewContractServiceImpl implements NewContractService {
 					NewContractApplicationStatus status = NewContractApplicationStatus
 							.fromCode(text(row, "application_status"));
 					return new ApplicationQuerySummary(text(row, "application_no"), text(row, "policy_no"),
-							text(row, "product_code"), status.code(), status.description(),
+							text(row, "product_code"), status.newContractStageCode(),
+							status.newContractStageNameEn(), status.newContractStageDescriptionZhTw(),
 							localDate(row.get("application_date")), localDate(row.get("requested_effective_date")),
 							text(row, "created_by"), localDateTime(row.get("created_at")), text(row, "updated_by"),
 							localDateTime(row.get("updated_at")), text(row, "reviewer_id"),
@@ -425,9 +429,9 @@ public class NewContractServiceImpl implements NewContractService {
 						text(x, "due_status"), localDateTime(x.get("calculated_at"))))
 				.toList();
 		return new ApplicationQueryResult(text(row, "application_no"), policyNo,
-				policyNo == null ? "NOT_ASSIGNED" : "ASSIGNED", status, applicationStatus.description(),
-				localDate(row.get("application_date")), applicationStatus.stageCode(),
-				applicationStatus.stageDescription(), applicationStatus.contractStatusCode(),
+				policyNo == null ? "NOT_ASSIGNED" : "ASSIGNED", applicationStatus.newContractStageCode(),
+				applicationStatus.newContractStageNameEn(), applicationStatus.newContractStageDescriptionZhTw(),
+				localDate(row.get("application_date")), applicationStatus.contractStatusCode(),
 				applicationStatus.contractStatusDescription(), localDate(row.get("requested_effective_date")),
 				text(row, "channel_code"), text(row, "branch_code"), text(row, "insurance_agent_code"),
 				text(row, "product_code"), text(row, "product_version"), text(row, "payment_mode_code"),
@@ -556,7 +560,7 @@ public class NewContractServiceImpl implements NewContractService {
 		if (status.equals("MATCHED"))
 			mapper.updateDueStatus(due.premiumDueId(), "MATCHED");
 		mapper.updateApplicationMatch(request.applicationNo(), status,
-				NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.code());
+				NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.newContractStageCode());
 		return new PremiumMatchResult(matchId, status, matchStatusDescription(status), due.calculatedPremiumAmount(),
 				request.receivedAmount(), difference, status.equals("MATCHED"));
 	}
@@ -587,7 +591,7 @@ public class NewContractServiceImpl implements NewContractService {
 		String applicationNo = mapper.resolveApplicationNo(request.applicationNo());
 		if (applicationNo == null)
 			throw new BusinessException(NewContractErrorCode.APPLICATION_NOT_FOUND);
-		if (!NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.code()
+		if (!NewContractApplicationStatus.WAITING_POLICY_ISSUANCE.newContractStageCode()
 				.equals(text(mapper.findApplicationsByQuery(applicationNo).stream().findFirst().orElseThrow(),
 						"application_status")))
 			throw new BusinessException(NewContractErrorCode.APPLICATION_NOT_READY_FOR_BATCH);
@@ -627,7 +631,9 @@ public class NewContractServiceImpl implements NewContractService {
 				.map(row -> new UnderwritingReviewSummary(text(row, "application_no"), text(row, "policy_no"),
 						text(row, "underwriting_case_no"), text(row, "product_code"),
 						localDate(row.get("application_date")), localDate(row.get("requested_effective_date")),
-						text(row, "underwriting_status"), stageDescription(text(row, "underwriting_status")),
+						stage(text(row, "underwriting_status")).newContractStageCode(),
+						stage(text(row, "underwriting_status")).newContractStageNameEn(),
+						stage(text(row, "underwriting_status")).newContractStageDescriptionZhTw(),
 						text(row, "created_by"), localDateTime(row.get("created_at")), text(row, "updated_by"),
 						localDateTime(row.get("updated_at")), text(row, "reviewer_id"),
 						localDateTime(row.get("reviewed_at"))))
@@ -643,13 +649,15 @@ public class NewContractServiceImpl implements NewContractService {
 		Map<String, Object> row = mapper.findUnderwritingReview(query);
 		if (row == null)
 			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CASE_NOT_FOUND);
-		String stageCode = text(row, "underwriting_status");
+		NewContractApplicationStatus newContractStage = stage(text(row, "underwriting_status"));
 		String contractStatusCode = text(row, "contract_status_code");
 		return new UnderwritingReviewPreview(text(row, "application_no"), text(row, "policy_no"),
 				text(row, "underwriting_case_no"), text(row, "product_code"), localDate(row.get("application_date")),
 				localDate(row.get("requested_effective_date")), text(row, "currency_code"),
-				decimal(row, "sum_assured_amount"), decimal(row, "premium_amount"), stageCode,
-				stageDescription(stageCode), text(row, "underwriting_decision_code"), contractStatusCode,
+				decimal(row, "sum_assured_amount"), decimal(row, "premium_amount"),
+				newContractStage.newContractStageCode(), newContractStage.newContractStageNameEn(),
+				newContractStage.newContractStageDescriptionZhTw(), text(row, "underwriting_decision_code"),
+				contractStatusCode,
 				contractStatusDescription(contractStatusCode), text(row, "created_by"),
 				localDateTime(row.get("created_at")), text(row, "updated_by"), localDateTime(row.get("updated_at")),
 				text(row, "reviewer_id"), localDateTime(row.get("reviewed_at")), longNumber(row, "record_version"));
@@ -660,7 +668,8 @@ public class NewContractServiceImpl implements NewContractService {
 	public List<UnderwritingOutcomeOption> findUnderwritingOutcomes() {
 		return Arrays.stream(UnderwritingDecisionOutcome.values())
 				.map(outcome -> new UnderwritingOutcomeOption(outcome.decisionCode(), outcome.decisionDescription(),
-						outcome.stageCode(), outcome.stageDescription(), outcome.contractStatusCode(),
+						outcome.newContractStageCode(), outcome.newContractStageNameEn(),
+						outcome.newContractStageDescriptionZhTw(), outcome.contractStatusCode(),
 						outcome.contractStatusDescription(), outcome.insurable()))
 				.toList();
 	}
@@ -679,15 +688,16 @@ public class NewContractServiceImpl implements NewContractService {
 		if (row == null)
 			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CASE_NOT_FOUND);
 		String caseNo = text(row, "underwriting_case_no");
-		if (mapper.updateUnderwritingDecision(caseNo, request.expectedVersion(), outcome.stageCode(),
+		if (mapper.updateUnderwritingDecision(caseNo, request.expectedVersion(), outcome.newContractStageCode(),
 				outcome.decisionCode(), outcome.contractStatusCode(), request.reasonCode(), operatorId) != 1)
 			throw new BusinessException(NewContractErrorCode.UNDERWRITING_CONCURRENT_MODIFICATION);
-		mapper.updateApplicationUnderwritingStage(request.applicationNo(), outcome.stageCode(), operatorId);
+		mapper.updateApplicationUnderwritingStage(request.applicationNo(), outcome.newContractStageCode(), operatorId);
 		mapper.insertUnderwritingDecisionAudit(UUID.randomUUID().toString(), caseNo, request.applicationNo(),
-				outcome.decisionCode(), outcome.stageCode(), outcome.contractStatusCode(), request.reasonCode(),
+				outcome.decisionCode(), outcome.newContractStageCode(), outcome.contractStatusCode(), request.reasonCode(),
 				request.reasonDescription(), operatorId);
 		return new UnderwritingDecisionResult(request.applicationNo(), caseNo, outcome.decisionCode(),
-				outcome.decisionDescription(), outcome.stageCode(), outcome.stageDescription(),
+				outcome.decisionDescription(), outcome.newContractStageCode(), outcome.newContractStageNameEn(),
+				outcome.newContractStageDescriptionZhTw(),
 				outcome.contractStatusCode(), outcome.contractStatusDescription());
 	}
 
@@ -703,8 +713,11 @@ public class NewContractServiceImpl implements NewContractService {
 		counts.put("契約狀態 01 改為空白", 1);
 		long policyVersion = longNumber(row, "policy_version"), appVersion = longNumber(row, "application_version"),
 				uwVersion = longNumber(row, "underwriting_version");
+		NewContractApplicationStatus applicationStage = stage(text(row, "application_status"));
 		return new PolicyReversalPreview(policyNo, text(row, "application_no"), text(row, "underwriting_case_no"),
-				text(row, "policy_status"), text(row, "application_status"), text(row, "underwriting_status"),
+				text(row, "policy_status"), applicationStage.newContractStageCode(),
+				applicationStage.newContractStageNameEn(), applicationStage.newContractStageDescriptionZhTw(),
+				text(row, "underwriting_status"),
 				localDate(row.get("effective_date")), policyVersion, appVersion, uwVersion, counts, blockers,
 				hash(policyNo + ":" + policyVersion + ":" + appVersion + ":" + uwVersion));
 	}
@@ -750,7 +763,8 @@ public class NewContractServiceImpl implements NewContractService {
 		mapper.insertReversalAudit(auditId, request.policyNo(), preview.applicationNo(), preview.underwritingCaseNo(),
 				request.reasonCode(), request.reasonDescription(), requestId, before, after, hash(before), hash(after));
 		return new PolicyReversalResult(auditId, request.policyNo(), preview.applicationNo(),
-				preview.applicationStatus(), preview.underwritingStatus());
+				preview.newContractStageCode(), preview.newContractStageNameEn(),
+				preview.newContractStageDescriptionZhTw(), preview.underwritingStatus());
 	}
 
 	private static String text(Map<String, Object> row, String key) {
@@ -771,8 +785,8 @@ public class NewContractServiceImpl implements NewContractService {
 		return ((Number) row.get(key)).longValue();
 	}
 	/** 將固定案件階段碼轉為繁中說明；未知值視為資料契約錯誤。 */
-	private static String stageDescription(String stageCode) {
-		return NewContractApplicationStatus.fromCode(stageCode).stageDescription();
+	private static NewContractApplicationStatus stage(String stageCode) {
+		return NewContractApplicationStatus.fromCode(stageCode);
 	}
 	/** 依新契約固定狀態回傳繁中說明，NULL 代表案件仍在受理流程。 */
 	private static String contractStatusDescription(String contractStatusCode) {

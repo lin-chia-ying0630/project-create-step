@@ -20,7 +20,7 @@ description: Select, apply, and review design patterns for Java, Spring, MyBatis
 ## 保險專案優先模式
 
 - 核保、費率、資格及文件檢核：多個可替換規則使用 Strategy；規則集合使用 Composite 或明確 Pipeline。
-- 新契約、收費、照會及承保交易：application service 作 Facade，統一協調 Mapper、交易與領域物件。
+- 要保作業、收費、照會及承保交易：application service 作 Facade，統一協調 Mapper、交易與領域物件。
 - 銀行、身分驗證、通知及舊主機介接：使用 Adapter 隔離外部 DTO、錯誤及協定。
 - 自然人／法人、商品或支付方式的物件建立差異：有多個建構分支時使用 Factory Method。
 - 保單與案件狀態：固定有限狀態使用 enum 與 transition policy；狀態行為顯著分歧時才使用 State。

@@ -1,0 +1,4 @@
+interface:
+  display_name: "診斷部署問題"
+  short_description: "完整追蹤映像、環境設定、資料庫 migration 與服務健康的部署根因"
+  default_prompt: "使用 $diagnose-deployment 診斷這次部署失敗。"

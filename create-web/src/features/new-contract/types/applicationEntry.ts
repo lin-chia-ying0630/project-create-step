@@ -117,7 +117,9 @@ export interface HealthDisclosureInput {
 export interface CreateApplicationResult {
   applicationId: string
   applicationNo: string
-  applicationStatus: string
+  newContractStageCode: string
+  newContractStageNameEn: string
+  newContractStageDescriptionZhTw: string
   premiumDueId: string
   calculatedPremiumAmount: string
   currencyCode: string
@@ -201,11 +203,10 @@ export interface ApplicationQueryResult {
   applicationNo: string
   policyNo: string | null
   policyNumberStatus: 'NOT_ASSIGNED' | 'ASSIGNED'
-  applicationStatus: string
-  applicationStatusDescription: string
+  newContractStageCode: string
+  newContractStageNameEn: string
+  newContractStageDescriptionZhTw: string
   applicationDate: string
-  newContractStage: string
-  newContractStageDescription: string
   contractStatus: string
   contractStatusDescription: string
   requestedEffectiveDate: string
@@ -235,8 +236,9 @@ export interface ApplicationQuerySummary {
   applicationNo: string
   policyNo: string | null
   productCode: string
-  applicationStatus: string
-  applicationStatusDescription: string
+  newContractStageCode: string
+  newContractStageNameEn: string
+  newContractStageDescriptionZhTw: string
   applicationDate: string
   requestedEffectiveDate: string
   createdBy: string

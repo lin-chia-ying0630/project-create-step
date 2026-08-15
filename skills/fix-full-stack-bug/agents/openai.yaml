@@ -1,0 +1,4 @@
+interface:
+  display_name: "修復全端缺陷"
+  short_description: "以可追溯證據定位資料庫、後端與前端根因並完成完整回歸驗證"
+  default_prompt: "使用 $fix-full-stack-bug 診斷並修復這個跨層問題。"

@@ -2,29 +2,30 @@ package tw.com.insurance.api.newcontract.domain;
 
 import java.util.Arrays;
 
-/** 人工核保審查可決行的負向核保結果，以及其核保階段與契約狀態唯一對照。 */
+/** 人工核保結果及其新契約階段、契約狀態的唯一固定對照。 */
 public enum UnderwritingDecisionOutcome {
-	STANDARD_ACCEPTED("SA", "標準承保", "AS", "承保完成", "01", "有效", true), RATED_ACCEPTED("RA", "加費承保", "AS", "承保完成", "01",
-			"有效", true), EXCLUSION_ACCEPTED("EA", "除外承保", "AS", "承保完成", "01", "有效", true), CONDITIONAL_ACCEPTED("CA",
-					"條件承保", "AS", "承保完成", "01", "有效", true), PARTIALLY_ACCEPTED("PA", "部分承保", "AS", "承保完成", "01", "有效",
-							true), DECLINED("DC", "拒絕承保", "RS", "拒保完成", "13", "拒保", false), POSTPONED("PO", "延期承保",
-									"DS", "延期完成", "14", "延期",
-									false), CANCELLED("CN", "取消申請", "CS", "取消完成", "15", "取消", false);
+	STANDARD_ACCEPTED("SA", "標準承保", NewContractApplicationStatus.UNDERWRITING_COMPLETED, "01", "有效", true),
+	RATED_ACCEPTED("RA", "加費承保", NewContractApplicationStatus.UNDERWRITING_COMPLETED, "01", "有效", true),
+	EXCLUSION_ACCEPTED("EA", "除外承保", NewContractApplicationStatus.UNDERWRITING_COMPLETED, "01", "有效", true),
+	CONDITIONAL_ACCEPTED("CA", "條件承保", NewContractApplicationStatus.UNDERWRITING_COMPLETED, "01", "有效", true),
+	PARTIALLY_ACCEPTED("PA", "部分承保", NewContractApplicationStatus.UNDERWRITING_COMPLETED, "01", "有效", true),
+	DECLINED("DC", "拒絕承保", NewContractApplicationStatus.UNDERWRITING_DECLINED, "13", "拒保", false),
+	POSTPONED("PO", "延期承保", NewContractApplicationStatus.UNDERWRITING_POSTPONED, "14", "延期", false),
+	CANCELLED("CN", "取消申請", NewContractApplicationStatus.UNDERWRITING_CANCELLED, "15", "取消", false);
 
 	private final String decisionCode;
 	private final String decisionDescription;
-	private final String stageCode;
-	private final String stageDescription;
+	private final NewContractApplicationStatus newContractStage;
 	private final String contractStatusCode;
 	private final String contractStatusDescription;
 	private final boolean insurable;
 
-	UnderwritingDecisionOutcome(String decisionCode, String decisionDescription, String stageCode,
-			String stageDescription, String contractStatusCode, String contractStatusDescription, boolean insurable) {
+	UnderwritingDecisionOutcome(String decisionCode, String decisionDescription,
+			NewContractApplicationStatus newContractStage, String contractStatusCode,
+			String contractStatusDescription, boolean insurable) {
 		this.decisionCode = decisionCode;
 		this.decisionDescription = decisionDescription;
-		this.stageCode = stageCode;
-		this.stageDescription = stageDescription;
+		this.newContractStage = newContractStage;
 		this.contractStatusCode = contractStatusCode;
 		this.contractStatusDescription = contractStatusDescription;
 		this.insurable = insurable;
@@ -42,11 +43,14 @@ public enum UnderwritingDecisionOutcome {
 	public String decisionDescription() {
 		return decisionDescription;
 	}
-	public String stageCode() {
-		return stageCode;
+	public String newContractStageCode() {
+		return newContractStage.newContractStageCode();
 	}
-	public String stageDescription() {
-		return stageDescription;
+	public String newContractStageNameEn() {
+		return newContractStage.newContractStageNameEn();
+	}
+	public String newContractStageDescriptionZhTw() {
+		return newContractStage.newContractStageDescriptionZhTw();
 	}
 	public String contractStatusCode() {
 		return contractStatusCode;

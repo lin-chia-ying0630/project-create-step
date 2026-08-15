@@ -1,10 +1,10 @@
-# 新契約資料模型規格
+# 要保作業資料模型規格
 
 ## 核心業務表
 
 | Table | 中文名稱 | 責任 | 承保後處理 |
 |---|---|---|---|
-| `insurance_application` | 新契約要保主檔 | 要保書號碼、商品版本、彙總金額、通路、日期及流程狀態 | 保留原始申請，不覆寫成保單 |
+| `insurance_application` | 要保主檔 | 要保書號碼、商品版本、彙總金額、通路、日期及流程狀態 | 保留原始申請，不覆寫成保單 |
 | `application_party` | 要保關係人 | 要保人、被保險人及其他角色與客戶快照參照 | 轉為 `main.policy_party` 快照 |
 | `application_coverage` | 要保保障項目 | 主約／附約、被保險人、保額、保費及期間 | 轉為 `main.policy_coverage` |
 | `application_beneficiary` | 要保受益人 | 受益類型、順位、比例及指定方式 | 轉為 `main.policy_beneficiary` |
@@ -18,7 +18,7 @@
 
 ## 主檔界線
 
-`insurance_application` 是新契約要保主檔，不是正式保單主檔。它只保存案件層級欄位；多角色、多保障、多受益人、逐題健康告知與多次照會必須留在子表，不得塞入主檔 JSON 或重複欄位。
+`insurance_application` 是要保主檔，不是正式保單主檔。它只保存案件層級欄位；多角色、多保障、多受益人、逐題健康告知與多次照會必須留在子表，不得塞入主檔 JSON 或重複欄位。
 
 ## 關聯
 
@@ -80,7 +80,7 @@ insurance_application (1)
 
 ## 批次啟動
 
-- `create-web` 控制台輸入 `applicationNo` 與營業日，透過 `create-api` 寫入 `underwriting_batch_request`；前端不得直接連線 `create-batch`。
+- `<frontend-module>` 控制台輸入 `applicationNo` 與營業日，透過 `<backend-module>` 寫入 `underwriting_batch_request`；前端不得直接連線 `<batch-module>`。
 - 正式排程固定為 `0 0 21 * * *`，時區固定 `Asia/Taipei`，也就是每日臺灣時間 21:00。
 - UI 不提供 cron 修改；變更排程必須走設定變更、審核、測試與部署流程。
 - 每次執行建立 `underwriting_batch_execution`，並彙總總件數、承保、照會與失敗筆數。

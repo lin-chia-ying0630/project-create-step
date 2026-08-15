@@ -22,8 +22,9 @@ export interface InquiryDetail {
   currencyCode: string
   sumAssuredAmount: string
   premiumAmount: string
-  newContractStage: string
-  newContractStageDescription: string
+  newContractStageCode: string
+  newContractStageNameEn: string
+  newContractStageDescriptionZhTw: string
   contractStatus: string
   contractStatusDescription: string
   underwritingStatus: string

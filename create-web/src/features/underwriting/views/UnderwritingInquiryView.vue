@@ -234,7 +234,11 @@ onMounted(() => loadInquiries(1))
           </div>
           <div>
             <dt>新契約階段</dt>
-            <dd>{{ detail.newContractStageDescription }}</dd>
+            <dd>
+              {{ detail.newContractStageCode }}｜{{ detail.newContractStageDescriptionZhTw }}｜{{
+                detail.newContractStageNameEn
+              }}
+            </dd>
           </div>
           <div>
             <dt>契約狀態</dt>

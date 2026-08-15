@@ -1,188 +1,67 @@
-# 前端狀態管理規範
+# 前端狀態與 API 邊界
 
-> 適用範圍：Vue 3 + TypeScript + Pinia 的 Store 命名、目錄結構、資料分類與 API 呼叫統一模式。
+## 目的
 
-## 1. 目錄結構
+本規範只定義可跨功能共用的 Vue 3／TypeScript 邊界，不預設任何尚未存在的 Store、畫面、API 或業務流程。
 
-```
-src/
-  api/           ← API 呼叫函式（typed client）
-    policyApi.ts
-    claimApi.ts
-    changeCaseApi.ts
-    underwritingApi.ts
-    premiumApi.ts
-    codeApi.ts   ← 代碼定義
-  stores/        ← Pinia store
-    auth/
-      authStore.ts        ← 使用者身份、functionCode 授權清單
-    policy/
-      policyStore.ts      ← 保單查詢、保單摘要
-    change/
-      addressChangeStore.ts
-      amountChangeStore.ts
-      changeCaseStore.ts  ← 保全案件列表與狀態
-    claim/
-      claimStore.ts
-    underwriting/
-      underwritingStore.ts
-    shared/
-      codeStore.ts        ← 代碼定義（全域快取）
-      uiStore.ts          ← 全域 loading、toast 訊息
-  types/         ← TypeScript 型別定義（對應後端 API schema）
-    policy.ts
-    claim.ts
-    changeCase.ts
-    common.ts    ← ResponseBodyDto、PageResult、ErrorDetail
+## 目錄
+
+```text
+<frontend-module>/src/
+├── features/<feature>/
+│   ├── api/       # 該功能 typed API
+│   ├── types/     # 該功能 request／response 型別
+│   └── views/     # route view
+└── shared/
+    ├── api/       # 跨功能 HTTP client 與共用 API
+    ├── components/
+    ├── styles/
+    └── types/
 ```
 
-## 2. Store 命名規則
+- 功能專屬程式留在 `features/<feature>/`。
+- 只有兩個以上功能以相同責任重複使用時，才移入 `shared/`。
+- 不因文件範例建立專案中不存在的 `store`、`composable` 或 module。
 
-- 檔名：`{domain}Store.ts`，camelCase。
-- Store ID：與檔名相同，例如 `defineStore('policyStore', ...)`。
-- 不使用 `useXxxStore()` 的 `Xxx` 作為 store 內部 state key 名稱，避免混淆。
+## 狀態所有權
 
-## 3. 哪些資料放 Store
+依狀態生命週期選擇最小範圍：
 
-### 必須放 Store
-
-| 資料 | Store | 原因 |
-|---|---|---|
-| 登入使用者資訊（userId、userName） | `authStore` | 跨多個頁面需要 |
-| 使用者 functionCode 授權清單 | `authStore` | 控制按鈕顯示與 API 呼叫前檢查 |
-| 代碼定義（code_definition） | `codeStore` | 全域共用，避免重複 API 呼叫 |
-| 目前編輯中的保全案件草稿 | `changeCaseStore` | 多步驟表單跨頁面保持狀態 |
-
-### 不放 Store（用 component local state）
-
-| 資料 | 原因 |
+| 狀態範圍 | 放置位置 |
 |---|---|
-| 單一畫面的表單輸入值 | 不需跨頁面，用 `ref`/`reactive` 即可 |
-| Modal 開關狀態 | 局部 UI 狀態 |
-| 分頁與排序參數 | 由 URL query string 管理，不重複存 store |
+| 單一 component 的輸入與顯示狀態 | component 內的 `ref`／`computed` |
+| 同一 feature 多個 component 共用 | feature composable 或父層狀態 |
+| 跨 route、需保留或由多處修改 | 經證明需要後才建立 Pinia Store |
+| Server state | typed API 呼叫結果；明確定義 loading、error、data |
 
-## 4. API 呼叫統一模式
+Pinia Store 不是每個 feature 的固定目錄。建立前須指出跨 route 或多消費者需求，命名使用 `<feature>Store.ts`，不得先寫入不存在的業務 Store 名稱。
 
-所有 API 呼叫透過 `src/api/` 的 typed 函式，不在 store 或 component 直接用 `axios`/`fetch`。
+## API 呼叫
 
-### API 函式格式
+- 所有 HTTP 呼叫由 typed function 封裝，View 不直接拼 URL 或解析任意 JSON。
+- Request、Response 與後端 DTO／OpenAPI 欄位逐一一致。
+- 共用 HTTP client 處理 base URL、認證、統一回應與共通錯誤；業務錯誤顯示留在 feature。
+- loading、error、data 必須由同一個操作邊界更新，失敗後不得保留容易誤認為最新結果的資料。
 
-```typescript
-// src/api/policyApi.ts
-import { apiClient } from './apiClient'
-import type { PageResult } from '@/types/common'
-import type { PolicySummaryResponse, PolicyQueryRequest } from '@/types/policy'
+## 共用資料快取
 
-export const policyApi = {
-  queryPolicies(req: PolicyQueryRequest): Promise<PageResult<PolicySummaryResponse>> {
-    return apiClient.get('/api/v1/policies', { params: req })
-  },
-  getPolicyDetail(policyNo: string): Promise<PolicyDetailResponse> {
-    return apiClient.get(`/api/v1/policies/${policyNo}`)
-  }
-}
-```
+只有符合下列條件才建立共用快取：
 
-### Store 呼叫 API 的標準模式
+1. 來源為後端權威資料。
+2. 兩個以上 feature 使用。
+3. 已定義失效時機、使用者隔離與登出清除方式。
 
-每個非同步操作必須管理 `loading`、`error`、`data` 三個狀態：
+代碼定義不得在前端另建翻譯表。是否採 Store、module cache 或查詢函式，依現況決定，不在共用規範指定不存在的實作名稱。
 
-```typescript
-// src/stores/policy/policyStore.ts
-export const usePolicyStore = defineStore('policyStore', () => {
-  const policies = ref<PageResult<PolicySummaryResponse> | null>(null)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+## 權限與錯誤
 
-  async function queryPolicies(req: PolicyQueryRequest) {
-    loading.value = true
-    error.value = null
-    try {
-      policies.value = await policyApi.queryPolicies(req)
-    } catch (e) {
-      error.value = '系統連線異常，請稍後再試'
-      useUiStore().showToast({ type: 'error', message: '系統連線異常，請稍後再試' })
-    } finally {
-      loading.value = false
-    }
-  }
+- 權限由後端裁決；前端隱藏按鈕只改善操作體驗，不能取代 API 授權。
+- 未授權、驗證失敗、衝突及系統錯誤依統一 API contract 顯示。
+- 不在 View、Store 或元件硬編碼另一份業務錯誤碼、狀態名稱或代碼說明。
 
-  return { policies, loading, error, queryPolicies }
-})
-```
+## 驗證
 
-### 禁止事項
-
-- 禁止在 component `<script setup>` 內直接呼叫 `axios` 或 `fetch`。
-- 禁止在 component 內處理 `try/catch` 的 API 錯誤（統一由 store 處理）。
-- 禁止在 store 寫死中文標籤（中文顯示名稱由後端 metadata 提供）。
-
-## 5. 代碼定義快取策略
-
-```typescript
-// src/stores/shared/codeStore.ts
-export const useCodeStore = defineStore('codeStore', () => {
-  const codeMap = ref<Map<string, CodeDefinition[]>>(new Map())
-
-  async function getCodesByGroup(codeGroup: string): Promise<CodeDefinition[]> {
-    if (codeMap.value.has(codeGroup)) {
-      return codeMap.value.get(codeGroup)!   // 已快取，直接回傳
-    }
-    const codes = await codeApi.getByGroup(codeGroup)
-    codeMap.value.set(codeGroup, codes)
-    return codeMap.value.get(codeGroup) ?? []
-  }
-
-  function clearCache() {
-    codeMap.value.clear()   // 登出時呼叫
-  }
-
-  return { getCodesByGroup, clearCache }
-})
-```
-
-- 代碼定義在使用時才載入（lazy loading），不在應用啟動時全量預載。
-- 登出時必須呼叫 `codeStore.clearCache()` 清除快取，避免不同使用者看到相同代碼快取。
-
-## 6. 授權控制規則
-
-### 按鈕與功能顯示
-
-```typescript
-// composable
-export function useAuth() {
-  const authStore = useAuthStore()
-  const hasPermission = (functionCode: string) =>
-    authStore.authorizedFunctionCodes.includes(functionCode)
-  return { hasPermission }
-}
-
-// template
-<button v-if="hasPermission('CHG_SUBMIT')" @click="submit">送審</button>
-```
-
-- 前端隱藏按鈕不等於授權，後端每個 API 仍須驗證 `userId + functionCode`。
-- `functionCode` 清單由登入後 API 回傳，存入 `authStore`，不在前端寫死判斷邏輯。
-
-## 7. 全域 uiStore（Loading / Toast）
-
-```typescript
-export const useUiStore = defineStore('uiStore', () => {
-  const globalLoading = ref(false)
-  const toasts = ref<Toast[]>([])
-
-  function showToast(toast: Omit<Toast, 'id'>) {
-    toasts.value.push({ ...toast, id: Date.now().toString() })
-    setTimeout(() => removeToast(toast), 5000)
-  }
-
-  function removeToast(toast: Toast) {
-    toasts.value = toasts.value.filter(t => t.id !== toast.id)
-  }
-
-  return { globalLoading, toasts, showToast, removeToast }
-})
-```
-
-- 跨頁面 loading 狀態（例如初始資料載入）用 `uiStore.globalLoading`。
-- 各模組 API 操作的局部 loading 用各自 store 的 `loading`，不影響全域。
+- type-check、unit test 與 production build 通過。
+- API 型別與實際 response 一致。
+- 若新增 Store，驗證 loading／error／data、重試、清除與使用者切換。
+- 以 320×568、390×844 與桌面 viewport 驗證同一 route、DOM、資料與功能。

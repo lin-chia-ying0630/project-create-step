@@ -1,0 +1,4 @@
+interface:
+  display_name: "審查 AI 產生程式"
+  short_description: "完整審查生成程式的跨層契約、架構、安全性與自動化測試缺口"
+  default_prompt: "使用 $review-generated-code 審查這批 AI 產生的程式。"

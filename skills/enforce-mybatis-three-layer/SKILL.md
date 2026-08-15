@@ -10,7 +10,7 @@ description: Establish, refactor, or review a Spring Boot MyBatis backend using 
 ## 執行流程
 
 1. 讀取根目錄 `AGENTS.md`、`.github/copilot-instructions.md` 與既有 package。
-2. 依業務能力決定 `<feature>`，例如 `customer`、`newcontract`、`inquiry`、`premium`；不得以 `controller` 作為整個系統的第一層目錄。
+2. 依實際業務能力決定 `<feature>`；不得直接複製文件中的佔位名稱，也不得以 `controller` 作為整個系統的第一層目錄。
 3. 依 [references/package-layout.md](references/package-layout.md) 建立目錄與依賴。
 4. 先定義 Service interface，再由 Controller 依賴 interface，由 `service/impl` 實作並注入 Mapper。
 5. 將 SQL 全部移到 `src/main/resources/mapper/<feature>/*Mapper.xml`；Java Mapper 只留 method contract，所有輸入使用 `#{}` 綁定。
@@ -28,7 +28,7 @@ description: Establish, refactor, or review a Spring Boot MyBatis backend using 
 - 固定封閉的 `code + 繁中說明`：只在所屬 `domain` enum 定義，並提供 `code()`、`description()`、嚴格 `fromCode()`；未知代碼不得靜默轉成 `null` 或自造說明。
 - 固定錯誤定義：以領域 `ErrorCode` enum 保存 code 與 message，例外只接受 enum。
 - Function 註解：public／protected Java method 使用 Javadoc；private、Vue 與 TypeScript function 說明其規則、狀態變化或副作用，不寫只重述名稱的註解。
-- `common`：只放真正跨功能的技術契約，例如統一回應與全域例外；郵遞區號、客戶等業務能力不得放入 `common`。
+- `common`：只放兩個以上功能以相同責任使用的技術契約，例如統一回應與全域例外；單一功能邏輯不得放入 `common`。
 
 依賴方向固定為：
 
@@ -40,14 +40,14 @@ Controller -> Service interface <- Service implementation -> Persistence Mapper 
 
 禁止 Controller 注入 Mapper、Mapper 依賴 Service、任何 Java class 含 `SELECT`／`INSERT`／`UPDATE`／`DELETE` SQL 或 JDBC、Java Mapper 使用 SQL annotation、功能 Java class 直接散落在 `<feature>/` 根目錄，以及引入 JPA/Hibernate 取代 MyBatis。SQL 動詞只允許出現在 Mapper XML。
 
-動態商品、郵遞區號或營運可維護代碼仍使用資料庫 code table。固定 enum 與動態 code table 必須先分類，不得同一代碼同時維護兩份繁中名稱。
+營運可維護的動態代碼使用資料庫 code table。固定 enum 與動態 code table 必須先分類，不得同一代碼同時維護兩份說明。
 
 ## 驗證
 
 先執行確定性架構檢查：
 
 ```bash
-python3 skills/enforce-mybatis-three-layer/scripts/check_layers.py create-api/src/main/java/tw/com/insurance/api
+python3 skills/enforce-mybatis-three-layer/scripts/check_layers.py <backend-module>/src/main/java/<java-package-root>
 ```
 
 再執行 repository 的 Maven Wrapper 測試與必要整合測試。檢查不是完整 Java parser；仍須人工確認 DTO／Entity 邊界、transaction 是否涵蓋完整業務動作，以及 Mapper SQL 是否和 schema 逐欄一致。
