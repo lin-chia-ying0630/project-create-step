@@ -379,6 +379,8 @@ Northflank Service 的容器連接埠維持 `8080`；若平台注入 `PORT`，Sp
 
 公開測試站設定 `AUTH_MODE=demo` 時會提供不含個資的固定 `demo-user` 測試身分，讓所有 Controller 仍維持同一份 JWT principal 契約。應用程式在未設定時安全預設為 `AUTH_MODE=sso`，未知模式會拒絕啟動，不再自動降級成 Demo；Demo 模式只供展示／開發環境使用，不代表公司 SSO 已完成。
 
+Northflank 的 `a-linlin/create-api` 是 `https://p01--create-web--kkj9gmg9xdcp.code.run/` 對應的公開測試 API，必須明確保留 `AUTH_MODE=demo`。變更 Northflank combined service 時，`runtimeEnvironment` 會整組取代，更新前必須先保留既有資料庫連線與加密密鑰設定，不得只送單一環境變數。部署後依序確認 `/api/auth/me` 回傳 `200` 與 `demo-user`、`/api/v1/reviews` 回傳 `200`，並以瀏覽器直接開啟 `/reviews`，確認沒有登入重新導向循環。
+
 正式環境必須設定 `AUTH_MODE=sso`，此時 `<backend-module>` 的 `/api/**` 只接受 `SSO_ACCESS_TOKEN` HttpOnly Cookie 中的 RS256 JWT。後端會透過 `SSO_JWK_SET_URI` 驗證簽章，並檢查 `SSO_ISSUER`、有效期限及 `aud=NEW_CONTRACT`；未通過一律回傳 `401`。前端啟動及換頁會呼叫 `/api/auth/me`，未登入時依 `VITE_PORTAL_URL` 返回統一入口；正式環境未設定、設定格式無效，或誤設為同一公開主機的 `:5174` 時，皆維持同源 HTTPS。本機需要 `5174` 統一入口時必須明確設定 `VITE_PORTAL_URL=http://localhost:5174/`。本機 Compose 已設定 `host.docker.internal` 讀取入口 JWKS。
 
 ## 要保作業 Maker-Checker 覆核
