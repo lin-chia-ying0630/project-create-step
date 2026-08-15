@@ -389,7 +389,7 @@ Northflank Service 的容器連接埠維持 `8080`；若平台注入 `PORT`，Sp
 
 要保作業契約狀態包含：受理時資料庫值為 `NULL`，承保並生效後為 `01`（有效），人工核保負向決行為 `13`（拒保）、`14`（延期）或 `15`（取消），保單送達後十天猶豫期內的變更為 `26`（猶豫期變更）。`NS` 固定表示要保作業受理檔的「照會結束／待核保審查」，核保審查清單只列出受理檔與核保案件皆為 `NS` 的資料；`DC` 拒絕承保映射為階段 `RS`／契約狀態 `13`，`PO` 延期承保映射為 `DS`／`14`，`CN` 取消申請映射為 `CS`／`15`。`26` 屬要保作業狀態，但不是核保結果，因此不列入核保審查結果選單。
 
-要保流程階段的 API 與前端型別統一使用 `newContractStageCode`、`newContractStageNameEn`、`newContractStageDescriptionZhTw`。資料庫代碼定義統一放在 `new-contract / new_contract_stage_code`；每個階段提供兩碼代碼、完整英文名稱及繁體中文說明。既有 v1 的 `applicationStatus`、`applicationStatusDescription`、`newContractStage`、`newContractStageDescription`、`currentStageCode`、`currentStageDescription`、`stageCode` 與 `stageDescription` 僅作棄用期相容輸出，新程式不得再引用。
+要保流程階段的 API 與前端型別統一使用 `newContractStageCode`、`newContractStageNameEn`、`newContractStageDescriptionZhTw`。資料庫代碼定義統一放在 `new-contract / new_contract_stage_code`；核保、照會、公會索引與保單製發階段皆歸入這一個代碼欄位，每個階段提供兩碼代碼、完整英文名稱及繁體中文說明，舊的四組階段分類停用且不再出現在代碼定義查詢。批次只領取 `PW` 待發單案件，完成後將案件更新為 `PS` 保單製發完成，需退回處理時更新為 `PR`，因此 V23 的 `batch_stage_code` 第二套階段分類亦停用；`process_status_code` 仍獨立描述批次請求／執行本身的技術作業狀態。既有 v1 的 `applicationStatus`、`applicationStatusDescription`、`newContractStage`、`newContractStageDescription`、`currentStageCode`、`currentStageDescription`、`stageCode` 與 `stageDescription` 僅作棄用期相容輸出，新程式不得再引用。
 
 要保流程階段不是獨立業務 Entity，不依階段建立 13 個資料模型；`insurance_application`、`underwriting_case`、`underwriting_inquiry`、`initial_premium_due` 等具有獨立資料表與生命週期的業務檔案，才各自建立 persistence Entity／Row Model。API Response DTO 與前端型別不得直接使用資料庫 Entity。
 
