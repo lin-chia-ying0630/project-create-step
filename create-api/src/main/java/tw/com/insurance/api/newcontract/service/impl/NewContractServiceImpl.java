@@ -362,6 +362,8 @@ public class NewContractServiceImpl implements NewContractService {
 				Set.of("applicationNo", "policyNo", "productCode"), "applicationNo");
 		String exactQuery = query == null || query.isBlank() ? null : query.trim();
 		long totalItems = mapper.countApplicationQuery(exactQuery);
+		if (totalItems == 0)
+			return new ApplicationQueryPage(List.of(), 0, pageQuery.page(), pageQuery.pageSize(), 0);
 		List<ApplicationQuerySummary> items = mapper.findApplicationQueryPage(exactQuery, pageQuery.offset(),
 				pageQuery.pageSize(), pageQuery.sortField(), pageQuery.sortDirection()).stream().map(row -> {
 					NewContractApplicationStatus status = NewContractApplicationStatus
@@ -624,6 +626,8 @@ public class NewContractServiceImpl implements NewContractService {
 				Set.of("applicationNo", "policyNo", "productCode"), "applicationNo");
 		String exactQuery = queryValue == null || queryValue.isBlank() ? null : queryValue.trim();
 		long totalItems = mapper.countUnderwritingReviewCandidates(exactQuery);
+		if (totalItems == 0)
+			return new UnderwritingReviewPage(List.of(), 0, query.page(), query.pageSize(), 0);
 		List<UnderwritingReviewSummary> items = mapper
 				.findUnderwritingReviewCandidates(exactQuery, query.offset(), query.pageSize(), query.sortField(),
 						query.sortDirection())
@@ -729,6 +733,8 @@ public class NewContractServiceImpl implements NewContractService {
 		PageSortRequest query = PageSortRequest.of(page, pageSize, sort,
 				Set.of("policyNo", "applicationNo", "productCode"), "policyNo");
 		long totalItems = mapper.countReversiblePolicies();
+		if (totalItems == 0)
+			return new PolicyReversalPage(List.of(), 0, query.page(), query.pageSize(), 0);
 		List<PolicyReversalSummary> items = mapper
 				.findReversiblePolicies(query.offset(), query.pageSize(), query.sortField(), query.sortDirection())
 				.stream()
