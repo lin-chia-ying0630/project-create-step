@@ -40,6 +40,6 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body.data
 }
 
-export function get<T>(path: string): Promise<T> {
-  return request<T>(path)
+export function get<T>(path: string, init?: RequestInit): Promise<T> {
+  return request<T>(path, init)
 }

@@ -1,27 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import PageNavigator from '../../../shared/components/PageNavigator.vue'
 import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
 import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
-import SectionTabNavigator from '../../../shared/components/SectionTabNavigator.vue'
 import SortableTableHeader from '../../../shared/components/SortableTableHeader.vue'
 import { reviewApi } from '../api/reviewApi'
-import type { ReviewDetail, ReviewPageResult, ReviewSummary } from '../types/review'
-
-const operationFilters = [
-  { value: '', label: '全部覆核' },
-  { value: 'CUSTOMER_CREATE', label: '客戶建立' },
-  { value: 'APPLICATION_CREATE', label: '保單登打' },
-  { value: 'POLICY_REVERSAL', label: '承保撤回' },
-  { value: 'UNDERWRITING_BATCH_ENQUEUE', label: '新契約批次承保作業' },
-  { value: 'UNDERWRITING_DECISION', label: '核保審查結果' },
-  { value: 'INITIAL_PREMIUM_MATCH', label: '首期保費資料' },
-] as const
-const operationTabItems = operationFilters.map((filter, index) => ({
-  value: filter.value,
-  label: filter.label,
-  caption: `第 ${index + 1} 頁`,
-}))
+import ReviewOperationTabs from '../components/ReviewOperationTabs.vue'
+import type { ReviewDetail, ReviewPageResult } from '../types/review'
 
 const reviewPage = ref<ReviewPageResult>({
   items: [],
@@ -41,14 +26,14 @@ const error = ref<string | null>(null)
 const sortField = ref('reviewId')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
-const visibleItems = computed(() =>
-  selectedOperation.value
-    ? reviewPage.value.items.filter((item) => item.operationType === selectedOperation.value)
-    : reviewPage.value.items,
-)
+let refreshSequence = 0
+let refreshController: AbortController | null = null
 
 /** 載入待覆核案件並重設已失效的明細選取。 */
 async function refresh(page = reviewPage.value.page) {
+  const sequence = ++refreshSequence
+  refreshController?.abort()
+  refreshController = new AbortController()
   loading.value = true
   error.value = null
   try {
@@ -57,7 +42,10 @@ async function refresh(page = reviewPage.value.page) {
       reviewPage.value.pageSize,
       `${sortField.value},${sortDirection.value}`,
       appliedQuery.value,
+      selectedOperation.value,
+      refreshController.signal,
     )
+    if (sequence !== refreshSequence) return
     if (
       selected.value &&
       !reviewPage.value.items.some((item) => item.reviewId === selected.value?.reviewId)
@@ -65,10 +53,20 @@ async function refresh(page = reviewPage.value.page) {
       selected.value = null
     }
   } catch (e) {
+    if (sequence !== refreshSequence) return
     error.value = e instanceof Error ? e.message : '覆核待辦載入失敗'
   } finally {
-    loading.value = false
+    if (sequence === refreshSequence) loading.value = false
   }
+}
+
+/** 切換覆核功能分類時由後端重新計數與分頁，不只過濾目前畫面的一頁。 */
+function changeOperation(value: string | number) {
+  const nextOperation = String(value)
+  if (selectedOperation.value === nextOperation) return
+  selectedOperation.value = nextOperation
+  selected.value = null
+  void refresh(1)
 }
 
 /** 套用完整識別值並由第一頁查詢相關待覆核案件。 */
@@ -166,12 +164,7 @@ onMounted(refresh)
       <span class="status-chip">待覆核 {{ reviewPage.totalItems }} 件</span>
     </header>
 
-    <SectionTabNavigator
-      :model-value="selectedOperation"
-      :items="operationTabItems"
-      navigation-label="覆核功能分類"
-      @update:model-value="selectedOperation = String($event)"
-    />
+    <ReviewOperationTabs :model-value="selectedOperation" @update:model-value="changeOperation" />
 
     <QueryListPanels>
       <template #query>
@@ -221,7 +214,7 @@ onMounted(refresh)
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in visibleItems" :key="item.reviewId">
+              <tr v-for="item in reviewPage.items" :key="item.reviewId">
                 <td>
                   <button class="secondary-button" @click="openDetail(item.reviewId)">覆核</button>
                 </td>
@@ -231,7 +224,7 @@ onMounted(refresh)
                 <td>{{ item.makerId }}</td>
                 <td>{{ item.submittedAt }}</td>
               </tr>
-              <tr v-if="!visibleItems.length">
+              <tr v-if="!loading && !reviewPage.items.length">
                 <td colspan="6">目前沒有待覆核案件。</td>
               </tr>
             </tbody>

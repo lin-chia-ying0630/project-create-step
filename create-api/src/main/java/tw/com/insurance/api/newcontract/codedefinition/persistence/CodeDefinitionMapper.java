@@ -17,6 +17,15 @@ public interface CodeDefinitionMapper {
 	List<CodeDefinitionDto> findActiveOptions(@Param("codeGroup") String codeGroup,
 			@Param("codeField") String codeField);
 
+	/** 計算指定群組與欄位目前生效的代碼筆數。 */
+	long countActiveOptions(@Param("codeGroup") String codeGroup, @Param("codeField") String codeField,
+			@Param("query") String query);
+
+	/** 只取得指定群組與欄位目前生效的一頁代碼。 */
+	List<CodeDefinitionDto> findActiveOptionPage(@Param("codeGroup") String codeGroup,
+			@Param("codeField") String codeField, @Param("offset") int offset, @Param("pageSize") int pageSize,
+			@Param("query") String query);
+
 	/** 檢查指定代碼是否為目前啟用的正式代碼。 */
 	boolean existsActiveCode(@Param("codeGroup") String codeGroup, @Param("codeField") String codeField,
 			@Param("code") String code);

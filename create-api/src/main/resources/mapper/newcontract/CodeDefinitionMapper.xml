@@ -33,6 +33,42 @@
      ORDER BY display_order, code_value
   </select>
 
+  <select id="countActiveOptions" resultType="long">
+    SELECT COUNT(*)
+      FROM new_contract.code_definition
+     WHERE code_group = #{codeGroup}
+       AND code_field = #{codeField}
+       AND active_flag = 'Y'
+       AND effective_from &lt;= CURRENT_DATE
+       AND (effective_to IS NULL OR effective_to &gt;= CURRENT_DATE)
+       <if test="query != null and query != ''">
+         AND (code_value LIKE CONCAT(#{query}, '%') OR code_description_zh_tw LIKE CONCAT('%', #{query}, '%'))
+       </if>
+  </select>
+
+  <select id="findActiveOptionPage" resultType="tw.com.insurance.api.newcontract.codedefinition.dto.CodeDefinitionDto">
+    SELECT code_value AS code,
+           code_description_zh_tw AS description,
+           code_description_en AS descriptionEn,
+           classification_code AS classificationCode,
+           classification_description_zh_tw AS classificationDescription,
+           breakdown_code AS breakdownCode,
+           breakdown_description_zh_tw AS breakdownDescription,
+           nature_of_work_zh_tw AS natureOfWork,
+           source_version AS sourceVersion
+      FROM new_contract.code_definition
+     WHERE code_group = #{codeGroup}
+       AND code_field = #{codeField}
+       AND active_flag = 'Y'
+       AND effective_from &lt;= CURRENT_DATE
+       AND (effective_to IS NULL OR effective_to &gt;= CURRENT_DATE)
+       <if test="query != null and query != ''">
+         AND (code_value LIKE CONCAT(#{query}, '%') OR code_description_zh_tw LIKE CONCAT('%', #{query}, '%'))
+       </if>
+     ORDER BY display_order, code_value
+     LIMIT #{pageSize} OFFSET #{offset}
+  </select>
+
   <select id="existsActiveCode" resultType="boolean">
     SELECT EXISTS (
       SELECT 1

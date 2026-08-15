@@ -3,6 +3,7 @@ package tw.com.insurance.api.review.controller;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewDecisionRequest;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewDetail;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewPageResult;
+import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewOperationOption;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -10,6 +11,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
+import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
@@ -40,8 +42,16 @@ public class ReviewController {
 			@RequestParam(defaultValue = "1") @Min(1) int page,
 			@RequestParam(defaultValue = "10") @Min(1) @Max(100) int pageSize,
 			@RequestParam(defaultValue = "reviewId,asc") String sort,
-			@RequestParam(defaultValue = "") @Size(max = 200) String query) {
-		return ResponseBodyDto.success("覆核待辦查詢成功", service.findPage(status, page, pageSize, sort, query));
+			@RequestParam(defaultValue = "") @Size(max = 200) String query,
+			@RequestParam(defaultValue = "") @Size(max = 64) String operationType) {
+		return ResponseBodyDto.success("覆核待辦查詢成功",
+				service.findPage(status, page, pageSize, sort, query, operationType));
+	}
+
+	/** 取得覆核功能的英文代碼與繁中顯示名稱資料字典。 */
+	@GetMapping("/operation-types")
+	public ResponseBodyDto<List<ReviewOperationOption>> findOperationOptions() {
+		return ResponseBodyDto.success("覆核功能對照查詢成功", service.findOperationOptions());
 	}
 
 	/** 取得單筆覆核內容。 */

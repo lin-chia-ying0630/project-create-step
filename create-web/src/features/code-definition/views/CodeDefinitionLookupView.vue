@@ -8,37 +8,43 @@ import type {
   CodeDefinitionOption,
   CodeDefinitionTableOption,
 } from '../../../shared/types/codeDefinition'
+import type { PageResult } from '../../../shared/types/common'
 
 const tableOptions = ref<CodeDefinitionTableOption[]>([])
 const selectedTableKey = ref('customer-kyc::occupation_code')
-const items = ref<CodeDefinitionOption[]>([])
+const resultPage = ref<PageResult<CodeDefinitionOption>>({
+  items: [],
+  totalItems: 0,
+  page: 1,
+  pageSize: 10,
+  totalPages: 0,
+})
 const loading = ref(false)
 const error = ref<string | null>(null)
 const pageIndex = ref(0)
-const pageSize = ref(10)
 
 const selectedTable = computed(() =>
   tableOptions.value.find(
     (table) => `${table.codeGroup}::${table.codeField}` === selectedTableKey.value,
   ),
 )
-const totalPages = computed(() => Math.max(1, Math.ceil(items.value.length / pageSize.value)))
-const pagedItems = computed(() => {
-  const start = pageIndex.value * pageSize.value
-  return items.value.slice(start, start + pageSize.value)
-})
 
 /** 依下拉選取的群組與欄位載入資料庫中目前生效的 Code Definitions。 */
-async function search() {
+async function search(page = 1) {
   const table = selectedTable.value
   if (!table) return
   loading.value = true
   error.value = null
   try {
-    items.value = await codeDefinitionApi.findActiveOptions(table.codeGroup, table.codeField)
-    pageIndex.value = 0
+    resultPage.value = await codeDefinitionApi.findActiveOptionPage(
+      table.codeGroup,
+      table.codeField,
+      page,
+      resultPage.value.pageSize,
+    )
+    pageIndex.value = resultPage.value.page - 1
   } catch (e) {
-    items.value = []
+    resultPage.value = { ...resultPage.value, items: [], totalItems: 0, totalPages: 0 }
     error.value = e instanceof Error ? e.message : 'Code Definitions 載入失敗'
   } finally {
     loading.value = false
@@ -47,8 +53,14 @@ async function search() {
 
 /** 變更共用每頁筆數後回到第一頁。 */
 function changePageSize(value: number) {
-  pageSize.value = value
-  pageIndex.value = 0
+  resultPage.value.pageSize = value
+  void search(1)
+}
+
+/** 將共用元件的零起算頁碼轉成 API 的一日起算頁碼。 */
+function changePage(value: number) {
+  pageIndex.value = value
+  void search(value + 1)
 }
 
 /** 初次進入時先載入可查詢代碼表，再預設顯示正式職業代碼。 */
@@ -80,7 +92,7 @@ onMounted(initialize)
         <h2>代碼定義查詢</h2>
         <p>查詢資料庫目前生效的動態代碼與繁體中文說明。</p>
       </div>
-      <span class="status-chip">{{ items.length }} 筆</span>
+      <span class="status-chip">{{ resultPage.totalItems }} 筆</span>
     </header>
 
     <QueryListPanels>
@@ -101,7 +113,7 @@ onMounted(initialize)
             </select>
           </label>
           <template #actions>
-            <button type="button" class="primary-button" :disabled="loading" @click="search">
+            <button type="button" class="primary-button" :disabled="loading" @click="search(1)">
               {{ loading ? '查詢中…' : '查詢代碼' }}
             </button>
           </template>
@@ -127,7 +139,7 @@ onMounted(initialize)
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in pagedItems" :key="item.code">
+              <tr v-for="item in resultPage.items" :key="item.code">
                 <td class="code-value">{{ item.code }}</td>
                 <td>{{ item.description }}</td>
                 <td>{{ item.descriptionEn || '—' }}</td>
@@ -139,18 +151,19 @@ onMounted(initialize)
                 <td>{{ item.natureOfWork || '—' }}</td>
                 <td>{{ item.sourceVersion || '—' }}</td>
               </tr>
-              <tr v-if="!loading && !error && !items.length">
+              <tr v-if="!loading && !error && !resultPage.items.length">
                 <td colspan="7">查無目前生效的代碼對照。</td>
               </tr>
             </tbody>
           </table>
         </div>
         <PageNavigator
-          v-if="items.length"
-          v-model="pageIndex"
-          :total="totalPages"
-          :page-size="pageSize"
+          v-if="resultPage.totalPages > 0"
+          :model-value="pageIndex"
+          :total="resultPage.totalPages"
+          :page-size="resultPage.pageSize"
           prefix="代碼對照清單"
+          @update:model-value="changePage"
           @update:page-size="changePageSize"
         />
       </template>
