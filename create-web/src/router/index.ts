@@ -108,18 +108,35 @@ export const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
+let authenticatedSession = false
+let authenticationRequest: Promise<Response> | null = null
+
+/** 同一個 SPA 工作階段只重複使用成功的認證結果；正式 API 仍由後端逐次授權。 */
+function verifyAuthenticatedSession(): Promise<Response> {
+  if (authenticationRequest) return authenticationRequest
+  authenticationRequest = fetch('/api/auth/me', {
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  }).finally(() => {
+    authenticationRequest = null
+  })
+  return authenticationRequest
+}
+
 /** 所有新契約畫面進入前由後端驗證 HttpOnly SSO JWT；前端不讀取 token。 */
 router.beforeEach(async () => {
+  if (authenticatedSession) return true
   let response: Response
   try {
-    response = await fetch('/api/auth/me', {
-      credentials: 'same-origin',
-      headers: { Accept: 'application/json' },
-    })
+    response = await verifyAuthenticatedSession()
   } catch {
     return true
   }
-  if (response.ok || !shouldRedirectToPortal(response.status)) return true
+  if (response.ok) {
+    authenticatedSession = true
+    return true
+  }
+  if (!shouldRedirectToPortal(response.status)) return true
   const portalUrl = resolvePortalUrl(import.meta.env.VITE_PORTAL_URL, window.location.origin)
   window.location.replace(portalUrl)
   return false

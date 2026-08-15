@@ -26,6 +26,16 @@ description: Diagnose local Docker Compose or hosted deployment failures involvi
 - `/actuator/health`、關鍵 API 的 status／統一回應，以及前端 proxy 與 browser console／network。
 - Docker、Testcontainers 或外部平台不可用時，將相關驗證列為未驗證而非通過。
 
+## 不可違反
+
+- 不將認證 API 的 502／503、逾時或網路失敗視為未登入；只有契約明定的 401／403 才能觸發登入導向。
+- 不把登入入口指回目前同源 URL 或失效的開發連接埠；必須驗證導向目標不會形成重新導向迴圈。
+- 不以畫面存在分頁控制項證明後端已分頁；必須核對 API 回傳筆數、總筆數契約與 SQL 的 `LIMIT`／`OFFSET` 或等效機制。
+- 不讓搜尋型下拉在開啟時載入完整大型代碼表；應使用最小輸入長度、debounce、結果上限與過期請求取消。
+- 不在未確認 PID、signal forwarding、平台生命週期及副作用前，向正式或共用測試容器發送 JVM signal、kill 或 restart。
+- 不用反覆重啟取代啟動時間、資源限制、health check、migration 與最底層錯誤的診斷。
+- 不在只有 build、HTTP 200 或單一 API 證據時宣告完成；部署後必須驗證認證、關鍵 API、真實瀏覽器 route 與錯誤狀態。
+
 ## 交付格式
 
 依序列出 `Confirmed` 根因、證據、受影響範圍、最小修復方案、修復後驗證清單與仍為 `Unknown` 的外部條件。

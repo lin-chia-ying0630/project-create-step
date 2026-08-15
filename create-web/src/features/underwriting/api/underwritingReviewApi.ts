@@ -7,6 +7,15 @@ import type {
   UnderwritingReviewPreview,
 } from '../types/underwritingReview'
 
+let outcomeCache: UnderwritingOutcomeOption[] | null = null
+let outcomeRequest: Promise<UnderwritingOutcomeOption[]> | null = null
+
+/** 清除核保結果快取，供核保結果定義異動或使用者登出後重新載入。 */
+export function clearUnderwritingOutcomeCache() {
+  outcomeCache = null
+  outcomeRequest = null
+}
+
 export const underwritingReviewApi = {
   list(
     query = '',
@@ -26,7 +35,19 @@ export const underwritingReviewApi = {
     return get(`/api/v1/new-contract/underwriting-reviews/${encodeURIComponent(query)}`)
   },
   outcomes(): Promise<UnderwritingOutcomeOption[]> {
-    return get('/api/v1/new-contract/underwriting-reviews/outcomes')
+    if (outcomeCache) return Promise.resolve(outcomeCache)
+    if (outcomeRequest) return outcomeRequest
+    outcomeRequest = get<UnderwritingOutcomeOption[]>(
+      '/api/v1/new-contract/underwriting-reviews/outcomes',
+    )
+      .then((result) => {
+        outcomeCache = result
+        return result
+      })
+      .finally(() => {
+        outcomeRequest = null
+      })
+    return outcomeRequest
   },
   submit(command: UnderwritingDecisionRequest): Promise<ReviewSubmissionResult> {
     return request('/api/v1/new-contract/underwriting-reviews/decisions', {
