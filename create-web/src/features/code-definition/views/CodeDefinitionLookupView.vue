@@ -139,7 +139,7 @@ onMounted(initialize)
                 <td>{{ item.natureOfWork || '—' }}</td>
                 <td>{{ item.sourceVersion || '—' }}</td>
               </tr>
-              <tr v-if="!loading && !items.length">
+              <tr v-if="!loading && !error && !items.length">
                 <td colspan="7">查無目前生效的代碼對照。</td>
               </tr>
             </tbody>

@@ -40,6 +40,23 @@ class NorthflankDatasourceConfigurationTests {
 		assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("local-only");
 	}
 
+	/** 低資源展示容器須限制連線池與 Tomcat 執行緒，且仍可由正式環境覆蓋。 */
+	@Test
+	void shouldUseBoundedDemoResourcesAndAllowProductionOverrides() throws IOException {
+		StandardEnvironment defaults = environmentWith(Map.of());
+		assertThat(defaults.getProperty("spring.datasource.hikari.maximum-pool-size")).isEqualTo("4");
+		assertThat(defaults.getProperty("spring.datasource.hikari.minimum-idle")).isEqualTo("1");
+		assertThat(defaults.getProperty("server.tomcat.threads.max")).isEqualTo("24");
+		assertThat(defaults.getProperty("server.tomcat.threads.min-spare")).isEqualTo("2");
+
+		StandardEnvironment overridden = environmentWith(Map.of("DB_POOL_MAX_SIZE", "12", "DB_POOL_MIN_IDLE", "3",
+				"SERVER_TOMCAT_THREADS_MAX", "80", "SERVER_TOMCAT_THREADS_MIN_SPARE", "8"));
+		assertThat(overridden.getProperty("spring.datasource.hikari.maximum-pool-size")).isEqualTo("12");
+		assertThat(overridden.getProperty("spring.datasource.hikari.minimum-idle")).isEqualTo("3");
+		assertThat(overridden.getProperty("server.tomcat.threads.max")).isEqualTo("80");
+		assertThat(overridden.getProperty("server.tomcat.threads.min-spare")).isEqualTo("8");
+	}
+
 	/** 載入正式 application.yml，並將測試環境變數放在最高優先序。 */
 	private StandardEnvironment environmentWith(Map<String, Object> variables) throws IOException {
 		StandardEnvironment environment = new StandardEnvironment();
