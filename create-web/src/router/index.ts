@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { resolvePortalUrl } from './portalUrl'
 
 export const routeNames = {
   customer: 'customer-create',
@@ -114,8 +115,7 @@ router.beforeEach(async () => {
     headers: { Accept: 'application/json' },
   })
   if (response.ok) return true
-  const portalUrl =
-    import.meta.env.VITE_PORTAL_URL?.trim() || `${window.location.protocol}//${window.location.hostname}:5174/`
+  const portalUrl = resolvePortalUrl(import.meta.env.VITE_PORTAL_URL, window.location.origin)
   window.location.replace(portalUrl)
   return false
 })
