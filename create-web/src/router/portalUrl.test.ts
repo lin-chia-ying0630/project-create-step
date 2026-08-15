@@ -13,4 +13,19 @@ describe('resolvePortalUrl', () => {
       'https://example.code.run/',
     )
   })
+
+  it('正式環境誤設同主機 5174 時改回同源 HTTPS', () => {
+    expect(
+      resolvePortalUrl(
+        'https://p01--create-web--kkj9gmg9xdcp.code.run:5174',
+        'https://p01--create-web--kkj9gmg9xdcp.code.run',
+      ),
+    ).toBe('https://p01--create-web--kkj9gmg9xdcp.code.run/')
+  })
+
+  it('無效入口設定不會中斷導向，改回同源 HTTPS', () => {
+    expect(resolvePortalUrl('not-a-url', 'https://example.code.run')).toBe(
+      'https://example.code.run/',
+    )
+  })
 })
