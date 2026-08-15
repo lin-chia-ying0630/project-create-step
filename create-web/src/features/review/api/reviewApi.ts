@@ -1,13 +1,19 @@
 import { get, request } from '../../../shared/api/apiClient'
-import type { ReviewDetail, ReviewPageResult } from '../types/review'
+import type { ReviewDetail, ReviewOperationOption, ReviewPageResult } from '../types/review'
 
 export const reviewApi = {
+  /** 取得後端唯一維護的覆核功能英文代碼與繁中名稱。 */
+  findOperationOptions(): Promise<ReviewOperationOption[]> {
+    return get('/api/v1/reviews/operation-types')
+  },
   /** 取得覆核待辦清單。 */
   findPending(
     page = 1,
     pageSize = 10,
     sort = 'reviewId,asc',
     query = '',
+    operationType = '',
+    signal?: AbortSignal,
   ): Promise<ReviewPageResult> {
     const params = new URLSearchParams({
       status: 'P',
@@ -16,7 +22,8 @@ export const reviewApi = {
       sort,
     })
     if (query) params.set('query', query)
-    return get(`/api/v1/reviews?${params.toString()}`)
+    if (operationType) params.set('operationType', operationType)
+    return get(`/api/v1/reviews?${params.toString()}`, { signal })
   },
   /** 取得單筆覆核案件與解密後明細。 */
   findById(reviewId: string): Promise<ReviewDetail> {

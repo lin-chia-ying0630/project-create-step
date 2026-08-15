@@ -7,6 +7,7 @@ import static tw.com.insurance.api.newcontract.dto.NewContractDtos.UnderwritingD
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewDecisionRequest;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewDetail;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewPageResult;
+import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewOperationOption;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewSubmissionResult;
 import static tw.com.insurance.api.review.dto.ReviewDtos.ReviewSummary;
 
@@ -44,6 +45,7 @@ import tw.com.insurance.api.review.service.ReviewService;
 /** 以單一交易協調待審鎖、覆核決行、正式異動與成功稽核。 */
 @Service
 public class ReviewServiceImpl implements ReviewService {
+	private static final ReviewOperationOption ALL_OPERATIONS = new ReviewOperationOption("", "全部覆核");
 	private final ReviewMapper mapper;
 	private final CustomerService customerService;
 	private final NewContractService newContractService;
@@ -81,7 +83,8 @@ public class ReviewServiceImpl implements ReviewService {
 	/** 依覆核狀態分頁查詢待辦，排序固定為最早送審優先。 */
 	@Override
 	@Transactional(readOnly = true)
-	public ReviewPageResult findPage(String status, int page, int pageSize, String sort, String query) {
+	public ReviewPageResult findPage(String status, int page, int pageSize, String sort, String query,
+			String operationType) {
 		String statusCode;
 		try {
 			statusCode = ReviewStatus.fromCode(status).code();
@@ -91,10 +94,36 @@ public class ReviewServiceImpl implements ReviewService {
 		PageSortRequest pageQuery = PageSortRequest.of(page, pageSize, sort,
 				Set.of("reviewId", "operationType", "businessKey"), "reviewId");
 		String exactQuery = query == null || query.isBlank() ? null : query.trim();
-		long total = mapper.countByStatus(statusCode, exactQuery);
+		String operationTypeCode = normalizeOperationType(operationType);
+		long total = mapper.countByStatus(statusCode, exactQuery, operationTypeCode);
 		List<ReviewSummary> items = mapper.findPage(statusCode, pageQuery.offset(), pageQuery.pageSize(),
-				pageQuery.sortField(), pageQuery.sortDirection(), exactQuery).stream().map(this::toSummary).toList();
+				pageQuery.sortField(), pageQuery.sortDirection(), exactQuery, operationTypeCode).stream()
+				.map(this::toSummary).toList();
 		return new ReviewPageResult(items, total, pageQuery.page(), pageQuery.pageSize(), pageQuery.totalPages(total));
+	}
+
+	/** 由後端領域 enum 產生英文代碼與繁中名稱，供前端以單一資料字典呈現。 */
+	@Override
+	public List<ReviewOperationOption> findOperationOptions() {
+		List<ReviewOperationOption> options = new java.util.ArrayList<>();
+		options.add(ALL_OPERATIONS);
+		Arrays.stream(ReviewOperationType.values())
+				.filter(type -> type != ReviewOperationType.POLICY_NUMBER_RESERVE)
+				.map(type -> new ReviewOperationOption(type.name(), type.description()))
+				.forEach(options::add);
+		return List.copyOf(options);
+	}
+
+	/** 將空白分類轉為查詢全部，並拒絕不存在的覆核功能代碼。 */
+	private String normalizeOperationType(String operationType) {
+		if (operationType == null || operationType.isBlank()) {
+			return null;
+		}
+		try {
+			return ReviewOperationType.valueOf(operationType.trim()).name();
+		} catch (IllegalArgumentException exception) {
+			throw new BusinessException(ReviewErrorCode.INVALID_OPERATION_TYPE);
+		}
 	}
 
 	/** 取得覆核明細並只在授權後解密 payload。 */

@@ -15,8 +15,10 @@ public interface ReviewMapper {
 			@Param("payload") byte[] payload, @Param("makerId") String makerId);
 	List<Map<String, Object>> findPage(@Param("status") String status, @Param("offset") int offset,
 			@Param("pageSize") int pageSize, @Param("sortField") String sortField,
-			@Param("sortDirection") String sortDirection, @Param("query") String query);
-	long countByStatus(@Param("status") String status, @Param("query") String query);
+			@Param("sortDirection") String sortDirection, @Param("query") String query,
+			@Param("operationType") String operationType);
+	long countByStatus(@Param("status") String status, @Param("query") String query,
+			@Param("operationType") String operationType);
 	Map<String, Object> findById(@Param("reviewId") String reviewId);
 	Map<String, Object> findByIdForUpdate(@Param("reviewId") String reviewId);
 	int approve(@Param("reviewId") String reviewId, @Param("reviewerId") String reviewerId,

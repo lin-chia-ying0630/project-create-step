@@ -24,4 +24,6 @@ public final class ReviewDtos {
 	}
 	public record ReviewPageResult(List<ReviewSummary> items, long totalItems, int page, int pageSize, int totalPages) {
 	}
+	public record ReviewOperationOption(String value, String label) {
+	}
 }

@@ -8,6 +8,7 @@ import SortableTableHeader from '../../../shared/components/SortableTableHeader.
 import QueryListPanels from '../../../shared/components/QueryListPanels.vue'
 import SingleQueryForm from '../../../shared/components/SingleQueryForm.vue'
 import CodeDefinitionSelect from '../../../shared/components/CodeDefinitionSelect.vue'
+import CodeDefinitionAutocomplete from '../../../shared/components/CodeDefinitionAutocomplete.vue'
 import SectionTabNavigator from '../../../shared/components/SectionTabNavigator.vue'
 import type { CodeDefinitionOption } from '../../../shared/types/codeDefinition'
 import type { CustomerPage, CustomerSummary } from '../types/customer'
@@ -41,7 +42,6 @@ const form = reactive({
 const consent = ref(false),
   loading = ref(false),
   codeLoading = ref(false),
-  occupationOptions = ref<CodeDefinitionOption[]>([]),
   sourceOfFundsOptions = ref<CodeDefinitionOption[]>([]),
   insurancePurposeOptions = ref<CodeDefinitionOption[]>([]),
   countryOptions = ref<CodeDefinitionOption[]>([]),
@@ -77,16 +77,14 @@ function customerTypeLabel(code: string) {
 async function loadKycCodeDefinitions() {
   codeLoading.value = true
   try {
-    const [occupations, sourcesOfFunds, insurancePurposes, countries, postalCodes, customerTypes] =
+    const [sourcesOfFunds, insurancePurposes, countries, postalCodes, customerTypes] =
       await Promise.all([
-        customerCodeDefinitionApi.findOccupations(),
         customerCodeDefinitionApi.findSourcesOfFunds(),
         customerCodeDefinitionApi.findInsurancePurposes(),
         codeDefinitionApi.findActiveOptions('common', 'country_code'),
         codeDefinitionApi.findActiveOptions('customer-contact', 'postal_code3'),
         codeDefinitionApi.findActiveOptions('customer-master', 'customer_type_code'),
       ])
-    occupationOptions.value = occupations
     sourceOfFundsOptions.value = sourcesOfFunds
     insurancePurposeOptions.value = insurancePurposes
     countryOptions.value = countries
@@ -493,12 +491,13 @@ onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
       </div>
       <div class="panel-title section-gap"><h3>KYC 基本資料</h3></div>
       <div class="field-grid">
-        <CodeDefinitionSelect
+        <CodeDefinitionAutocomplete
           v-model="form.occupationCode"
+          code-group="customer-kyc"
+          code-field="occupation_code"
           label="職業"
-          :options="occupationOptions"
           :disabled="codeLoading"
-          :placeholder="codeLoading ? '代碼載入中…' : '請選擇'"
+          placeholder="輸入職業代碼或中文關鍵字"
           required
         /><CodeDefinitionSelect
           v-model="form.sourceOfFundsCode"

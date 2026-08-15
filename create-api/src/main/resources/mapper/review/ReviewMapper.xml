@@ -15,6 +15,9 @@
   <!-- 覆核查詢以完整識別值比對；客戶 ID 透過新契約關係人檔關聯，不解密或掃描 payload。 -->
   <sql id="reviewQueryFilter">
     b.review_status = #{status}
+    <if test="operationType != null and operationType != ''">
+      AND b.operation_type = #{operationType}
+    </if>
     <if test="query != null and query != ''">
       AND (
         b.review_id = #{query}

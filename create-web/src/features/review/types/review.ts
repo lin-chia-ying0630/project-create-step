@@ -27,3 +27,9 @@ export interface ReviewPageResult {
   pageSize: number
   totalPages: number
 }
+
+/** 後端覆核資料字典提供的英文代碼與繁中名稱。 */
+export interface ReviewOperationOption {
+  value: string
+  label: string
+}

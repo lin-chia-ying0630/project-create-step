@@ -7,10 +7,6 @@ function findOptions(codeField: string): Promise<CodeDefinitionOption[]> {
 }
 
 export const customerCodeDefinitionApi = {
-  /** 取得職業代碼與繁體中文說明。 */
-  findOccupations(): Promise<CodeDefinitionOption[]> {
-    return findOptions('occupation_code')
-  },
   /** 取得資金來源代碼與繁體中文說明。 */
   findSourcesOfFunds(): Promise<CodeDefinitionOption[]> {
     return findOptions('source_of_funds_code')
