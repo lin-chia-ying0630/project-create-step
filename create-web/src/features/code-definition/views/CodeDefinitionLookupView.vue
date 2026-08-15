@@ -63,17 +63,29 @@ function changePage(value: number) {
   void search(value + 1)
 }
 
-/** 初次進入時先載入可查詢代碼表，再預設顯示正式職業代碼。 */
+/** 初次進入時並行載入代碼表與預設職業代碼，避免兩次遠端查詢串行等待。 */
 async function initialize() {
   loading.value = true
   error.value = null
   try {
-    tableOptions.value = await codeDefinitionApi.findActiveTables()
+    const [tables, initialPage] = await Promise.all([
+      codeDefinitionApi.findActiveTables(),
+      codeDefinitionApi.findActiveOptionPage(
+        'customer-kyc',
+        'occupation_code',
+        1,
+        resultPage.value.pageSize,
+      ),
+    ])
+    tableOptions.value = tables
     if (!selectedTable.value && tableOptions.value.length) {
       const first = tableOptions.value[0]
       selectedTableKey.value = `${first.codeGroup}::${first.codeField}`
+      await search()
+    } else {
+      resultPage.value = initialPage
+      pageIndex.value = initialPage.page - 1
     }
-    await search()
   } catch (e) {
     error.value = e instanceof Error ? e.message : '代碼表清單載入失敗'
   } finally {

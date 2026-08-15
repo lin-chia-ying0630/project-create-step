@@ -144,15 +144,20 @@ async function submit() {
   }
 }
 
-/** 進入畫面時同時取得待辦清單及後端正式核保結果。 */
+/** 進入畫面時並行取得待辦清單及後端正式核保結果，避免兩段等待時間相加。 */
 onMounted(async () => {
-  try {
-    outcomes.value = await underwritingReviewApi.outcomes()
-    decisionCode.value = outcomes.value[0]?.decisionCode ?? ''
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '讀取核保結果失敗'
-  }
-  await loadCases()
+  await Promise.all([
+    loadCases(),
+    underwritingReviewApi
+      .outcomes()
+      .then((result) => {
+        outcomes.value = result
+        decisionCode.value = result[0]?.decisionCode ?? ''
+      })
+      .catch((e: unknown) => {
+        error.value = e instanceof Error ? e.message : '讀取核保結果失敗'
+      }),
+  ])
 })
 </script>
 

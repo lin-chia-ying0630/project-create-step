@@ -198,7 +198,10 @@ function closeCustomer() {
   selectedCustomer.value = null
 }
 
-onMounted(() => Promise.all([loadKycCodeDefinitions(), loadCustomers(1)]))
+/** 依目前 route 模式只載入畫面實際使用的資料，避免查詢與建立互相預載。 */
+onMounted(() =>
+  props.mode === 'query' ? loadCustomers(1) : loadKycCodeDefinitions(),
+)
 </script>
 <template>
   <section class="content-page">
