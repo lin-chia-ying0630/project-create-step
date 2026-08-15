@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolvePortalUrl } from './portalUrl'
+import { resolvePortalUrl, shouldRedirectToPortal } from './portalUrl'
 
 describe('resolvePortalUrl', () => {
   it('使用明確設定的本機統一入口網址', () => {
@@ -27,5 +27,15 @@ describe('resolvePortalUrl', () => {
     expect(resolvePortalUrl('not-a-url', 'https://example.code.run')).toBe(
       'https://example.code.run/',
     )
+  })
+})
+
+describe('shouldRedirectToPortal', () => {
+  it.each([401, 403])('HTTP %i 應導向統一登入入口', (status) => {
+    expect(shouldRedirectToPortal(status)).toBe(true)
+  })
+
+  it.each([0, 400, 404, 500, 502, 503])('HTTP %i 不得觸發同源重新導向迴圈', (status) => {
+    expect(shouldRedirectToPortal(status)).toBe(false)
   })
 })

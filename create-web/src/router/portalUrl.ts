@@ -18,3 +18,8 @@ export function resolvePortalUrl(
     return `${currentOrigin}/`
   }
 }
+
+/** 只有明確的未登入或權限不足才導向入口；服務暫時失敗不得形成重新導向迴圈。 */
+export function shouldRedirectToPortal(status: number): boolean {
+  return status === 401 || status === 403
+}

@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { resolvePortalUrl } from './portalUrl'
+import { resolvePortalUrl, shouldRedirectToPortal } from './portalUrl'
 
 export const routeNames = {
   customer: 'customer-create',
@@ -110,11 +110,16 @@ export const router = createRouter({
 
 /** 所有新契約畫面進入前由後端驗證 HttpOnly SSO JWT；前端不讀取 token。 */
 router.beforeEach(async () => {
-  const response = await fetch('/api/auth/me', {
-    credentials: 'same-origin',
-    headers: { Accept: 'application/json' },
-  })
-  if (response.ok) return true
+  let response: Response
+  try {
+    response = await fetch('/api/auth/me', {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+  } catch {
+    return true
+  }
+  if (response.ok || !shouldRedirectToPortal(response.status)) return true
   const portalUrl = resolvePortalUrl(import.meta.env.VITE_PORTAL_URL, window.location.origin)
   window.location.replace(portalUrl)
   return false
