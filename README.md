@@ -359,8 +359,6 @@ SELECT COUNT(*) AS local_test_case_count
 
 Northflank Service 的容器連接埠維持 `8080`；若平台注入 `PORT`，Spring Boot 也會自動採用。部署完成後以 `/actuator/health` 驗證應用程式及資料庫健康狀態。應用程式優先順序為 `MYSQL_JDBC_URI`、`DB_URL`、本機預設 URL，因此既有 Docker Compose 不需修改。
 
-公開測試 API 維持 `nf-compute-10` 的 0.1 CPU／256 MB 不增加方案費用。容器以 Serial GC、受限 heap／metaspace／code cache／thread stack 啟動，Hikari 預設最多 4 條連線，Tomcat 預設最多 24 個 request threads；正式環境可分別以 `JAVA_TOOL_OPTIONS`、`DB_POOL_MAX_SIZE`、`DB_POOL_MIN_IDLE`、`SERVER_TOMCAT_THREADS_MAX` 與 `SERVER_TOMCAT_THREADS_MIN_SPARE` 覆蓋。部署後必須觀察記憶體不再長時間達到 100%，不能只以單次 health check 判定穩定。
-
 正式環境只應連線 Addon 的內部 endpoint。只有從本機或外部工具維護資料庫時才使用公開 endpoint，並依 Northflank 要求啟用 TLS；不得把公開連線資訊保存於 repository。
 
 本機畫面包含：

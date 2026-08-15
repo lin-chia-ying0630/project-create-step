@@ -8,8 +8,8 @@ spring:
     password: ${MYSQL_PASSWORD:${DB_PASSWORD:insurance-local-only}}
     hikari:
       # 連線池大小可依 Northflank Addon 方案的連線上限調整，避免單一服務耗盡資料庫連線。
-      maximum-pool-size: ${DB_POOL_MAX_SIZE:4}
-      minimum-idle: ${DB_POOL_MIN_IDLE:1}
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:8}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
       connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
       max-lifetime: ${DB_MAX_LIFETIME_MS:1700000}
   flyway:
@@ -24,13 +24,7 @@ mybatis:
 management:
   endpoints.web.exposure.include: health,info
   endpoint.health.probes.enabled: true
-server:
-  port: ${SERVER_PORT:${PORT:8080}}
-  tomcat:
-    threads:
-      # 公開展示站採小型執行緒池，避免 256 MB 容器因大量 thread stack 耗盡記憶體。
-      max: ${SERVER_TOMCAT_THREADS_MAX:24}
-      min-spare: ${SERVER_TOMCAT_THREADS_MIN_SPARE:2}
+server.port: ${SERVER_PORT:${PORT:8080}}
 app.pii-encryption-key: ${PII_ENCRYPTION_KEY}
 sso:
   # 正式安全預設為 SSO；沒有 SSO 的公開測試站可明確設定 AUTH_MODE=demo。
