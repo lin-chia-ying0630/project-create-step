@@ -42,7 +42,7 @@ description: Start or redesign an insurance software project with Traditional Ch
 
 - 系統目的、使用者角色及第一個可交付流程。
 - 適用地區、保險類型、通路及商品範圍。
-- 新契約、保全／契約變更、核保、收費或理賠中的哪一段屬於本次範圍。
+- 要保作業、保全／契約變更、核保、收費或理賠中的哪一段屬於本次範圍。
 - 核心系統、身分驗證、文件、付款及通知等外部整合。
 - 個資、健康資料、財務資料及稽核資料的分類與保存要求。
 - Java Web framework、Java 版本、Maven 或 Gradle、資料庫及 Docker Compose 拓撲。
@@ -76,7 +76,7 @@ description: Start or redesign an insurance software project with Traditional Ch
 Entity 不得直接成為 API request 或 response。OpenAPI 作為可生成的 transport contract；動態代碼及翻譯不得在前端重複維護。
 
 技術棧的分層、目錄與驗證細節見 [references/java-mybatis-vue-stack.md](references/java-mybatis-vue-stack.md)。
-開始建立前再讀取 [references/project-conventions.md](references/project-conventions.md)，以既有 POS 專案慣例作為預設值；只有使用者明確變更或新專案限制不相容時才偏離。
+開始建立前再讀取 [references/project-conventions.md](references/project-conventions.md)，依 repository 現況與已核准需求決定目錄、契約及共用邊界；不得從其他專案複製不存在的模組、類別、API、Store 或資料表。
 
 ## 4. 套用保險資料規則
 
@@ -88,7 +88,7 @@ Entity 不得直接成為 API request 或 response。OpenAPI 作為可生成的 
 - 未知代碼視為契約或資料錯誤，不靜默轉成 null。
 - 正式狀態或多表異動保留不可否認的 audit trail，並設計重送保護與併發控制。
 - 範例資料使用完全虛構內容，不複製正式個資、健康或財務資料。
-- 新契約要保書依商品、通路、客戶及付款方式產生條件頁面；首期保費授權、共同行銷同意、投資型適合度及附件不得縮成無版本的單一勾選值。
+- 要保書依商品、通路、客戶及付款方式產生條件頁面；首期保費授權、共同行銷同意、投資型適合度及附件不得縮成無版本的單一勾選值。
 - 新增作業名稱必須明確包含「新增」；授權書等必要附件應在所屬業務頁直接登打，並與共用附件清單使用同一份資料，不要求使用者跨頁重複輸入。
 - 先建立商品定義檔，再由商品下拉選擇帶入商品版本、主／附約、傳統型壽險／投資型、幣別與投保限制；不得由使用者另選商品類型。選到投資型後才啟用投資風險與商品適合度必填內容。
 - 完整銀行帳號與信用卡號只能送往一次性驗證／代碼化端點；正式資料、覆核 payload、log 與一般查詢只保存 Token、遮罩值及驗證狀態，且不得保存 CVV、PIN。
@@ -108,7 +108,7 @@ Entity 不得直接成為 API request 或 response。OpenAPI 作為可生成的 
 - 使用真實資料庫行為驗證 constraint、DECIMAL、日期、enum mapping、lock 與 affected rows。
 - 驗證 success、validation error、domain error、unauthorized、forbidden 與 unexpected error。
 - 若有 UI，驗證 loading、empty、error、success、permission denied 及繁中顯示。
-- 部署到 Northflank 等託管平台時，以平台 Secret Group／Addon 注入 JDBC URL、帳號與密碼；Spring Boot 設定只保存環境變數契約與安全的本機 fallback，不在 Git、image、部署描述或 log 保存正式 secret。
+- 部署到託管平台時，使用平台提供的 secret mechanism 注入 JDBC URL、帳號與密碼；Spring Boot 設定只保存環境變數契約與安全的本機 fallback，不在 Git、image、部署描述或 log 保存正式 secret。實際 secret 名稱及注入方式以目標平台為準，不沿用來源專案設定。
 - 雲端資料庫與本機 Docker 必須共用同一份 datasource 設定入口；明確定義環境變數優先順序、Flyway 帳號 fallback、連線池上限、內部 endpoint 及 health check，並以實際部署環境驗證連線。
 
 ## 產出內容

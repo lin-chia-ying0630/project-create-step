@@ -1,0 +1,4 @@
+interface:
+  display_name: "實作全端功能"
+  short_description: "依跨層契約完成資料庫、後端 API、前端畫面與完整驗證流程"
+  default_prompt: "使用 $implement-full-stack-feature 依 repository 現況完成這項全端功能，不建立不需要的層或模組。"

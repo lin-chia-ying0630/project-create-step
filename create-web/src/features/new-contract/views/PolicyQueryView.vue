@@ -185,7 +185,11 @@ onMounted(() => loadPolicies(1))
                 <td>{{ item.productCode }}</td>
                 <td>{{ item.applicationDate }}</td>
                 <td>{{ item.requestedEffectiveDate }}</td>
-                <td>{{ item.applicationStatus }} {{ item.applicationStatusDescription }}</td>
+                <td>
+                  {{ item.newContractStageCode }}｜{{ item.newContractStageDescriptionZhTw }}｜{{
+                    item.newContractStageNameEn
+                  }}
+                </td>
                 <td>{{ item.createdBy }}</td>
                 <td>{{ item.createdAt }}</td>
                 <td>{{ item.updatedBy }}</td>
@@ -219,8 +223,8 @@ onMounted(() => loadPolicies(1))
       >
         <div class="result-heading responsive-split-row">
           <div>
-            <p class="eyebrow">{{ detail.newContractStageDescription }}</p>
-            <h3>{{ detail.applicationStatusDescription }}</h3>
+            <p class="eyebrow">{{ detail.newContractStageNameEn }}</p>
+            <h3>{{ detail.newContractStageCode }}｜{{ detail.newContractStageDescriptionZhTw }}</h3>
             <p>
               要保書 {{ detail.applicationNo }}／正式保單號碼 {{ detail.policyNo || '尚未配置' }}
             </p>

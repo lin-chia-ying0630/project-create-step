@@ -8,8 +8,9 @@ export interface UnderwritingReviewPreview {
   currencyCode: string
   sumAssuredAmount: string
   premiumAmount: string
-  currentStageCode: string
-  currentStageDescription: string
+  newContractStageCode: string
+  newContractStageNameEn: string
+  newContractStageDescriptionZhTw: string
   currentDecisionCode: string | null
   currentContractStatusCode: string | null
   currentContractStatusDescription: string
@@ -29,8 +30,9 @@ export interface UnderwritingReviewSummary {
   productCode: string
   applicationDate: string
   requestedEffectiveDate: string
-  currentStageCode: string
-  currentStageDescription: string
+  newContractStageCode: string
+  newContractStageNameEn: string
+  newContractStageDescriptionZhTw: string
   createdBy: string
   createdAt: string
   updatedBy: string
@@ -50,8 +52,9 @@ export interface UnderwritingReviewPage {
 export interface UnderwritingOutcomeOption {
   decisionCode: string
   decisionDescription: string
-  stageCode: string
-  stageDescription: string
+  newContractStageCode: string
+  newContractStageNameEn: string
+  newContractStageDescriptionZhTw: string
   contractStatusCode: string
   contractStatusDescription: string
   insurable: boolean

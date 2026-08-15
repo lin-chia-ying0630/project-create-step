@@ -32,7 +32,7 @@ Controller -> Service interface <- ServiceImpl -> Mapper -> database
 - Service 管理保險規則、transaction、權限、idempotency 與跨表流程。
 - Java Mapper interface 只保留 method contract 與 `@Mapper`；SQL 只能放在 `src/main/resources/mapper/<feature>/*Mapper.xml`，禁止 `@Select`、`@Insert`、`@Update`、`@Delete`。
 - 功能 class 不得散落在 `<feature>/` 根目錄，`common/` 不得收納無法分類的業務 class。
-- Entity 對應資料庫；Request DTO 表達可寫輸入；Response DTO 表達查詢輸出。
+- persistence model 對應資料庫；Request DTO 表達可寫輸入；Response DTO 表達查詢輸出。只有需要獨立生命週期或持久化 mapping 時才建立對應 model。
 - SQL 使用參數綁定；排序欄位等無法綁定的片段使用 allowlist，不接受任意輸入。
 - Mapper integration test 使用真實資料庫驗證欄位、DECIMAL、日期、enum、constraint、lock 與 affected rows。
 - API success 與 failure 都回傳 `ResponseBodyDto<T>`；未分類例外由全域 handler 包裝，不回傳裸字串或框架預設錯誤頁。
@@ -42,13 +42,13 @@ Controller -> Service interface <- ServiceImpl -> Mapper -> database
 建議責任分層：
 
 ```text
-view/page -> component -> store/composable -> API client
+view/page -> component -> optional state module -> typed API client
 ```
 
 - Vue SFC 使用 `<script setup lang="ts">`，除非 repository 已有不同慣例。
 - API 型別優先由 OpenAPI 生成；無生成流程時逐欄定義，不使用 `any` 或不安全 assertion 掩蓋差異。
 - `ResponseBodyDto<T>` 只在共用 HTTP client 解開；Store 與 Component 不重複判斷外層格式。
-- Component 管理呈現與互動；store 管理跨元件狀態；後端管理保險規則與資料正確性。
+- Component 管理呈現與互動；需要跨元件或跨 route 時才建立狀態模組；後端管理保險規則與資料正確性。
 - 所有畫面實作 loading、empty、error、success 與 permission denied 狀態。
 - 顯示文字使用繁體中文；日期、金額、幣別與代碼說明由一致 metadata 格式化。
 - 詳細資料以一格一個 label + value 呈現；動態欄位缺少繁中 metadata 時顯示原始 key，不讓整個查詢失敗。
@@ -68,16 +68,16 @@ view/page -> component -> store/composable -> API client
 
 ### 例外處理（`01-exception-handling.md`）
 
-- 例外分層：`ValidationException`→400、`ResourceNotFoundException`→404、`ResourceConflictException`→409、`BusinessRuleException`→422、系統錯誤→500。
-- 錯誤碼格式：`{模組}-{四位數字}`，例如 `CHG-3001`、`UW-2001`。
-- `GlobalExceptionHandler` 攔截所有未處理例外；系統錯誤不得回傳 stack trace 給前端。
+- 例外依專案既有 `BusinessException`、validation 與全域 handler 分層為 400、404、409、422 及 500；不為符合文件名稱另建例外類別。
+- 錯誤碼格式：`{模組}-{四位數字}`；模組代碼與實際錯誤碼必須由現有 feature 定義，不從文件範例建立。
+- 專案既有全域 handler 攔截未處理例外；系統錯誤不得回傳 stack trace 給前端。
 - 錯誤訊息不得含身分證號、銀行帳號等個資。
 
 ### 交易與併發（`02-transaction-concurrency.md`）
 
 - 多表寫入必須 `@Transactional(REQUIRED)`；正式異動與成功稽核放在同一交易。只有失敗嘗試或資安事件必須在主交易 rollback 後保留時，才以經核准的獨立元件使用 `REQUIRES_NEW`。
-- 樂觀鎖：`record_version` 欄位，更新時檢查 `affectedRows == 0` 拋 `ResourceConflictException`。
-- 防重：建立覆核前必須 `SELECT ... FOR UPDATE` 檢查同 `functionCode + uniqueKey`。
+- 樂觀鎖欄位依實際 schema 命名；更新時檢查 `affectedRows == 0` 並轉為 409。
+- 防重先辨識實際業務唯一鍵，再以資料庫唯一鍵及必要的 row lock 保證。
 - Deadlock：`@Retryable` 最多 3 次，間隔 100ms/200ms/400ms。
 
 ### API 版本（`03-api-versioning.md`）
@@ -88,13 +88,13 @@ view/page -> component -> store/composable -> API client
 
 ### 分頁與排序（`04-pagination-sorting.md`）
 
-- 參數：`page`（從 1 起）、`size`（上限 100）；回傳 `PageResult<T>`（含 `total`、`totalPages`）。
+- 參數：`page`（從 1 起）、`pageSize`（一般上限 100）；回傳專案唯一的 `PageResult<T>` 契約。
 - 排序：`sort=fieldName,asc|desc`；欄位必須白名單驗證，禁止直接拼入 ORDER BY（SQL Injection）。
-- 使用 PageHelper；Controller 不直接處理分頁邏輯。
+- 沿用 repository 已存在的分頁工具；不得因文件範例引入新套件。Controller 不直接處理分頁 SQL。
 
 ### 稽核 Log（`05-audit-log.md`）
 
-- 所有 POST / PUT / DELETE / 覆核狀態變更 / 個資查詢必須寫 `change_review_audit`（append-only）。
+- 所有 POST／PUT／DELETE／覆核狀態變更／敏感資料查詢，依所屬模組已確認的 append-only 稽核契約記錄；共用文件不指定單一功能表名。
 - 每個請求注入 `requestId`（MDC），回應 Header 加 `X-Request-ID`。
 - Log 禁止輸出：身分證號、銀行帳號、健康告知內容、密碼、token。
 - 稽核資料與系統 Log 保存期限由適用地區、資料分類及法遵核准來源決定；未取得正式來源前不得自行填入固定年限。
@@ -102,9 +102,9 @@ view/page -> component -> store/composable -> API client
 ### 前端狀態管理（`06-frontend-state.md`）
 
 - API 呼叫統一透過 `src/features/<feature>/api/` typed 函式；跨功能 HTTP client 放 `src/shared/api/`，Component 不直接使用 fetch／axios。
-- Store 統一管理 loading / error / data 三狀態；登出必須清除代碼定義快取。
-- `functionCode` 授權清單由後端回傳存入 `authStore`；前端不寫死授權判斷邏輯。
-- 共用 UI 片段放 `src/components/shared/`；業務頁面只用 props/slots。
+- 每個非同步操作統一管理 loading／error／data；只有跨 route 或多消費者確有需要時才建立 Store。具使用者範圍的快取在登出時清除。
+- 授權資料由後端提供與裁決；前端不寫死授權判斷，也不預設專案中不存在的 Store。
+- 共用 UI 片段放 repository 實際的 `src/shared/components/`；業務頁面只透過 props／slots 使用。
 
 ### 測試策略（`07-testing-strategy.md`）
 

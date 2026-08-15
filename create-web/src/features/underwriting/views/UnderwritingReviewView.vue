@@ -41,7 +41,7 @@ const selectedOutcome = computed(() =>
 /** 顯示後端提供的完整核保結果名稱與後續階段，前端不自行判斷狀態。 */
 function outcomeLabel(outcome: UnderwritingOutcomeOption): string {
   const decision = `${outcome.decisionCode} ${outcome.decisionDescription}`
-  const stage = `${outcome.stageCode} ${outcome.stageDescription}`
+  const stage = `${outcome.newContractStageCode} ${outcome.newContractStageDescriptionZhTw}`
   const contract = `${outcome.contractStatusCode} ${outcome.contractStatusDescription}`
   return `${decision}｜${stage}｜${contract}`
 }
@@ -247,7 +247,11 @@ onMounted(async () => {
                 <td>{{ item.productCode }}</td>
                 <td>{{ item.applicationDate }}</td>
                 <td>{{ item.requestedEffectiveDate }}</td>
-                <td>{{ item.currentStageCode }} {{ item.currentStageDescription }}</td>
+                <td>
+                  {{ item.newContractStageCode }}｜{{ item.newContractStageDescriptionZhTw }}｜{{
+                    item.newContractStageNameEn
+                  }}
+                </td>
                 <td>{{ item.createdBy }}</td>
                 <td>{{ item.createdAt }}</td>
                 <td>{{ item.updatedBy }}</td>
@@ -333,7 +337,11 @@ onMounted(async () => {
                   <th scope="row">首期保險費</th>
                   <td>{{ money(preview.currencyCode, preview.premiumAmount) }}</td>
                   <th scope="row">目前核保階段</th>
-                  <td>{{ preview.currentStageCode }} {{ preview.currentStageDescription }}</td>
+                  <td>
+                    {{ preview.newContractStageCode }}｜{{
+                      preview.newContractStageDescriptionZhTw
+                    }}｜{{ preview.newContractStageNameEn }}
+                  </td>
                 </tr>
                 <tr>
                   <th scope="row">目前核保結果</th>
@@ -410,8 +418,9 @@ onMounted(async () => {
             >
               <strong>{{ selectedOutcome.insurable ? '往下承保' : '不進入承保流程' }}</strong>
               <span
-                >核保階段：{{ selectedOutcome.stageCode }}
-                {{ selectedOutcome.stageDescription }}</span
+                >新契約階段：{{ selectedOutcome.newContractStageCode }}｜{{
+                  selectedOutcome.newContractStageDescriptionZhTw
+                }}｜{{ selectedOutcome.newContractStageNameEn }}</span
               >
               <span
                 >契約狀態：{{ selectedOutcome.contractStatusCode }}

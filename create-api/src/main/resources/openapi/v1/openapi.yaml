@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: 保險系統 API
-  version: 0.1.0
+  version: 0.2.0
   description: 新契約、客戶、首期保費、新契約批次承保作業、承保撤回與 Maker-Checker 覆核 API。
 paths:
   /api/v1/reviews:
@@ -115,6 +115,7 @@ paths:
   /api/v1/new-contract/applications/query/{query}:
     get:
       summary: 依要保人 ID、被保險人 ID、要保書號碼或正式保單號碼查詢保單資料
+      description: 新契約階段以 newContractStageCode、newContractStageNameEn、newContractStageDescriptionZhTw 回傳；舊欄位於 v1 棄用期內保留相容。
       parameters:
         - {name: query, in: path, required: true, schema: {type: string, maxLength: 32}}
       responses:
@@ -123,6 +124,7 @@ paths:
   /api/v1/new-contract/applications/query:
     get:
       summary: 初次進入即分頁查詢保單摘要
+      description: 每筆摘要使用統一的新契約階段三欄契約。
       parameters:
         - {name: query, in: query, description: 完整客戶 ID、要保書號碼或正式保單號碼, schema: {type: string, maxLength: 36}}
         - {name: page, in: query, schema: {type: integer, default: 1}}
@@ -172,7 +174,7 @@ paths:
   /api/v1/new-contract/underwriting-reviews:
     get:
       summary: 分頁查詢待核保審查清單
-      description: 以新契約受理檔為主，僅回傳受理檔與核保案件階段皆為 NS 照會結束／待核保審查的案件。
+      description: 以新契約受理檔為主，僅回傳受理檔與核保案件階段皆為 NS 照會結束／待核保審查的案件；階段使用統一的新契約階段三欄契約。
       parameters:
         - {name: query, in: query, description: 要保書號碼、正式保單號碼或核保案件號碼完整值；空白表示全部, schema: {type: string, maxLength: 32, default: ''}}
         - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
@@ -241,6 +243,20 @@ paths:
         '200': {description: 承保撤回已送覆核}
 components:
   schemas:
+    NewContractStage:
+      type: object
+      required: [newContractStageCode, newContractStageNameEn, newContractStageDescriptionZhTw]
+      properties:
+        newContractStageCode:
+          type: string
+          pattern: '^[A-Z]{2}$'
+          description: 新契約階段碼，對應 code_definition.new_contract_stage_code。
+        newContractStageNameEn:
+          type: string
+          description: 階段完整英文名稱。
+        newContractStageDescriptionZhTw:
+          type: string
+          description: 階段繁體中文說明。
     ResponseBodyDto:
       type: object
       required: [success, message, errorCode, errorMessage, data]

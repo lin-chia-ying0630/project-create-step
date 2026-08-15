@@ -5,7 +5,11 @@ COPY src src
 RUN mvn -B package -DskipTests
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && useradd --system --uid 10001 --no-create-home appuser \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=build /workspace/target/create-api-*.jar app.jar
+USER 10001
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","/app/app.jar"]

@@ -1,5 +1,6 @@
 package tw.com.insurance.api.inquiry.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.math.BigDecimal;
@@ -15,11 +16,22 @@ public final class UnderwritingInquiryDtos {
 			long applicationRevision, String applicantCustomerReference, String applicantNameMasked,
 			String insuredCustomerReference, String insuredNameMasked, String productCode, LocalDate applicationDate,
 			LocalDate requestedEffectiveDate, String currencyCode, BigDecimal sumAssuredAmount,
-			BigDecimal premiumAmount, String newContractStage, String newContractStageDescription,
+			BigDecimal premiumAmount, String newContractStageCode, String newContractStageNameEn,
+			String newContractStageDescriptionZhTw,
 			String contractStatus, String contractStatusDescription, String underwritingStatus,
 			String underwritingStatusDescription, String decisionCode, String decisionDescription, String inquiryStatus,
 			String inquiryStatusDescription, LocalDateTime issuedAt, LocalDateTime resolvedAt,
 			List<InquiryItem> items) {
+		@Deprecated
+		@JsonProperty("newContractStage")
+		public String newContractStage() {
+			return newContractStageCode;
+		}
+		@Deprecated
+		@JsonProperty("newContractStageDescription")
+		public String newContractStageDescription() {
+			return newContractStageDescriptionZhTw;
+		}
 	}
 	public record InquiryPdfDocument(String inquiryNo, String fileName, String contentType, String base64Content) {
 	}

@@ -15,8 +15,8 @@
 
 | 情境 | 優先模式 | 專案落點 | 檢查重點 |
 |---|---|---|---|
-| 多組核保規則需獨立增減、排序及測試 | Strategy + Composite | `underwriting/validation` | 每個規則回傳固定代碼，不直接寫資料庫；流程負責彙總 |
-| 自然人、法人或不同商品需要建立不同處理物件 | Factory Method | domain/application service | Factory 只負責選擇，不混入查詢、交易或畫面文案 |
+| 多組同類規則需獨立增減、排序及測試 | Strategy + Composite | 所屬 feature | 每個規則回傳固定結果，不直接寫資料庫；流程負責彙總 |
+| 多種已確認類型需要建立不同處理物件 | Factory Method | domain/application service | Factory 只負責選擇，不混入查詢、交易或畫面文案 |
 | API 需協調多個 Mapper、加密、PDF 或外部服務 | Facade/Application Service | `service/impl` | Controller 維持薄層；交易邊界放 application service |
 | 外部支付、身分驗證或舊系統介面格式不同 | Adapter | `integration/<provider>` | domain 不依賴供應商 DTO；Adapter 完成格式與錯誤轉換 |
 | 批次流程骨架固定、個別步驟可替換 | Template Method 或明確 Pipeline | batch service | 不以繼承共享資料狀態；可組合時優先組合 |
@@ -40,7 +40,7 @@ Spring bean 透過 constructor injection 組合策略或 Adapter；不得在業�
 - component 檔名與 template tag 使用 PascalCase；props 使用 type-based `defineProps`，emits 使用 typed `defineEmits`。
 - props 唯讀；子元件透過 emit 通知變更；不得直接修改父層狀態。
 - 禁止 `any`、非必要 `as`、大量一行 expression 與在 template 內執行複雜業務計算。
-- API 呼叫放 feature typed API；共用 HTTP client 放 `shared/api`；component 管理呈現與互動，不裁決保險業務。
+- API 呼叫放 feature typed API；共用 HTTP client 放 `shared/api`；component 管理呈現與互動，不裁決業務規則。
 - loading、empty、error、success、disabled 與 accessibility label 必須明確。
 
 ## SCSS
@@ -65,7 +65,7 @@ Spring bean 透過 constructor injection 組合策略或 Adapter；不得在業�
 - 主要操作按鈕與分頁按鈕的可觸控高度至少 44px；錯誤、loading、disabled 與 focus 狀態在窄 viewport 仍須可辨識。
 - 側邊導覽、頁籤與檔案分頁可在自身容器橫向捲動，並保留目前項目的視覺狀態。
 - 寬表格保留語意化 table，只允許表格自身容器橫向捲動；欄位內容可換行，不得撐出整個 viewport。
-- 長代碼、保單號碼、電子郵件與中文地址使用安全換行，不裁切必要資訊。
+- 長代碼、業務鍵、電子郵件與地址使用安全換行，不裁切必要資訊。
 - 完成前至少驗證 320×568、390×844 與桌面 viewport；確認相同內容與功能均存在，沒有 body 水平 overflow，且導覽、主要欄位、上一頁／下一頁及提交按鈕可操作。
 
 ## 測試與文件

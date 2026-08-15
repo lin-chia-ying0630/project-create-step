@@ -1,0 +1,4 @@
+interface:
+  display_name: "以 PR 發布變更"
+  short_description: "確認變更範圍與驗證證據後安全提交、推送並建立可審查的 PR"
+  default_prompt: "使用 $release-with-pr 驗證並以 PR 發布目前變更。"
